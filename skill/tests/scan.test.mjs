@@ -359,3 +359,20 @@ describe('리뷰 반영 회귀', () => {
     expect(lines, 'rel="noopener" 가 앞에 있는 태그는 잡으면 안 되고, rel="nofollow" 는 잡아야 한다').toEqual([2])
   })
 })
+
+// spec §9 — 패턴 규칙은 파일을 "한 줄씩" 훑는다.
+// 파일 전체에 한 번에 적용하면 ^·$ 앵커가 파일 경계를 뜻하게 되어,
+// CSV 헤더처럼 마지막 줄이 아닌 곳의 줄 단위 앵커 규칙을 통째로 놓친다(픽스처로 실측).
+describe('패턴 규칙은 줄 단위로 적용된다', () => {
+  it('마지막 줄이 아닌 CSV 헤더도 admin-data-columns 가 잡는다', () => {
+    const p = makeProject({
+      'roster/명부.csv': ['학번,이름,연락처', '10101,홍길동,010-0000-0000', '10102,김철수,010-1111-1111'].join('\n'),
+    })
+    const s = runScan(p)
+    const hit = s.hits.find((h) => h.rule === 'admin-data-columns')
+    expect(hit, '헤더가 첫 줄일 때 admin-data-columns 를 놓쳤습니다').toBeTruthy()
+    expect(hit.line).toBe(1)
+    rmSync(p, { recursive: true, force: true })
+    rmSync(p + '-scan.json', { force: true })
+  })
+})

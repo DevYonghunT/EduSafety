@@ -193,24 +193,6 @@ function walk(root) {
   return { files, skipped }
 }
 
-// 줄 시작 오프셋 목록 → 매치 위치의 줄 번호(1부터)와 그 줄의 텍스트
-function lineStarts(text) {
-  const starts = [0]
-  for (let i = 0; i < text.length; i++) if (text[i] === '\n') starts.push(i + 1)
-  return starts
-}
-
-function lineOf(starts, index) {
-  let lo = 0
-  let hi = starts.length - 1
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1
-    if (starts[mid] <= index) lo = mid
-    else hi = mid - 1
-  }
-  return lo
-}
-
 // 줄 전체를 먼저 마스킹한 뒤 창을 잘라낸다. 창을 먼저 자르면 경계에 걸친 시크릿이
 // 잘려 패턴에 걸리지 않고 조각이 그대로 남는다.
 function buildSnippet(lineText, offsetInLine) {
@@ -235,32 +217,31 @@ export function scanProject(root) {
   const hits = []
 
   for (const file of files) {
-    const starts = lineStarts(file.text)
-    const lineText = (n) => {
-      const from = starts[n]
-      const to = n + 1 < starts.length ? starts[n + 1] - 1 : file.text.length
-      return file.text.slice(from, to).replace(/\r$/, '')
-    }
+    // spec §9 — 패턴 규칙은 파일을 "한 줄씩" 훑는다.
+    // 파일 전체에 한 번에 적용하면 ^·$ 앵커가 파일 경계를 뜻하게 되어,
+    // admin-data-columns 처럼 줄 단위 앵커를 쓰는 규칙이 마지막 줄에서만 맞는다(픽스처로 실측).
+    const lines = file.text.split('\n').map((l) => l.replace(/\r$/, ''))
 
     for (const rule of activePattern) {
       // REQ-9.6 — 압축 파일에서는 scanMinified 규칙만 돌린다
       if (file.minified && !rule.scanMinified) continue
 
       const re = new RegExp(rule.pattern.source, rule.pattern.flags)
-      let m
-      while ((m = re.exec(file.text)) !== null) {
-        if (m[0] === '') { re.lastIndex += 1; continue }
-        const n = lineOf(starts, m.index)
-        const text = lineText(n)
+      for (let n = 0; n < lines.length; n++) {
+        const text = lines[n]
         if (rule.excludeLine && rule.excludeLine.test(text)) continue
-
-        const offsetInLine = m.index - starts[n]
-        hits.push({
-          rule: rule.id, item: rule.item, subcheck: rule.subcheck, severity: rule.severity,
-          file: file.path, line: n + 1,
-          snippet: buildSnippet(text, offsetInLine),
-          documentation: isDocumentation(file.path),
-        })
+        re.lastIndex = 0
+        let m
+        while ((m = re.exec(text)) !== null) {
+          if (m[0] === '') { re.lastIndex += 1; continue }
+          hits.push({
+            rule: rule.id, item: rule.item, subcheck: rule.subcheck, severity: rule.severity,
+            file: file.path, line: n + 1,
+            snippet: buildSnippet(text, m.index),
+            documentation: isDocumentation(file.path),
+          })
+          if (!re.global) break
+        }
       }
     }
   }

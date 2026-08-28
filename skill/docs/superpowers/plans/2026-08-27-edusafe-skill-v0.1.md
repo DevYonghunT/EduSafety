@@ -1210,6 +1210,24 @@ git -C $REPO commit -m "feat: 스캔 규칙 48개와 결정적 스캐너 + spec 
 
 - [ ] **Step 1: 픽스처 앱을 만든다**
 
+픽스처는 교사가 흔히 만드는 **Vite + React 앱이 Supabase 를 쓰고 Firebase 규칙 파일도 둔** 형태다. `package.json` 이 없으면 스택 필터(REQ-9.3)가 `supabase`·`vite-react` 를 감지하지 못해 `supabase-select-star` 와 `dangerously-set-inner-html` 이 **아예 실행되지 않고**, 골든 `must_hit` 을 만족할 수 없다(스캐너로 실측).
+
+`fixtures/vulnerable-app/package.json`:
+```json
+{
+  "name": "vulnerable-app",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
+```
+
 `fixtures/vulnerable-app/index.html`:
 ```html
 <!doctype html>
