@@ -377,7 +377,9 @@ git -C $REPO commit -m "test: 문서 린터 — REQ 커버리지·전사 일치�
 - Consumes: spec §6 (항목 37개·하위 점검 134개 — **데이터 정본**)
 - Produces: `items.json` 스키마 — 뒤의 모든 Task 가 이 필드명을 그대로 쓴다.
   ```
-  { schema_version: "1", rubric_version: "1.2-skill", items: [ Item ] }
+  { schema_version: "1", rubric_version: "1.2-skill",
+    categories: [ { number: 1..8, title: string } ],   // §6 의 카테고리 소제목 전사
+    items: [ Item ] }
   Item = {
     id: string, category: 1..8, base_severity: "high"|"medium"|"low",
     question: string, methods: ("scanner"|"code"|"evidence"|"teacher")[],
@@ -1768,7 +1770,11 @@ git -C $REPO commit -m "feat: 보고서 필드 계약과 계약 기반 검증기
   ```
   render.mjs:  node render.mjs <stagingDir>
     export function renderHtml(report, items, template): string
-    export function swapStaging(reportDir, stagingDir): void
+    export function swapStaging(reportDir, stagingDir, { now, rename }?): void
+      // rename 은 테스트가 "이동 중 실패"를 주입하는 자리다. 되돌리기 경로(REQ-8.7·REQ-8.9)는
+      // 실제로 실패시켜 보지 않으면 검증할 방법이 없어 seam 을 하나 둔다. 기본값은 renameSync.
+      // now 는 history 스탬프를 고정해 5개 상한 테스트를 결정적으로 만든다.
+    export function cleanStaging(reportDir): string[]   // 남은 .staging-* 정리 (REQ-5.6)
     export function skillDigest(skillDir): string     // "sha256:…"
   ```
 
@@ -1780,7 +1786,15 @@ git -C $REPO commit -m "feat: 보고서 필드 계약과 계약 기반 검증기
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">
 ```
 
-`render.mjs` 가 치환할 자리표시자를 둔다(`{{SUMMARY}}`·`{{META}}`·`{{MOE}}`·`{{DB_PATHS}}`·`{{DESTINATIONS}}`·`{{CATEGORIES}}`·`{{SESSION}}`·`{{FOOTNOTES}}`). 인쇄용 `@media print` 스타일을 포함한다.
+`render.mjs` 가 치환할 자리표시자를 둔다(`{{SUMMARY}}`·`{{META}}`·`{{COVERAGE}}`·`{{MOE}}`·`{{DB_PATHS}}`·`{{DESTINATIONS}}`·`{{CATEGORIES}}`·`{{SESSION}}`·`{{FOOTNOTES}}`). 인쇄용 `@media print` 스타일을 포함한다. 치환되지 않은 자리표시자가 남으면 렌더를 거부한다.
+
+**교사 검토에서 나온 표시 방식** (spec §8.4 는 시각적 구성을 구현자 재량으로 둔다):
+
+- 검사 메타·coverage·서식1·DB 경로·목적지 다섯 가지는 **한 줄 탭**으로 묶고 기본은 접어 둔다. 순서는 REQ-8.17 그대로이고 DOM 순서도 같다 — 접히는 것은 표시 방식이지 구성 순서가 아니다. 탭 이름은 교사가 알아볼 수 있게 짧게 쓴다: 검사 조건 · 점검 범위 · 학교 서식 · 데이터 접근 · 외부 전송. 각 패널 안에는 원래의 정식 명칭을 제목으로 남긴다.
+- 탭과 인쇄 선택지는 **JS 없이** 구현한다(REQ-8.16). 숨긴 라디오·체크박스와 형제 선택자만 쓴다.
+- 미충족 항목을 전부 펼쳐 두면 보고서가 지나치게 길어진다. `effective_severity` 가 `high` 인 것만 펼치고, 종합 판정 아래에 **"먼저 볼 것"** 목록을 두어 나머지로 이동할 수 있게 한다. 앵커로 이동하면 `details:target` 규칙이 접힌 항목을 펼친다.
+- 인쇄·PDF 저장은 **선택지를 준다**. 체크박스를 켜면 모든 탭과 항목이 펼쳐진 채로 인쇄되고(학운위 제출용), 끄면 화면에 보이는 대로 인쇄된다. 체크박스 상태만으로 `@media print` 규칙이 갈린다.
+- coverage 축은 교사가 읽을 이름(파일 스캔·git 기록·빌드 결과·코드 읽기·교사 제출 자료·교사 답변)을 앞에 쓰고, 기술 이름은 옆에 작게 남긴다 — 트랙 2 재검증이 그 이름을 쓴다.
 
 - [ ] **Step 2: HTML 렌더 테스트를 먼저 쓴다**
 

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
+import { readSpec, specCategories } from './helpers/spec-parse.mjs'
 
 const data = JSON.parse(readFileSync('edusafe/rules/items.json', 'utf8'))
 const version = JSON.parse(readFileSync('edusafe/rules/version.json', 'utf8'))
@@ -114,5 +115,19 @@ describe('스캐폴드 규범', () => {
     expect(Object.keys(version).sort()).toEqual(['edusafe_version', 'rubric_version', 'schema_version'])
     for (const v of Object.values(version)) expect(typeof v).toBe('string')
     expect(version.edusafe_version).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+})
+
+// spec §6 의 카테고리 소제목 ↔ items.json 의 categories
+describe('④ 카테고리 제목 동기화', () => {
+  it('카테고리 8개가 spec §6 소제목과 일치한다', () => {
+    expect(data.categories).toEqual(specCategories(readSpec()))
+    expect(data.categories).toHaveLength(8)
+    expect(data.categories.map((c) => c.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+  })
+
+  it('모든 항목의 category 가 정의된 카테고리를 가리킨다', () => {
+    const known = new Set(data.categories.map((c) => c.number))
+    expect(items.filter((i) => !known.has(i.category)).map((i) => i.id)).toEqual([])
   })
 })

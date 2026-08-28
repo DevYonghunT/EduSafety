@@ -4,8 +4,9 @@
 //   node edusafe/scripts/render.mjs <stagingDir>
 //
 // AI 는 edusafe-report.json 만 작성하고, 사람이 읽는 형식은 전부 여기서 나온다 (spec REQ-4.3).
-import { readFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { join, dirname, resolve } from 'node:path'
+import { createHash, randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { rules as scanRules } from '../rules/scan-rules.mjs'
 
@@ -14,6 +15,7 @@ const RULES = join(HERE, '..', 'rules')
 
 export const loadContract = () => JSON.parse(readFileSync(join(RULES, 'report.contract.json'), 'utf8'))
 export const loadItems = () => JSON.parse(readFileSync(join(RULES, 'items.json'), 'utf8')).items
+export const loadCategories = () => JSON.parse(readFileSync(join(RULES, 'items.json'), 'utf8')).categories || []
 export const loadVersion = () => JSON.parse(readFileSync(join(RULES, 'version.json'), 'utf8'))
 
 export const joinPath = (path, key) => `${path}.${key}`
@@ -576,12 +578,14 @@ export function renderMarkdown(report, items) {
   }
   L.push('')
 
+  const categories = loadCategories()
   L.push('## 항목별 판정')
   L.push('')
   for (let category = 1; category <= 8; category++) {
     const group = report.items.filter((i) => i.category === category)
     if (group.length === 0) continue
-    L.push(`### 카테고리 ${category}`)
+    const meta = categories.find((c) => c.number === category)
+    L.push(`### 카테고리 ${category}${meta ? '. ' + meta.title : ''}`)
     L.push('')
     for (const it of group) {
       const def = items.find((d) => d.id === it.item_id)
@@ -645,4 +649,521 @@ export function renderMarkdown(report, items) {
   L.push('')
 
   return L.join('\n')
+}
+
+// ── HTML 렌더 (REQ-8.16 ~ REQ-8.19) ──────────────────────────────────────
+// 단일 파일·오프라인·JS 없음. 모든 동적 값은 컨텍스트별로 이스케이프한다.
+// 보고서 JSON 을 HTML 에 내장하지 않는다 — 페이지 안에 소비자가 없고 노출면만 는다(REQ-8.19).
+
+export const escapeHtml = (v) => String(v === null || v === undefined ? '' : v)
+  .split('&').join('&amp;')
+  .split('<').join('&lt;')
+  .split('>').join('&gt;')
+  .split('"').join('&quot;')
+  .split("'").join('&#39;')
+
+// 속성값은 항상 큰따옴표로 감싸고 같은 규칙으로 이스케이프한다
+export const escapeAttr = (v) => escapeHtml(v)
+
+// URL 은 스킴을 허용목록으로 막는다. javascript: 같은 스킴은 통째로 버린다.
+export function escapeUrl(v) {
+  const s = String(v === null || v === undefined ? '' : v).trim()
+  return /^(?:https?:\/\/|mailto:|#|\/|\.\/|\.\.\/)/i.test(s) ? escapeAttr(s) : '#'
+}
+
+const VERDICT_BADGE = {
+  fail: ['b-fail', '미충족'],
+  na: ['b-na', '해당없음'],
+  needs_human: ['b-human', '판단불가'],
+}
+
+function badge(verdict, level) {
+  if (verdict === 'pass') {
+    return level === 'attested'
+      ? '<span class="badge b-attested">교사 확인: 충족</span>'
+      : '<span class="badge b-pass">충족</span>'
+  }
+  const [cls, label] = VERDICT_BADGE[verdict] || ['b-na', escapeHtml(verdict)]
+  return `<span class="badge ${cls}">${escapeHtml(label)}</span>`
+}
+
+const htmlTable = (head, rows, emptyText = '기록이 없습니다.') => {
+  if (rows.length === 0) return `<p class="empty">${escapeHtml(emptyText)}</p>`
+  const th = head.map((h) => `<th>${escapeHtml(h)}</th>`).join('')
+  const tr = rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')
+  return `<div class="scroll"><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`
+}
+
+// REQ-7.13 — 같은 근거가 여러 항목에 인용되면 항목마다 전부 펼치지 않고 접는다.
+function findingKey(e) {
+  if (!e || typeof e !== 'object') return null
+  return e.type === 'quote'
+    ? ['q', e.file, e.line, e.quote].join(' ')
+    : ['n', asArray(e.rules).join(','), e.files_scanned].join(' ')
+}
+
+function findingIndex(reportItems) {
+  const map = new Map()
+  for (const it of reportItems) {
+    for (const e of asArray(it.evidence)) {
+      const k = findingKey(e)
+      if (k === null) continue
+      if (!map.has(k)) map.set(k, [])
+      if (!map.get(k).includes(it.item_id)) map.get(k).push(it.item_id)
+    }
+  }
+  return map
+}
+
+function evidenceHtml(list, index = null, ownerId = null) {
+  const out = []
+  for (const e of asArray(list)) {
+    if (!e || typeof e !== 'object') continue
+    const key = findingKey(e)
+    const shared = index && key !== null ? index.get(key) || [] : []
+    if (shared.length > 1 && shared[0] !== ownerId) {
+      const others = shared.filter((id) => id !== ownerId)
+      out.push(`<p class="folded">같은 근거가 다른 항목에서도 인용됨 — ${escapeHtml(others.join(', '))}</p>`)
+      continue
+    }
+    if (e.type === 'quote') {
+      out.push(
+        `<div class="ev"><div class="where">${escapeHtml(e.file)}:${escapeHtml(e.line)} · ${escapeHtml(e.source)}</div>` +
+        `<code>${escapeHtml(e.quote)}</code></div>`,
+      )
+    } else {
+      out.push(
+        `<div class="ev"><div class="where">부재 증명 · ${escapeHtml(e.source)}</div>` +
+        `규칙 <code>${escapeHtml(asArray(e.rules).join(', '))}</code> 로 파일 ${escapeHtml(e.files_scanned)}개를 검사해 해당 사항이 없음을 확인했습니다.</div>`,
+      )
+    }
+    if (shared.length > 1) {
+      const others = shared.filter((id) => id !== ownerId)
+      out.push(`<p class="folded">이 근거는 ${escapeHtml(others.join(', '))} 에서도 인용됩니다.</p>`)
+    }
+  }
+  return out.join('')
+}
+
+// 미충족 항목이 많으면 아코디언을 다 펼쳐 두는 것보다, 먼저 볼 것을 목록으로 주는 편이 낫다.
+// 링크를 누르면 해당 항목으로 이동하고, 접혀 있어도 `details:target` CSS 로 펼쳐진다(JS 없음).
+function todoHtml(report, items) {
+  const fails = report.items.filter((i) => i.verdict === 'fail')
+  if (fails.length === 0) return ''
+  const order = { high: 0, medium: 1, low: 2 }
+  const mark = { high: 'd-red', medium: 'd-amber', low: 'd-grey' }
+  const sorted = [...fails].sort((a, b) => (order[a.effective_severity] ?? 9) - (order[b.effective_severity] ?? 9))
+  const li = sorted.map((it) => {
+    const def = items.find((d) => d.id === it.item_id)
+    return `<li><span class="dot ${mark[it.effective_severity] || 'd-grey'}"></span>` +
+      `<a href="#item-${escapeAttr(it.item_id)}">${escapeHtml(def ? def.question : it.item_id)}</a>` +
+      `<span class="id">${escapeHtml(it.item_id)}</span></li>`
+  }).join('')
+  return `<h3>먼저 볼 것 — 미충족 ${escapeHtml(fails.length)}건</h3>` +
+    '<p class="explain">제목을 누르면 그 항목의 근거와 수정 방법으로 이동합니다.</p>' +
+    `<ul class="todo">${li}</ul>`
+}
+
+function summaryHtml(report, items) {
+  const s = report.summary
+  const nh = s.needs_human
+  const row = (dot, label, n, note) =>
+    `<div class="verdict"><span class="dot ${dot}"></span><span class="label">${escapeHtml(label)}</span>` +
+    `<span class="n">${escapeHtml(n)}건</span>${note ? `<span class="note">${escapeHtml(note)}</span>` : ''}</div>`
+  const foot = []
+  // REQ-7.21 — 점수를 매기지 않는다. 0이어도 "통과"라 쓰지 않는다.
+  if (s.must_fix === 0) foot.push('반드시 수정 항목 없음.')
+  // REQ-7.16 — 문서에서 발견한 hit 은 판정 근거로 쓰지 않되 건수를 남긴다.
+  foot.push(`문서에서 발견(참고) ${escapeHtml(s.documentation_hits)}건 — 문서 파일의 hit 은 판정 근거로 쓰지 않았습니다.`)
+  return '<div class="card">' +
+    row('d-red', '배포 전 반드시 수정', s.must_fix) +
+    row('d-amber', '권장 수정', s.recommended) +
+    row('d-grey', '참고', s.info) +
+    row('d-open', '판단불가', nh.total,
+      `커버리지 부족 ${nh.coverage} · 미지원 스택 ${nh.unsupported} · 미답변 ${nh.unanswered}`) +
+    row('d-blue', '교사 확인 항목', s.teacher_confirmed, '트랙 2 재검증 대상') +
+    `<div class="card-foot">${foot.map((f) => escapeHtml(f)).join('<br>')}</div></div>` +
+    todoHtml(report, items)
+}
+
+// 교사가 처음 보는 표에는 무엇을 보는 표인지 한 줄로 설명을 단다.
+export const SECTION_EXPLAIN = {
+  meta: '이 보고서를 어떤 조건에서 만들었는지 적어 둔 것입니다. 나중에 같은 코드를 다시 검사할 때 대조하는 데 씁니다.',
+  coverage: '이번 점검이 <b>어디까지 볼 수 있었는지</b>입니다. 여섯 가지 방법(파일 스캔·git 기록·빌드 결과·코드 읽기·교사 제출 자료·교사 답변) 중 무엇이 실행됐고 무엇이 생략됐는지 보여줍니다. 생략된 것이 있으면 그만큼 위의 <b>판단불가</b>가 늘어납니다.',
+  db_paths: '앱이 데이터베이스를 <b>읽고 쓰는 지점</b>들입니다. 각 지점에 다섯 가지 잠금장치가 걸려 있는지 봅니다 — <b>인증</b>(로그인했는지 확인) · <b>소유권</b>(내 데이터가 맞는지 확인) · <b>역할</b>(교사·학생 구분) · <b>검증</b>(값의 크기·형식 확인) · <b>호출제한</b>(너무 자주 부르지 못하게 막기). "no" 가 많을수록 아무나 손댈 수 있다는 뜻입니다.',
+  destinations: '학생 데이터가 <b>앱 밖으로 나가는 곳</b>입니다. <b>수탁자</b>는 앱이 돌아가려면 꼭 필요한 저장·호스팅 서비스(Firebase·Supabase 등)이고, <b>독립 제3자</b>는 그 밖의 외부 서비스(분석·광고·외부 AI 등)입니다. 수탁자로 보내는 것 자체는 문제가 아니지만 처리방침에 밝혀야 하고, 독립 제3자에 학생 식별정보를 보내는 것은 별도 근거가 필요합니다.',
+  session: '코드만으로는 알 수 없는 것을 교사에게 직접 물어 확인한 기록입니다.',
+}
+
+const explain = (key) => `<p class="explain">${SECTION_EXPLAIN[key]}</p>`
+
+// 항목/값 두 열짜리 정의 표. 첫 열은 머리글 칸(th)이라 htmlTable 을 쓰지 않는다.
+const defTable = (rows) =>
+  '<div class="scroll"><table class="meta"><tbody>' +
+  rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${v}</td></tr>`).join('') +
+  '</tbody></table></div>'
+
+function metaHtml(report) {
+  const g = report.project.git
+  const meta = defTable([
+    ['스킬 버전', escapeHtml(report.edusafe_version)],
+    ['루브릭 버전', escapeHtml(report.rubric_version)],
+    ['검사 시각', escapeHtml(report.checked_at)],
+    ['프로젝트', escapeHtml(report.project.name)],
+    ['감지된 스택', escapeHtml(report.project.stack.join(', ')) || '(감지 없음)'],
+    ['정식 지원 스택', report.project.supported_stack ? '예' : '아니오'],
+    ['git SHA', g ? `<code>${escapeHtml(g.sha)}</code>` : '—'],
+    ['git 작업 중 변경(dirty)', g ? (g.dirty ? '예' : '아니오') : '—'],
+    ['추적되지 않은 파일 포함', g ? (g.untracked_included ? '예' : '아니오') : '—'],
+    ['검사한 ref', g ? escapeHtml(g.refs_scanned.join(', ')) || '—' : '—'],
+    ['빌드 산출물 지문', report.project.build_artifact_digest ? `<code>${escapeHtml(report.project.build_artifact_digest)}</code>` : '—'],
+    ['스킬 지문(자가보고)', report.self_reported_skill_digest ? `<code>${escapeHtml(report.self_reported_skill_digest)}</code>` : '—'],
+  ])
+
+  return '<h3>검사 조건</h3>' + explain('meta') + meta
+}
+
+// coverage 축의 기술 이름은 트랙 2 재검증에 쓰이므로 남기되, 교사가 읽을 이름을 앞에 둔다.
+export const COVERAGE_LABEL = {
+  runtime: '실행 환경',
+  scanner: '파일 스캔',
+  history: 'git 기록',
+  build: '빌드 결과',
+  code: '코드 읽기',
+  evidence: '교사 제출 자료',
+  teacher: '교사 답변',
+}
+
+function coverageHtml(report) {
+  const cov = report.coverage
+  const axisCell = (axis) => `${escapeHtml(COVERAGE_LABEL[axis])} <span class="sev">${escapeHtml(axis)}</span>`
+  const covRows = [[axisCell('runtime'), escapeHtml(cov.runtime), '—']]
+  for (const axis of ['scanner', 'history', 'build', 'code', 'evidence', 'teacher']) {
+    const c = cov[axis] || {}
+    covRows.push([axisCell(axis), escapeHtml(c.status), c.reason ? escapeHtml(c.reason) : '—'])
+  }
+  const sc = cov.scanner
+  const skipped = htmlTable(['건너뛴 파일', '사유'],
+    sc.files_skipped.map((f) => [`<code>${escapeHtml(f.path)}</code>`, escapeHtml(f.reason)]),
+    '건너뛴 파일이 없습니다.')
+
+  return '<h3>점검 범위</h3>' + explain('coverage') +
+    htmlTable(['보는 방법', '상태', '생략 사유'], covRows) +
+    `<p class="sub">검사한 파일 ${escapeHtml(sc.files_scanned)}개 · 건너뛴 파일 ${escapeHtml(sc.files_skipped.length)}개</p>` +
+    skipped
+}
+
+function moeHtml(report) {
+  const rows = report.moe_checklist.map((m) => [
+    `<code>${escapeHtml(m.criterion)}</code>`,
+    escapeHtml(m.text),
+    escapeHtml(m.mapped_items.join(', ')),
+    escapeHtml(m.status),
+  ])
+  return '<h3>학교 서식 — 교육부 [서식 1] 필수기준 대조표</h3>' +
+    '<p class="explain">학교운영위원회 심의 준비에 참고하는 자료입니다. 아래 아홉 가지가 교육부가 정한 필수기준이고, 각 줄이 우리 점검 항목 중 무엇과 맞물리는지 보여줍니다.</p>' +
+    htmlTable(['기준', '내용', '우리 항목', '상태'], rows) +
+    `<div class="notice">${escapeHtml(MOE_DISCLAIMER)}</div>`
+}
+
+function dbPathsHtml(report) {
+  const rows = report.db_paths.map((p) => [
+    escapeHtml(p.table), escapeHtml(p.op),
+    `<code>${escapeHtml(p.file)}:${escapeHtml(p.line)}</code>`,
+    escapeHtml(p.controls.authentication), escapeHtml(p.controls.ownership), escapeHtml(p.controls.role),
+    escapeHtml(p.controls.validation), escapeHtml(p.controls.rate_limit),
+  ])
+  const table = '<h3>데이터 접근 — DB 도달 경로</h3>' + explain('db_paths') + htmlTable(['테이블', '동작', '위치', '인증', '소유권', '역할', '검증', '호출제한'], rows,
+    '기록된 DB 도달 경로가 없습니다.')
+  const withEvidence = report.db_paths.filter((p) => asArray(p.evidence).length > 0)
+  if (withEvidence.length === 0) return table
+  const blocks = withEvidence.map((p) =>
+    `<div class="kv"><b>${escapeHtml(p.table)} (${escapeHtml(p.op)})</b>` +
+    `<code>${escapeHtml(p.file)}:${escapeHtml(p.line)}</code></div>` + evidenceHtml(p.evidence)).join('')
+  return table + '<h3>경로별 근거</h3>' + blocks
+}
+
+function destinationsHtml(report) {
+  const rows = report.destinations.map((d) => [
+    escapeHtml(d.service), escapeHtml(d.kind), escapeHtml(d.purpose), escapeHtml(d.controller_role),
+    d.storage ? '예' : '아니오', escapeHtml(d.region),
+    escapeHtml(d.data.join(', ')) || '—',
+    `<code>${escapeHtml(d.file)}:${escapeHtml(d.line)}</code>`,
+  ])
+  return '<h3>외부 전송 — 목적지 인벤토리</h3>' + explain('destinations') + htmlTable(['서비스', '구분', '목적', '지위', '저장', '리전', '데이터', '위치'], rows,
+    '기록된 목적지가 없습니다.')
+}
+
+function categoriesHtml(report, items) {
+  const index = findingIndex(report.items)
+  const categories = loadCategories()
+  const out = []
+  for (let category = 1; category <= 8; category++) {
+    const group = report.items.filter((i) => i.category === category)
+    if (group.length === 0) continue
+    const meta = categories.find((c) => c.number === category)
+    out.push(`<h3>카테고리 ${category}${meta ? '. ' + escapeHtml(meta.title) : ''}</h3>`)
+    for (const it of group) {
+      const def = items.find((d) => d.id === it.item_id)
+      const sev = it.effective_severity !== it.base_severity
+        ? `${it.base_severity} → ${it.effective_severity}`
+        : it.base_severity
+      // 미충족을 전부 펼치면 보고서가 지나치게 길어진다. 가장 급한 것(🔴)만 펼쳐 두고
+      // 나머지는 위의 "먼저 볼 것" 목록에서 눌러 펼친다.
+      const open = it.verdict === 'fail' && it.effective_severity === 'high' ? ' open' : ''
+      const subRows = asArray(it.subchecks).map((s) => [
+        `<code>${escapeHtml(s.id)}</code>`,
+        badge(s.verdict, s.verification_level),
+        escapeHtml(s.coverage_status),
+        escapeHtml(asArray(s.sources).join(', ')) || '—',
+        escapeHtml(s.reason) || '—',
+      ])
+      const subEvidence = asArray(it.subchecks).filter((s) => asArray(s.evidence).length > 0)
+      const subEvidenceHtml = subEvidence.length === 0 ? '' :
+        '<h3>하위 점검 근거</h3>' + subEvidence.map((s) =>
+          `<div class="kv"><b>${escapeHtml(s.id)}</b></div>` + evidenceHtml(s.evidence)).join('')
+      out.push(
+        `<details id="item-${escapeAttr(it.item_id)}"${open}><summary>${badge(it.verdict, it.verification_level)}` +
+        `<span class="q">${escapeHtml(def ? def.question : it.item_id)}</span>` +
+        `<span class="id">${escapeHtml(it.item_id)}<span class="sev">중요도 ${escapeHtml(sev)}</span></span></summary>` +
+        '<div class="body">' +
+        `<div class="kv"><b>출처</b>${escapeHtml(asArray(it.sources).join(', ')) || '—'}</div>` +
+        (it.applicability_reason ? `<div class="kv"><b>해당없음 사유</b>${escapeHtml(it.applicability_reason)}</div>` : '') +
+        (it.demotion_reason ? `<div class="kv"><b>강등 사유</b>${escapeHtml(it.demotion_reason)}</div>` : '') +
+        `<div class="kv"><b>판정 근거 서술</b>${escapeHtml(it.reasoning)}</div>` +
+        htmlTable(['하위 점검', '판정', 'coverage', '출처', '사유'], subRows, '하위 점검이 정의되지 않은 항목입니다.') +
+        subEvidenceHtml +
+        (asArray(it.evidence).length > 0 ? '<h3>근거</h3>' + evidenceHtml(it.evidence, index, it.item_id) : '') +
+        `<div class="why"><b>왜 위험한가</b><br>${escapeHtml(it.why_risky)}</div>` +
+        `<div class="fix"><b>수정 방법</b><br>${escapeHtml(it.fix_hint)}</div>` +
+        `<p class="basis"><b>근거 법령</b> ${escapeHtml(it.basis)}</p>` +
+        '</div></details>',
+      )
+    }
+  }
+  return out.join('')
+}
+
+function sessionHtml(report) {
+  const rows = report.session.map((q) => [
+    escapeHtml(q.item_id), escapeHtml(q.kind), escapeHtml(q.question),
+    q.answer ? escapeHtml(q.answer) : '<span class="empty">(미답변)</span>',
+    q.evidence_sha256 ? `<code>${escapeHtml(q.evidence_sha256)}</code>` : '—',
+  ])
+  return explain('session') + htmlTable(['항목', '종류', '질문', '답변', '제출물 지문'], rows,
+    '확인 세션을 진행하지 않았습니다. 위 판정은 코드와 스캐너만으로 내린 것입니다.')
+}
+
+function footnotesHtml() {
+  return '<ul class="footnotes">' +
+    SCOPE_FOOTNOTES.map((n) => `<li>${escapeHtml(n.split('**').join(''))}</li>`).join('') +
+    '</ul>' +
+    `<div class="notice">${escapeHtml(TRUST_BOUNDARY)}</div>`
+}
+
+export function renderHtml(report, items, template) {
+  const sections = {
+    SUMMARY: summaryHtml(report, items),
+    META: metaHtml(report),
+    COVERAGE: coverageHtml(report),
+    MOE: moeHtml(report),
+    DB_PATHS: dbPathsHtml(report),
+    DESTINATIONS: destinationsHtml(report),
+    CATEGORIES: categoriesHtml(report, items),
+    SESSION: sessionHtml(report),
+    FOOTNOTES: footnotesHtml(),
+  }
+  let html = template
+  for (const [key, value] of Object.entries(sections)) {
+    const token = '{{' + key + '}}'
+    if (!html.includes(token)) throw new Error(`템플릿에 자리표시자가 없습니다: ${token}`)
+    html = html.split(token).join(value) // replace 의 $& 치환을 피한다
+  }
+  const leftover = html.match(/\{\{[A-Z_]+\}\}/)
+  if (leftover) throw new Error(`치환되지 않은 자리표시자가 남았습니다: ${leftover[0]}`)
+  return html
+}
+
+// ── staging 세트 교체 (REQ-8.4 ~ REQ-8.9) ────────────────────────────────
+// 정본 JSON·scan.json 은 이미 최상위에 있으므로 "기존 4개를 옮기고 HTML·MD 만 교체"하면
+// 새 정본이 history 로 밀려나 사라진다. 그래서 staging 에서 4개를 전부 완성한 뒤
+// 세트 단위로 교체한다.
+
+export const REPORT_FILES = ['edusafe-report.json', 'scan.json', 'edusafe-report.html', 'edusafe-report.md']
+const HISTORY_LIMIT = 5
+
+const pad = (n, w = 2) => String(n).padStart(w, '0')
+
+export function historyStamp(date = new Date()) {
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-` +
+    `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}-` +
+    randomBytes(2).toString('hex')
+}
+
+// 오래된 .staging-* 정리 — 0단계에서 부른다 (REQ-5.6 · REQ-8.7)
+export function cleanStaging(reportDir) {
+  if (!existsSync(reportDir)) return []
+  const removed = []
+  for (const name of readdirSync(reportDir)) {
+    if (!name.startsWith('.staging-')) continue
+    rmSync(join(reportDir, name), { recursive: true, force: true })
+    removed.push(name)
+  }
+  return removed
+}
+
+function trimHistory(historyDir) {
+  if (!existsSync(historyDir)) return
+  const dirs = readdirSync(historyDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()
+  while (dirs.length > HISTORY_LIMIT) {
+    rmSync(join(historyDir, dirs.shift()), { recursive: true, force: true })
+  }
+}
+
+// options.rename 은 테스트가 "이동 중 실패"를 주입하기 위한 자리다(계획서 Task 5 Step 5).
+// 되돌리기 경로는 실제로 실패시켜 보지 않으면 검증할 방법이 없다.
+export function swapStaging(reportDir, stagingDir, { now = new Date(), rename = renameSync } = {}) {
+  // 1. staging 에 4파일이 전부 있고 크기가 0이 아닌지 확인 (REQ-8.5)
+  for (const name of REPORT_FILES) {
+    const p = join(stagingDir, name)
+    if (!existsSync(p)) throw new Error(`staging 에 ${name} 이 없습니다`)
+    if (statSync(p).size === 0) throw new Error(`staging 의 ${name} 이 비어 있습니다`)
+  }
+
+  const historyDir = join(reportDir, 'history')
+  const archiveDir = join(historyDir, historyStamp(now))
+  const archived = []
+  const placed = []
+  let archiveCreated = false
+
+  try {
+    // 2. 기존 최상위 4파일을 history 로 옮긴다 (history/ 와 .staging-* 은 대상이 아니다)
+    for (const name of REPORT_FILES) {
+      const from = join(reportDir, name)
+      if (!existsSync(from)) continue
+      if (!archiveCreated) { mkdirSync(archiveDir, { recursive: true }); archiveCreated = true }
+      const to = join(archiveDir, name)
+      rename(from, to)
+      archived.push([from, to])
+    }
+
+    // 3. staging 의 4파일을 최상위로 옮긴다
+    for (const name of REPORT_FILES) {
+      const from = join(stagingDir, name)
+      const to = join(reportDir, name)
+      rename(from, to)
+      placed.push([from, to])
+    }
+  } catch (err) {
+    // REQ-8.7 — 실패하면 최상위를 손대지 않은 상태로 되돌리고 staging 을 남긴다
+    for (const [from, to] of placed.reverse()) { try { renameSync(to, from) } catch { /* 되돌리기 최선 노력 */ } }
+    for (const [from, to] of archived.reverse()) { try { renameSync(to, from) } catch { /* 되돌리기 최선 노력 */ } }
+    // REQ-8.9 — 만들어 둔 history 디렉터리가 비었으면 함께 지운다
+    if (archiveCreated && existsSync(archiveDir) && readdirSync(archiveDir).length === 0) {
+      rmSync(archiveDir, { recursive: true, force: true })
+    }
+    throw err
+  }
+
+  // 4. staging 폴더 삭제
+  rmSync(stagingDir, { recursive: true, force: true })
+  // 5. history 가 5개를 넘으면 오래된 것부터 삭제 (REQ-8.8)
+  trimHistory(historyDir)
+  return { archived: archiveCreated ? archiveDir : null }
+}
+
+// ── 스킬 지문 (REQ-11.1 · REQ-13.2) ──────────────────────────────────────
+// 신뢰 증거가 아니라 우발적 수정 탐지용이다. 변조된 render.mjs 는 공식 값을 그대로 찍을 수 있다.
+const DIGEST_TARGETS = ['SKILL.md', 'rules', 'scripts', 'templates']
+
+export function skillDigest(skillDir) {
+  const files = []
+  const walk = (abs, rel) => {
+    let entries
+    try { entries = readdirSync(abs, { withFileTypes: true }) } catch { return }
+    for (const e of [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+      if (e.isSymbolicLink()) continue // symlink 제외
+      const childAbs = join(abs, e.name)
+      const childRel = `${rel}/${e.name}`
+      if (e.isDirectory()) walk(childAbs, childRel)
+      else if (e.isFile()) files.push({ rel: childRel, abs: childAbs })
+    }
+  }
+  for (const target of DIGEST_TARGETS) {
+    const abs = join(skillDir, target)
+    if (!existsSync(abs)) continue
+    const st = statSync(abs)
+    if (st.isDirectory()) walk(abs, target)
+    else files.push({ rel: target, abs })
+  }
+  files.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0)) // 경로 오름차순
+
+  const outer = createHash('sha256')
+  for (const f of files) {
+    const normalized = readFileSync(f.abs, 'utf8').split('\r\n').join('\n') // 줄바꿈 LF
+    outer.update(f.rel + '\n' + createHash('sha256').update(normalized).digest('hex') + '\n')
+  }
+  return 'sha256:' + outer.digest('hex')
+}
+
+export function manifestFiles(skillDir) {
+  const files = []
+  const walk = (abs, rel) => {
+    let entries
+    try { entries = readdirSync(abs, { withFileTypes: true }) } catch { return }
+    for (const e of [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+      if (e.isSymbolicLink()) continue
+      const childAbs = join(abs, e.name)
+      const childRel = `${rel}/${e.name}`
+      if (e.isDirectory()) walk(childAbs, childRel)
+      else if (e.isFile()) files.push({ path: childRel, abs: childAbs })
+    }
+  }
+  for (const target of DIGEST_TARGETS) {
+    const abs = join(skillDir, target)
+    if (!existsSync(abs)) continue
+    if (statSync(abs).isDirectory()) walk(abs, target)
+    else files.push({ path: target, abs })
+  }
+  return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+}
+
+// ── CLI ──────────────────────────────────────────────────────────────────
+function main(argv) {
+  const stagingArg = argv[0]
+  if (!stagingArg) {
+    console.error('사용법: node render.mjs <stagingDir>')
+    process.exit(2)
+  }
+  const staging = resolve(stagingArg)
+  const report = JSON.parse(readFileSync(join(staging, 'edusafe-report.json'), 'utf8'))
+  const scanPath = join(staging, 'scan.json')
+  const scan = existsSync(scanPath) ? JSON.parse(readFileSync(scanPath, 'utf8')) : null
+  const items = loadItems()
+  const contract = loadContract()
+
+  const errors = validateReport(report, items, contract, scan)
+  if (errors.length > 0) {
+    console.error(`보고서가 계약을 통과하지 못했습니다 (${errors.length}건). 최상위를 손대지 않고 staging 을 남깁니다.`)
+    for (const e of errors.slice(0, 40)) console.error('  - ' + e)
+    if (errors.length > 40) console.error(`  … 외 ${errors.length - 40}건`)
+    process.exit(1)
+  }
+
+  const template = readFileSync(join(HERE, '..', 'templates', 'report.html'), 'utf8')
+  writeFileSync(join(staging, 'edusafe-report.html'), renderHtml(report, items, template))
+  writeFileSync(join(staging, 'edusafe-report.md'), renderMarkdown(report, items))
+
+  const reportDir = dirname(staging)
+  swapStaging(reportDir, staging)
+  const s = report.summary
+  console.log(`🔴 ${s.must_fix} · 🟡 ${s.recommended} · ⚪ ${s.info} · ❓ ${s.needs_human.total} · ✍️ ${s.teacher_confirmed}`)
+  console.log('보고서: ' + join(reportDir, 'edusafe-report.html'))
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main(process.argv.slice(2))
 }

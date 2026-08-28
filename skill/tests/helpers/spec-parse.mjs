@@ -246,3 +246,13 @@ export function specContract(spec) {
 
   return { fields: rows, evidence_types }
 }
+
+// spec §6 의 카테고리 소제목 — items.json 의 categories 와 대조한다
+export function specCategories(spec) {
+  const out = []
+  for (const line of spec.split('\n')) {
+    const m = line.match(/^### 6\.\d+ 카테고리 (\d+)\. (.+)$/)
+    if (m) out.push({ number: Number(m[1]), title: m[2].trim() })
+  }
+  return out
+}

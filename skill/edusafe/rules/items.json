@@ -1,6 +1,40 @@
 {
   "schema_version": "1",
   "rubric_version": "1.2-skill",
+  "categories": [
+    {
+      "number": 1,
+      "title": "수집 — 무엇을 모으나"
+    },
+    {
+      "number": 2,
+      "title": "접근·권한 — 누가 무엇을 할 수 있나"
+    },
+    {
+      "number": 3,
+      "title": "비밀·파일 노출 — 저장소·번들·히스토리에 뭐가 들어 있나"
+    },
+    {
+      "number": 4,
+      "title": "제3자 전송·추적 — 데이터가 어디로 나가나"
+    },
+    {
+      "number": 5,
+      "title": "화면·로그 노출 — 눈에 어디까지 보이나"
+    },
+    {
+      "number": 6,
+      "title": "코드 안전"
+    },
+    {
+      "number": 7,
+      "title": "고지·보유·파기 — 알리고, 지키고, 지우나"
+    },
+    {
+      "number": 8,
+      "title": "학생 안전"
+    }
+  ],
   "items": [
     {
       "id": "R-rrn",
