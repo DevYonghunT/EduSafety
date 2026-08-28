@@ -313,15 +313,26 @@ export default function ReviewMode() {
           <p className="intro">트랙에 따라 심사 항목이 달라집니다. 앱이 무엇인지는 심사자가 가장 잘 압니다 — 직접 확정하세요.</p>
 
           <div className="scan-box">
-            <strong>트랙 확정 (심사자)</strong>
+            <strong>트랙 확정 (심사자) — 트랙이 심사 체크리스트를 정합니다</strong>
             <div className="track-grid">
-              {Object.entries(TRACKS).map(([key, t]) => (
-                <label key={key} className={`track-card ${track === key ? 'selected' : ''}`}>
-                  <input type="radio" name="track" checked={track === key} onChange={() => setTrack(key)} />
-                  {t.icon} {t.label}
-                </label>
-              ))}
+              {Object.entries(TRACKS).map(([key, t]) => {
+                const items = rubricItems.filter((it) => it.tracks.includes(key))
+                const required = items.filter((it) => it.type === 'required').length
+                return (
+                  <label key={key} className={`track-card ${track === key ? 'selected' : ''}`}>
+                    <input type="radio" name="track" checked={track === key} onChange={() => setTrack(key)} />
+                    {t.icon} {t.label}
+                    <span className="track-count">{items.length}항목 · 필수 {required}</span>
+                  </label>
+                )
+              })}
             </div>
+            {features.studentFacing && track && !['learning_content', 'class_ops'].includes(track) && (
+              <p className="gate-warn">
+                ⚠️ "학생이 직접 사용한다"고 확인하셨어요 — 그렇다면 <strong>학습 콘텐츠·활동</strong> 또는 <strong>학급 운영·소통</strong> 트랙이
+                맞을 수 있습니다. 학생 대면 보호 항목(만 14세 동의·위기 안내·사칭 방지 등)은 그 두 트랙에만 포함됩니다.
+              </p>
+            )}
           </div>
 
           <div className="scan-box">

@@ -857,3 +857,11 @@ button {
   margin-top: 8px;
   font-size: 0.8rem;
 }
+
+.track-count {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 3px;
+}
