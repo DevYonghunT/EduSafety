@@ -35,6 +35,16 @@ button {
   cursor: pointer;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(14, 122, 106, 0.28);
+  outline-offset: 3px;
+}
+
 .app {
   max-width: 880px;
   margin: 0 auto;
@@ -488,6 +498,7 @@ button {
 
 .meta-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
   margin-bottom: 20px;
@@ -506,6 +517,11 @@ button {
 .meta-table td {
   padding: 6px 0;
   border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.meta-table code {
+  word-break: break-all;
 }
 
 .report-status {
@@ -524,6 +540,183 @@ button {
 .status-actions {
   font-size: 0.92rem;
   margin-top: 6px;
+}
+
+.certification-mark {
+  --certification-muted: #56635f;
+  --certification-ok: #176747;
+  --certification-warn: #77500c;
+  --certification-danger: #a32f2f;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--muted);
+  border-radius: 12px;
+  padding: 18px 20px;
+  background: var(--paper);
+  break-inside: avoid;
+}
+
+.certification-mark.certification-ready,
+.certification-mark.certification-issued {
+  border-color: var(--primary);
+  border-left-color: var(--primary);
+}
+
+.certification-mark.certification-attention {
+  border-color: var(--warn);
+  border-left-color: var(--warn);
+}
+
+.certification-mark.certification-invalid {
+  border-color: var(--danger);
+  border-left-color: var(--danger);
+}
+
+.certification-mark.certification-ready {
+  background: var(--primary-soft);
+}
+
+.certification-mark-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.report .certification-mark h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.certification-kind {
+  margin-top: 2px;
+  color: var(--certification-muted);
+  font-size: 0.82rem;
+}
+
+.certification-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 9px;
+  background: var(--paper);
+  color: var(--certification-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.certification-issued .certification-state {
+  border-color: var(--ok);
+  color: var(--certification-ok);
+}
+
+.certification-attention .certification-state {
+  border-color: var(--warn);
+  color: var(--certification-warn);
+}
+
+.certification-invalid .certification-state {
+  border-color: var(--danger);
+  color: var(--certification-danger);
+}
+
+.certification-message {
+  margin-top: 14px;
+}
+
+.certification-message p {
+  margin-top: 3px;
+  color: var(--certification-muted);
+  font-size: 0.88rem;
+}
+
+.certification-message .certification-report-context {
+  margin: 0 0 12px;
+  padding-left: 10px;
+  border-left: 3px solid var(--warn);
+  color: var(--certification-warn);
+}
+
+.certification-message .btn-primary,
+.certification-message .btn-secondary {
+  margin-top: 12px;
+}
+
+.certification-not-issued {
+  border-left: 3px solid var(--warn);
+  padding-left: 12px;
+}
+
+.certification-not-issued ul {
+  margin: 9px 0 0 20px;
+  color: var(--certification-muted);
+  font-size: 0.82rem;
+}
+
+.certification-error {
+  color: var(--certification-danger);
+}
+
+.certification-result {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.5fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.certification-showcase {
+  display: block;
+  min-width: 0;
+  border-radius: 16px;
+  line-height: 0;
+}
+
+.certification-showcase img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+}
+
+.certification-proof-summary p {
+  margin: 5px 0 8px;
+  color: var(--certification-muted);
+  font-size: 0.84rem;
+}
+
+.certification-proof-summary .certification-status-note {
+  color: var(--certification-warn);
+}
+
+.certification-proof-summary a {
+  color: var(--primary-deep);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.certification-limit {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--certification-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .meta-table th {
+    width: 88px;
+  }
+
+  .certification-mark-head,
+  .certification-result {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .certification-showcase {
+    width: 100%;
+  }
 }
 
 .report h3 {
