@@ -8,11 +8,16 @@ import { StaticAnalysisService } from "./analysis/service.js";
 import { AttestationSigner } from "./certification/attestation.js";
 import { SAFETY_BLOCKERS } from "./certification/catalog.js";
 import {
+  ActivePolicyIncompatibleError,
   BadgeIssueService,
   NoActivePolicyError,
   type CertificationSigner,
 } from "./certification/issue-service.js";
-import { PolicyService, PolicyValidationError } from "./certification/policy-service.js";
+import {
+  PolicyService,
+  PolicyValidationError,
+  REQUIRED_CRITERIA_CATALOG,
+} from "./certification/policy-service.js";
 import { BadgeVerificationService, type VerificationResult } from "./certification/verification-service.js";
 import type { AppConfig } from "./config.js";
 import type { CertificationRepository } from "./db/repository.js";
@@ -31,7 +36,6 @@ const loginSchema = z.strictObject({
 });
 const policySchema = z.strictObject({
   name: z.string().trim().min(1).max(120),
-  criterionIds: z.array(z.string().min(1).max(100)).max(100),
 });
 const emptySchema = z.strictObject({});
 const revokeSchema = z.strictObject({
@@ -347,10 +351,17 @@ export function createApp(dependencies: AppDependencies): express.Express {
   });
 
   app.get("/api/admin/certification/criteria", auth.requireAdmin, async (_request, response) => {
-    const [criteria, active] = await Promise.all([repository.listCriteria(), repository.getActivePolicy()]);
-    const selected = new Set(active?.snapshot.criteria.map((criterion) => criterion.criterionId) ?? []);
+    const criteria = await repository.listCriteria();
+    const required = new Set(
+      REQUIRED_CRITERIA_CATALOG.map(
+        (criterion) => `${criterion.criterionId}\0${criterion.criterionVersion}`,
+      ),
+    );
     response.json({
-      criteria: criteria.map((criterion) => ({ ...criterion, includedInActivePolicy: selected.has(criterion.criterionId) })),
+      criteria: criteria.map((criterion) => ({
+        ...criterion,
+        requiredByRuleset: required.has(`${criterion.criterionId}\0${criterion.criterionVersion}`),
+      })),
       safetyBlockers: SAFETY_BLOCKERS.map((blocker) => ({ ...blocker, locked: true })),
     });
   });
@@ -535,6 +546,10 @@ export function createApp(dependencies: AppDependencies): express.Express {
     }
     if (error instanceof NoActivePolicyError) {
       response.status(409).json({ error: { code: "NO_ACTIVE_POLICY", message: error.message } });
+      return;
+    }
+    if (error instanceof ActivePolicyIncompatibleError) {
+      response.status(409).json({ error: { code: "ACTIVE_POLICY_INCOMPATIBLE", message: error.message } });
       return;
     }
     if (error instanceof GitHubCollectionError) {

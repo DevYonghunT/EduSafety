@@ -94,11 +94,11 @@ unset EDUSAFETY_ADMIN_PASSWORD_INPUT
 
 ## 정책과 판정
 
-심사 항목은 migration과 서버 코드에 함께 등록된 allowlist입니다. 관리자는 항목 ID만 선택할 수 있으며 evaluator 코드, 명령, 정규식, 실행 설정은 입력할 수 없습니다.
+심사 항목은 migration과 서버 코드에 함께 등록된 고정 allowlist입니다. 정책을 만들면 현재 사용 가능한 전체 항목이 자동으로 포함되며, 관리자는 항목을 추가하거나 제외할 수 없습니다. evaluator 코드, 명령, 정규식, 실행 설정도 입력할 수 없습니다.
 
-정책 상태는 `DRAFT`, `ACTIVE`, `ARCHIVED`입니다. 한 시점의 `ACTIVE` 정책은 PostgreSQL partial UNIQUE index로 하나만 허용됩니다. 발행된 정책과 그 항목 snapshot은 DB trigger로 변경을 막습니다. 항목을 바꾸려면 새 정책 버전을 만들고 발행해야 합니다.
+정책 상태는 `DRAFT`, `ACTIVE`, `ARCHIVED`입니다. 한 시점의 `ACTIVE` 정책은 PostgreSQL partial UNIQUE index로 하나만 허용됩니다. 발행된 정책과 그 고정 항목 snapshot은 DB trigger로 변경을 막습니다. 서버 고정 기준이 바뀌면 ruleset과 새 정책 버전을 함께 발행해야 합니다.
 
-선택 항목은 모두 `PASS`여야 합니다. `FAIL`, `ERROR`, `NOT_RUN`, `NOT_APPLICABLE`, `UNKNOWN` 또는 결과 누락이 있으면 발급하지 않습니다. Critical finding, secret 감지, partial 분석, 불완전한 coverage, exact commit 확인 실패, evaluator 오류, 필수 파일 수집 실패도 선택 여부와 관계없이 항상 차단합니다.
+서버에 고정된 전체 심사 항목은 모두 `PASS`여야 합니다. `FAIL`, `ERROR`, `NOT_RUN`, `NOT_APPLICABLE`, `UNKNOWN` 또는 결과 누락이 있으면 발급하지 않습니다. Critical finding, secret 감지, partial 분석, 불완전한 coverage, exact commit 확인 실패, evaluator 오류, 필수 파일 수집 실패도 항상 차단합니다.
 
 ## 발급과 공개 검증
 
@@ -112,6 +112,8 @@ unset EDUSAFETY_ADMIN_PASSWORD_INPUT
 ```
 
 추가 필드가 있으면 요청 전체를 거절합니다. 서버는 요청 시작 시 `ACTIVE` 정책 snapshot을 고정한 뒤 GitHub numeric repository ID, canonical URL과 exact commit을 확인합니다.
+
+최종 심사 보고서의 `인증마크 포함 인쇄 / PDF 저장` 버튼은 인쇄할 때마다 이 요청을 자동으로 수행해 저장된 인증의 취소·만료·현재 HEAD 상태까지 다시 확인합니다. 별도 발급 메뉴는 표시하지 않으며, 검증 결과와 SVG가 준비된 뒤에만 인증마크를 출력 문서에 포함합니다. 고정 기준 미통과나 서버 오류 때는 이유를 표시하고 사용자가 인증마크 없이 보고서를 출력할 수 있게 합니다.
 
 동일 subject의 기존 인증은 repository ID와 정책 hash로 먼저 조회해 불필요한 재분석과 재서명을 피합니다. 공개 발급 요청은 IP별 분당 6회, 프로세스 전체 동시 분석 4건으로 제한하며 대기열을 무한히 만들지 않습니다. 관리자 로그인은 IP·정규화된 계정별 시도 횟수와 동시 scrypt 검증 수를 함께 제한합니다. 이 내장 제한은 프로세스 단위의 기본 방어이므로 여러 인스턴스를 운영할 때는 신뢰 가능한 reverse proxy나 API gateway의 공유 제한도 함께 구성해야 합니다.
 
@@ -186,7 +188,7 @@ TEST_DATABASE_URL=postgresql://user:password@127.0.0.1:5432/edusafety_test npm r
 - 인증 데이터의 가용성과 취소 상태는 운영 DB에 의존합니다.
 - 발급자 개인키와 신뢰 가능한 주소 목록을 안전하게 관리해야 합니다.
 - GitHub 저장소가 비공개로 전환되거나 삭제되면 `STALE` 여부를 확인하지 못할 수 있습니다.
-- 인증은 특정 exact commit과 선택된 심사 항목의 정적 분석 결과만 나타냅니다.
+- 인증은 특정 exact commit과 서버에 고정된 전체 심사 항목의 정적 분석 결과만 나타냅니다.
 - 이후 commit, 실제 배포 환경, 런타임 동작, 운영 보안 전체를 보증하지 않습니다.
 
 현재 변경은 구현과 검증까지만 포함하며 배포 작업은 수행하지 않습니다.

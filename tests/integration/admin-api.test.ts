@@ -1,5 +1,7 @@
 import request from "supertest";
 import { createApp } from "../../src/app.js";
+import { CRITERIA_CATALOG, RULESET_VERSION } from "../../src/certification/catalog.js";
+import { createPolicySnapshot } from "../../src/certification/policy.js";
 import { PolicyService } from "../../src/certification/policy-service.js";
 import {
   FixtureSourceProvider,
@@ -46,7 +48,7 @@ describe("administrator authentication and policy API", () => {
     await login(agent);
     await agent
       .post("/api/admin/certification/policies")
-      .send({ name: "정책", criterionIds: ["no-hardcoded-secrets"] })
+      .send({ name: "정책" })
       .expect(403);
   });
 
@@ -56,8 +58,14 @@ describe("administrator authentication and policy API", () => {
     await login(agent);
     const response = await agent.get("/api/admin/certification/criteria").expect(200);
     expect(response.body.criteria[0]).toEqual(
-      expect.objectContaining({ criterionId: expect.any(String), evaluatorKey: expect.any(String) }),
+      expect.objectContaining({
+        criterionId: expect.any(String),
+        evaluatorKey: expect.any(String),
+        requiredByRuleset: true,
+      }),
     );
+    expect(response.body.criteria).toHaveLength(CRITERIA_CATALOG.length);
+    expect(response.body.criteria.every((criterion: { requiredByRuleset: boolean }) => criterion.requiredByRuleset)).toBe(true);
     expect(response.body.safetyBlockers).toHaveLength(7);
     expect(response.body.safetyBlockers.every((blocker: { locked: boolean }) => blocker.locked)).toBe(true);
   });
@@ -69,15 +77,19 @@ describe("administrator authentication and policy API", () => {
     const created = await agent
       .post("/api/admin/certification/policies")
       .set("x-csrf-token", csrf)
-      .send({ name: "초안", criterionIds: ["no-hardcoded-secrets"] })
+      .send({ name: "초안" })
       .expect(201);
+    expect(created.body.policy.snapshot.criteria).toHaveLength(CRITERIA_CATALOG.length);
+    expect(created.body.policy.snapshot.criteria.map((criterion: { criterionId: string }) => criterion.criterionId).sort()).toEqual(
+      CRITERIA_CATALOG.map((criterion) => criterion.criterionId).sort(),
+    );
     const policyId = created.body.policy.snapshot.policyId as string;
     const updated = await agent
       .put(`/api/admin/certification/policies/${policyId}`)
       .set("x-csrf-token", csrf)
-      .send({ name: "발행 기준", criterionIds: ["no-hardcoded-secrets", "dependency-lockfile-present"] })
+      .send({ name: "발행 기준" })
       .expect(200);
-    expect(updated.body.policy.snapshot.criteria).toHaveLength(2);
+    expect(updated.body.policy.snapshot.criteria).toHaveLength(CRITERIA_CATALOG.length);
     const published = await agent
       .post(`/api/admin/certification/policies/${policyId}/publish`)
       .set("x-csrf-token", csrf)
@@ -92,40 +104,31 @@ describe("administrator authentication and policy API", () => {
     await agent
       .put(`/api/admin/certification/policies/${policyId}`)
       .set("x-csrf-token", csrf)
-      .send({ name: "수정 시도", criterionIds: ["no-hardcoded-secrets"] })
+      .send({ name: "수정 시도" })
       .expect(409);
   });
 
-  it("rejects an empty, unknown, inactive or safety-control-mutating policy", async () => {
+  it("rejects client-selected criteria and fails closed when a required DB criterion is unavailable", async () => {
     const { app, repository } = await setup();
     const agent = request.agent(app);
     const csrf = await login(agent);
-    const empty = await agent
-      .post("/api/admin/certification/policies")
-      .set("x-csrf-token", csrf)
-      .send({ name: "빈 정책", criterionIds: [] })
-      .expect(201);
-    await agent
-      .post(`/api/admin/certification/policies/${empty.body.policy.snapshot.policyId}/publish`)
-      .set("x-csrf-token", csrf)
-      .send({})
-      .expect(422);
     await agent
       .post("/api/admin/certification/policies")
       .set("x-csrf-token", csrf)
-      .send({ name: "알 수 없음", criterionIds: ["not-registered"] })
-      .expect(422);
+      .send({ name: "부분 선택 시도", criterionIds: ["no-hardcoded-secrets"] })
+      .expect(400);
+    await agent
+      .post("/api/admin/certification/policies")
+      .set("x-csrf-token", csrf)
+      .send({ name: "필드 주입 시도", criteria: [], selectedCriteria: [], safetyBlockers: [] })
+      .expect(400);
     repository.criteria[0] = { ...repository.criteria[0]!, active: false };
     await agent
       .post("/api/admin/certification/policies")
       .set("x-csrf-token", csrf)
-      .send({ name: "비활성", criterionIds: [repository.criteria[0]!.criterionId] })
-      .expect(422);
-    await agent
-      .post("/api/admin/certification/policies")
-      .set("x-csrf-token", csrf)
-      .send({ name: "해제 시도", criterionIds: [], safetyBlockers: [] })
-      .expect(400);
+      .send({ name: "비활성 필수 항목" })
+      .expect(422)
+      .expect(({ body }) => expect(body.error.code).toBe("REQUIRED_CRITERIA_UNAVAILABLE"));
   });
 
   it("archives the previous active policy when a new version is published", async () => {
@@ -137,7 +140,7 @@ describe("administrator authentication and policy API", () => {
       const created = await agent
         .post("/api/admin/certification/policies")
         .set("x-csrf-token", csrf)
-        .send({ name, criterionIds: ["no-hardcoded-secrets"] });
+        .send({ name });
       ids.push(created.body.policy.snapshot.policyId as string);
       await agent
         .post(`/api/admin/certification/policies/${ids.at(-1)}/publish`)
@@ -177,13 +180,11 @@ describe("active policy requirement", () => {
     const service = new PolicyService(repository);
     const first = await service.createDraft({
       name: "고정 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "admin",
     });
     await service.publish(first.snapshot.policyId, "admin");
     const replacement = await service.createDraft({
       name: "새 정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "admin",
     });
     const sourceProvider = new FixtureSourceProvider();
@@ -200,6 +201,40 @@ describe("active policy requirement", () => {
     expect(response.body.badge.policy.policyId).toBe(first.snapshot.policyId);
     expect((await repository.getActivePolicy())?.snapshot.policyId).toBe(replacement.snapshot.policyId);
   });
+
+  it("rejects a legacy subset active policy before repository resolution or analysis", async () => {
+    const config = await makeTestConfig();
+    const repository = new InMemoryCertificationRepository();
+    const sourceProvider = new FixtureSourceProvider();
+    const snapshot = createPolicySnapshot({
+      policyId: "1b037a31-6492-4653-a5bd-d17582ff40e4",
+      name: "레거시 부분 정책",
+      policyVersion: 1,
+      rulesetVersion: RULESET_VERSION,
+      criteria: [CRITERIA_CATALOG[0]!],
+    });
+    await repository.createDraftPolicy({
+      snapshot,
+      status: "DRAFT",
+      createdBy: "legacy-admin",
+      createdAt: "2026-08-28T00:00:00.000Z",
+      publishedAt: null,
+      archivedAt: null,
+    });
+    await repository.publishPolicy(snapshot.policyId, "legacy-admin", "2026-08-28T00:00:00.000Z");
+    const app = createApp({ config, repository, sourceProvider });
+
+    await request(app)
+      .post("/api/badges/issue")
+      .send({
+        repositoryUrl: "https://github.com/example/education-service",
+        commitSha: "0123456789abcdef0123456789abcdef01234567",
+      })
+      .expect(409)
+      .expect(({ body }) => expect(body.error.code).toBe("ACTIVE_POLICY_INCOMPATIBLE"));
+    expect(sourceProvider.resolveCalls).toBe(0);
+    expect(sourceProvider.collectCalls).toBe(0);
+  });
 });
 
 describe("administrator revocation", () => {
@@ -208,7 +243,6 @@ describe("administrator revocation", () => {
     const policyService = new PolicyService(repository);
     const draft = await policyService.createDraft({
       name: "취소 테스트 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "test-administrator",
     });
     await policyService.publish(draft.snapshot.policyId, "test-administrator");

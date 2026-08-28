@@ -48,7 +48,6 @@ describe("issuance fail-closed boundaries", () => {
       const policyService = new PolicyService(repository);
       const draft = await policyService.createDraft({
         name: "차단 정책",
-        criterionIds: ["dependency-lockfile-present"],
         administratorId: "admin",
       });
       const active = await policyService.publish(draft.snapshot.policyId, "admin");
@@ -80,14 +79,13 @@ describe("issuance fail-closed boundaries", () => {
     },
   );
 
-  it("does not call the signer when a selected result is missing", async () => {
+  it("does not call the signer when a required result is missing", async () => {
     const config = await makeTestConfig();
     const repository = new InMemoryCertificationRepository();
     const provider = new FixtureSourceProvider();
     const policyService = new PolicyService(repository);
     const draft = await policyService.createDraft({
       name: "누락 차단 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "admin",
     });
     const active = await policyService.publish(draft.snapshot.policyId, "admin");
@@ -122,7 +120,6 @@ describe("issuance fail-closed boundaries", () => {
     const policyService = new PolicyService(repository);
     const draft = await policyService.createDraft({
       name: "수집 실패 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "admin",
     });
     await policyService.publish(draft.snapshot.policyId, "admin");

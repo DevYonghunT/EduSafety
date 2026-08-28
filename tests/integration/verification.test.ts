@@ -21,7 +21,6 @@ async function issuedFixture(expirationDays = 365) {
   const policyService = new PolicyService(repository, now);
   const draft = await policyService.createDraft({
     name: "검증 정책",
-    criterionIds: ["dependency-lockfile-present"],
     administratorId: "admin",
   });
   await policyService.publish(draft.snapshot.policyId, "admin");
@@ -197,7 +196,6 @@ describe("stored proof verification", () => {
     const service = new PolicyService(fixture.repository);
     const replacement = await service.createDraft({
       name: "새 정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "admin",
     });
     await service.publish(replacement.snapshot.policyId, "admin");

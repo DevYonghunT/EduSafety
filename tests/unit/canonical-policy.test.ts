@@ -57,22 +57,23 @@ describe("canonical JSON and policy snapshots", () => {
 });
 
 describe("policy service", () => {
-  it("creates successive immutable policy versions and writes audit entries", async () => {
+  it("creates successive immutable policy versions with every required criterion", async () => {
     const repository = new InMemoryCertificationRepository();
     const service = new PolicyService(repository, () => new Date("2026-08-28T00:00:00.000Z"));
     const first = await service.createDraft({
       name: "첫 정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "admin-1",
     });
     const active = await service.publish(first.snapshot.policyId, "admin-1");
     const replacement = await service.createDraft({
       name: "교체 정책",
-      criterionIds: ["no-dangerous-code-execution"],
       administratorId: "admin-1",
     });
     await service.publish(replacement.snapshot.policyId, "admin-1");
 
+    expect(first.snapshot.criteria.map((criterion) => criterion.criterionId).sort()).toEqual(
+      CRITERIA_CATALOG.map((criterion) => criterion.criterionId).sort(),
+    );
     expect(active.snapshot.policyVersion).toBe(1);
     expect(replacement.snapshot.policyVersion).toBe(2);
     expect(replacement.snapshot.policyHash).not.toBe(active.snapshot.policyHash);
@@ -87,31 +88,56 @@ describe("policy service", () => {
     ]);
   });
 
-  it("rejects unknown, duplicate and inactive criteria", async () => {
-    const repository = new InMemoryCertificationRepository();
-    const service = new PolicyService(repository);
-    await expect(
-      service.createDraft({ name: "x", criterionIds: ["missing"], administratorId: "admin" }),
-    ).rejects.toMatchObject({ code: "UNSUPPORTED_CRITERION" });
-    await expect(
-      service.createDraft({
-        name: "x",
-        criterionIds: ["no-hardcoded-secrets", "no-hardcoded-secrets"],
-        administratorId: "admin",
-      }),
-    ).rejects.toMatchObject({ code: "DUPLICATE_CRITERION" });
-    repository.criteria[0] = { ...repository.criteria[0]!, active: false };
-    await expect(
-      service.createDraft({ name: "x", criterionIds: ["no-hardcoded-secrets"], administratorId: "admin" }),
-    ).rejects.toMatchObject({ code: "INACTIVE_CRITERION" });
-  });
+  it.each(["missing", "inactive", "evaluator-mismatch"])(
+    "fails closed when a required DB criterion is %s",
+    async (condition) => {
+      const repository = new InMemoryCertificationRepository();
+      if (condition === "missing") repository.criteria = repository.criteria.slice(1);
+      if (condition === "inactive") repository.criteria[0] = { ...repository.criteria[0]!, active: false };
+      if (condition === "evaluator-mismatch") {
+        repository.criteria[0] = { ...repository.criteria[0]!, evaluatorKey: "unexpected.evaluator" };
+      }
+      const service = new PolicyService(repository);
+      await expect(
+        service.createDraft({ name: "구성 오류", administratorId: "admin" }),
+      ).rejects.toMatchObject({ code: "REQUIRED_CRITERIA_UNAVAILABLE" });
+    },
+  );
 
-  it("allows an empty draft but refuses to publish it", async () => {
+  it("refuses to publish a legacy subset or a tampered draft snapshot", async () => {
     const repository = new InMemoryCertificationRepository();
     const service = new PolicyService(repository);
-    const draft = await service.createDraft({ name: "빈 초안", criterionIds: [], administratorId: "admin" });
+    const legacySnapshot = createPolicySnapshot({
+      policyId: "8441f760-0bd4-493f-b03c-f1175e0660f0",
+      name: "레거시 부분 정책",
+      policyVersion: 1,
+      rulesetVersion: RULESET_VERSION,
+      criteria: [CRITERIA_CATALOG[0]!],
+    });
+    await repository.createDraftPolicy({
+      snapshot: legacySnapshot,
+      status: "DRAFT",
+      createdBy: "admin",
+      createdAt: "2026-08-28T00:00:00.000Z",
+      publishedAt: null,
+      archivedAt: null,
+    });
+    await expect(service.publish(legacySnapshot.policyId, "admin")).rejects.toMatchObject({
+      code: "POLICY_CRITERIA_MISMATCH",
+    });
+
+    const draft = await service.createDraft({ name: "변조 검사", administratorId: "admin" });
+    repository.policies.set(draft.snapshot.policyId, {
+      ...draft,
+      snapshot: {
+        ...draft.snapshot,
+        criteria: draft.snapshot.criteria.map((criterion, index) =>
+          index === 0 ? { ...criterion, evaluatorKey: "tampered.evaluator" } : criterion,
+        ),
+      },
+    });
     await expect(service.publish(draft.snapshot.policyId, "admin")).rejects.toMatchObject({
-      code: "EMPTY_POLICY",
+      code: "POLICY_CRITERIA_MISMATCH",
     });
   });
 
@@ -120,7 +146,6 @@ describe("policy service", () => {
     const service = new PolicyService(repository);
     const draft = await service.createDraft({
       name: "정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "admin",
     });
     await service.publish(draft.snapshot.policyId, "admin");
@@ -128,7 +153,6 @@ describe("policy service", () => {
       service.updateDraft({
         policyId: draft.snapshot.policyId,
         name: "변경",
-        criterionIds: ["no-hardcoded-secrets"],
         administratorId: "admin",
       }),
     ).rejects.toMatchObject({ code: "POLICY_IMMUTABLE" });

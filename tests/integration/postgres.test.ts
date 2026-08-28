@@ -52,7 +52,6 @@ describePostgres("PostgreSQL migration and concurrency", () => {
     const policyService = new PolicyService(repository, () => new Date("2026-08-28T00:00:00.000Z"));
     const draft = await policyService.createDraft({
       name: "PostgreSQL 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "database-admin",
     });
     await policyService.publish(draft.snapshot.policyId, "database-admin");
@@ -113,7 +112,6 @@ describePostgres("PostgreSQL migration and concurrency", () => {
     if (!oldBadge) throw new Error("Expected prior badge");
     const replacement = await policyService.createDraft({
       name: "PostgreSQL 교체 정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "database-admin",
     });
     await policyService.publish(replacement.snapshot.policyId, "database-admin");

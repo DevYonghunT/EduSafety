@@ -16,7 +16,6 @@ async function setupActive() {
   const policyService = new PolicyService(repository);
   const draft = await policyService.createDraft({
     name: "발급 정책",
-    criterionIds: ["dependency-lockfile-present"],
     administratorId: "admin",
   });
   await policyService.publish(draft.snapshot.policyId, "admin");
@@ -93,7 +92,7 @@ describe("badge issue API", () => {
     expect(sourceProvider.collectCalls).toBe(0);
   });
 
-  it("returns no UID or signature when a selected item fails", async () => {
+  it("returns no UID or signature when a required item fails", async () => {
     const setup = await setupActive();
     setup.sourceProvider.collection = {
       ...setup.sourceProvider.collection,
@@ -101,7 +100,11 @@ describe("badge issue API", () => {
     };
     const response = await request(setup.app).post("/api/badges/issue").send(validRequest).expect(200);
     expect(response.body.outcome).toBe("NOT_ISSUED");
-    expect(response.body.criteria[0].result).toBe("FAIL");
+    expect(
+      response.body.criteria.find(
+        (criterion: { criterionId: string }) => criterion.criterionId === "dependency-lockfile-present",
+      )?.result,
+    ).toBe("FAIL");
     expect(JSON.stringify(response.body)).not.toMatch(/"(?:uid|signature)"/i);
     expect(setup.repository.badges).toHaveLength(0);
   });

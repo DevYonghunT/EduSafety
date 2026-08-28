@@ -15,17 +15,16 @@
       <button class="button-secondary" id="logout" type="button">로그아웃</button>
     </header>
     <main class="page-shell">
-      <header class="page-header"><p class="eyebrow">CERTIFICATION ADMIN</p><h1>인증 관리</h1><p>서버 allowlist의 심사 항목을 선택해 새 정책 버전을 만들고, 발행 이력과 인증 취소 상태를 관리합니다.</p></header>
+      <header class="page-header"><p class="eyebrow">CERTIFICATION ADMIN</p><h1>인증 관리</h1><p>서버 ruleset의 활성·사용 가능 심사 항목 전체로 새 정책 버전을 만들고, 발행 이력과 인증 취소 상태를 관리합니다.</p></header>
       <div class="admin-layout">
         <section class="card" aria-labelledby="criteria-title">
-          <div class="admin-section-heading"><div><h2 id="criteria-title">1. 심사 항목</h2><p>선택한 모든 항목은 필수입니다.</p></div></div>
+          <div class="admin-section-heading"><div><h2 id="criteria-title">1. 심사 항목</h2><p>표시된 모든 항목이 정책에 고정 적용됩니다.</p></div></div>
           <form id="policy-form" class="stack">
             <div class="field"><label for="policy-name">정책명</label><input id="policy-name" name="name" maxlength="120" required placeholder="예: 교육 서비스 정적 분석 기준" /></div>
             <div id="criteria-list" class="stack" aria-live="polite"><p>항목을 불러오는 중입니다.</p></div>
-            <p class="field-help" id="selection-preview">선택된 필수 항목 0개</p>
             <div><span class="field-label">항상 적용되는 안전 차단 조건</span><div id="safety-list" class="locked-list"></div></div>
             <p class="form-error" id="policy-error" role="alert"></p>
-            <div class="actions"><button type="submit" id="save-policy">새 초안 생성</button><button class="button-secondary" type="button" id="reset-policy">선택 초기화</button></div>
+            <div class="actions"><button type="submit" id="save-policy">새 초안 생성</button></div>
           </form>
         </section>
 

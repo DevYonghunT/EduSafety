@@ -1,22 +1,85 @@
 import { randomUUID } from "node:crypto";
 import { CRITERIA_CATALOG, RULESET_VERSION } from "./catalog.js";
 import { createPolicySnapshot } from "./policy.js";
-import type { CriterionDefinition } from "../domain/types.js";
+import { canonicalJson } from "../lib/canonical-json.js";
+import type { CertificationPolicySnapshot, CriterionDefinition } from "../domain/types.js";
 import type { CertificationRepository, PolicyRecord } from "../db/repository.js";
+
+export const REQUIRED_CRITERIA_CATALOG = Object.freeze(
+  CRITERIA_CATALOG.filter((criterion) => criterion.active && criterion.available),
+);
 
 export class PolicyValidationError extends Error {
   public constructor(
     public readonly code:
-      | "DUPLICATE_CRITERION"
-      | "EMPTY_POLICY"
-      | "INACTIVE_CRITERION"
+      | "POLICY_CRITERIA_MISMATCH"
       | "POLICY_IMMUTABLE"
       | "POLICY_NOT_FOUND"
-      | "UNSUPPORTED_CRITERION",
+      | "REQUIRED_CRITERIA_UNAVAILABLE",
     message: string,
   ) {
     super(message);
     this.name = "PolicyValidationError";
+  }
+}
+
+export async function resolveRequiredCriteria(
+  repository: CertificationRepository,
+): Promise<readonly CriterionDefinition[]> {
+  if (REQUIRED_CRITERIA_CATALOG.length === 0) {
+    throw new PolicyValidationError(
+      "REQUIRED_CRITERIA_UNAVAILABLE",
+      "서버 ruleset에 필수 심사 항목이 없습니다.",
+    );
+  }
+
+  const stored = await repository.getCriteria(
+    REQUIRED_CRITERIA_CATALOG.map((criterion) => criterion.criterionId),
+  );
+  return REQUIRED_CRITERIA_CATALOG.map((compiled) => {
+    const dbCriterion = stored.find(
+      (criterion) =>
+        criterion.criterionId === compiled.criterionId &&
+        criterion.criterionVersion === compiled.criterionVersion,
+    );
+    if (!dbCriterion) {
+      throw new PolicyValidationError(
+        "REQUIRED_CRITERIA_UNAVAILABLE",
+        `필수 심사 항목이 DB에 등록되지 않았습니다: ${compiled.criterionId}@${compiled.criterionVersion}`,
+      );
+    }
+    if (!dbCriterion.active || !dbCriterion.available) {
+      throw new PolicyValidationError(
+        "REQUIRED_CRITERIA_UNAVAILABLE",
+        `필수 심사 항목을 현재 사용할 수 없습니다: ${compiled.criterionId}`,
+      );
+    }
+    if (dbCriterion.evaluatorKey !== compiled.evaluatorKey) {
+      throw new PolicyValidationError(
+        "REQUIRED_CRITERIA_UNAVAILABLE",
+        `서버 evaluator와 DB 항목 버전이 일치하지 않습니다: ${compiled.criterionId}`,
+      );
+    }
+    return dbCriterion;
+  });
+}
+
+export function assertRequiredPolicySnapshot(
+  snapshot: CertificationPolicySnapshot,
+  requiredCriteria: readonly CriterionDefinition[],
+): void {
+  const expected = createPolicySnapshot({
+    policyId: snapshot.policyId,
+    name: snapshot.name,
+    policyVersion: snapshot.policyVersion,
+    rulesetVersion: RULESET_VERSION,
+    criteria: requiredCriteria,
+  });
+  if (canonicalJson(snapshot) !== canonicalJson(expected)) {
+    throw new PolicyValidationError(
+      "POLICY_CRITERIA_MISMATCH",
+      "정책 snapshot이 현재 서버의 고정 필수 심사 항목과 일치하지 않습니다.",
+    );
   }
 }
 
@@ -26,46 +89,11 @@ export class PolicyService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async #resolveCriteria(criterionIds: readonly string[]): Promise<readonly CriterionDefinition[]> {
-    if (new Set(criterionIds).size !== criterionIds.length) {
-      throw new PolicyValidationError("DUPLICATE_CRITERION", "같은 심사 항목을 중복 선택할 수 없습니다.");
-    }
-    if (criterionIds.length === 0) return [];
-    const stored = await this.repository.getCriteria(criterionIds);
-    const storedById = new Map(stored.map((criterion) => [criterion.criterionId, criterion]));
-    const compiledById = new Map(CRITERIA_CATALOG.map((criterion) => [criterion.criterionId, criterion]));
-
-    return criterionIds.map((criterionId) => {
-      const dbCriterion = storedById.get(criterionId);
-      const compiled = compiledById.get(criterionId);
-      if (!dbCriterion || !compiled) {
-        throw new PolicyValidationError(
-          "UNSUPPORTED_CRITERION",
-          `지원되지 않는 심사 항목입니다: ${criterionId}`,
-        );
-      }
-      if (!dbCriterion.active || !dbCriterion.available || !compiled.active || !compiled.available) {
-        throw new PolicyValidationError("INACTIVE_CRITERION", `현재 사용할 수 없는 심사 항목입니다: ${criterionId}`);
-      }
-      if (
-        dbCriterion.criterionVersion !== compiled.criterionVersion ||
-        dbCriterion.evaluatorKey !== compiled.evaluatorKey
-      ) {
-        throw new PolicyValidationError(
-          "UNSUPPORTED_CRITERION",
-          `서버 evaluator와 DB 항목 버전이 일치하지 않습니다: ${criterionId}`,
-        );
-      }
-      return dbCriterion;
-    });
-  }
-
   public async createDraft(input: {
     name: string;
-    criterionIds: readonly string[];
     administratorId: string;
   }): Promise<PolicyRecord> {
-    const criteria = await this.#resolveCriteria(input.criterionIds);
+    const criteria = await resolveRequiredCriteria(this.repository);
     const policyVersion = await this.repository.nextPolicyVersion();
     const snapshot = createPolicySnapshot({
       policyId: randomUUID(),
@@ -88,7 +116,6 @@ export class PolicyService {
   public async updateDraft(input: {
     policyId: string;
     name: string;
-    criterionIds: readonly string[];
     administratorId: string;
   }): Promise<PolicyRecord> {
     const existing = await this.repository.getPolicy(input.policyId);
@@ -96,12 +123,12 @@ export class PolicyService {
     if (existing.status !== "DRAFT") {
       throw new PolicyValidationError("POLICY_IMMUTABLE", "발행된 정책은 수정할 수 없습니다.");
     }
-    const criteria = await this.#resolveCriteria(input.criterionIds);
+    const criteria = await resolveRequiredCriteria(this.repository);
     const snapshot = createPolicySnapshot({
       policyId: existing.snapshot.policyId,
       name: input.name,
       policyVersion: existing.snapshot.policyVersion,
-      rulesetVersion: existing.snapshot.rulesetVersion,
+      rulesetVersion: RULESET_VERSION,
       criteria,
     });
     return this.repository.updateDraftPolicy(
@@ -116,10 +143,8 @@ export class PolicyService {
     if (existing.status !== "DRAFT") {
       throw new PolicyValidationError("POLICY_IMMUTABLE", "초안 정책만 발행할 수 있습니다.");
     }
-    if (existing.snapshot.criteria.length === 0) {
-      throw new PolicyValidationError("EMPTY_POLICY", "심사 항목을 하나 이상 선택해야 합니다.");
-    }
-    await this.#resolveCriteria(existing.snapshot.criteria.map((criterion) => criterion.criterionId));
+    const criteria = await resolveRequiredCriteria(this.repository);
+    assertRequiredPolicySnapshot(existing.snapshot, criteria);
     return this.repository.publishPolicy(policyId, administratorId, this.now().toISOString());
   }
 }

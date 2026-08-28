@@ -488,7 +488,36 @@ a:focus-visible {
 .report-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 14px;
+}
+
+.report-print-error,
+.report-print-note {
+  margin: -2px 0 14px;
+  color: #77500c;
+  font-size: 0.86rem;
+}
+
+.report-print-error {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-print-error .btn-secondary {
+  flex: 0 0 auto;
+}
+
+.report-print-note {
+  text-align: right;
+}
+
+.print-only {
+  display: none !important;
 }
 
 .report-head h2 {
@@ -817,6 +846,10 @@ a:focus-visible {
 @media print {
   .no-print, .header, .footer {
     display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
   }
 
   body {

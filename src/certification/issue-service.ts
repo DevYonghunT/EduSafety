@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { canonicalHash } from "../lib/canonical-json.js";
 import { calculateCriteriaHash, signedCriteriaFromResults } from "./policy.js";
+import {
+  assertRequiredPolicySnapshot,
+  PolicyValidationError,
+  resolveRequiredCriteria,
+} from "./policy-service.js";
 import type { AnalysisOutcome } from "../analysis/service.js";
 import type { SignedAttestationProof } from "./attestation.js";
 import type { CertificationPayload, CertificationPolicySnapshot, RepositorySnapshot } from "../domain/types.js";
@@ -10,6 +15,13 @@ export class NoActivePolicyError extends Error {
   public constructor() {
     super("활성 인증 정책이 없습니다.");
     this.name = "NoActivePolicyError";
+  }
+}
+
+export class ActivePolicyIncompatibleError extends Error {
+  public constructor() {
+    super("활성 인증 정책이 현재 서버의 고정 필수 심사 항목과 일치하지 않습니다.");
+    this.name = "ActivePolicyIncompatibleError";
   }
 }
 
@@ -63,6 +75,13 @@ export class BadgeIssueService {
   public async issue(repositoryUrl: string, commitSha: string): Promise<IssueResult> {
     const active = await this.repository.getActivePolicy();
     if (!active) throw new NoActivePolicyError();
+    try {
+      const requiredCriteria = await resolveRequiredCriteria(this.repository);
+      assertRequiredPolicySnapshot(active.snapshot, requiredCriteria);
+    } catch (error) {
+      if (error instanceof PolicyValidationError) throw new ActivePolicyIncompatibleError();
+      throw error;
+    }
     const pinnedPolicy = active.snapshot;
     const key = `${normalizedRepositoryRequestKey(repositoryUrl)}\0${commitSha.toLowerCase()}\0${pinnedPolicy.policyHash}`;
     const existingPromise = this.#inFlight.get(key);

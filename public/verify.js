@@ -40,7 +40,7 @@ async function loadVerification() {
             <dt>취소 시각</dt><dd>${escapeHtml(formatDate(badge.revokedAt))}</dd>
           </dl>
         </section>
-        <section class="card"><h2>선택된 심사 항목</h2><p class="card-copy">발급 당시 정책에 포함된 필수 항목입니다.</p><ul class="check-list">${criteria}</ul></section>
+        <section class="card"><h2>고정 심사 항목</h2><p class="card-copy">발급 당시 서버 기준에 고정된 전체 필수 항목입니다.</p><ul class="check-list">${criteria}</ul></section>
         <section class="card"><h2>독립 검증 proof</h2><p class="card-copy">domain, types, message, signature, UID와 안전한 snapshot을 포함합니다.</p><details><summary>전체 proof 보기</summary><pre>${proofJson}</pre></details></section>
       </div>
       <aside class="content-column">

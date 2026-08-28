@@ -18,7 +18,7 @@ function policy(criteria: readonly CriterionDefinition[]) {
 }
 
 describe("static analysis decision", () => {
-  it("passes only when every selected criterion passes and no safety blocker is triggered", async () => {
+  it("passes only when every required criterion passes and no safety blocker is triggered", async () => {
     const provider = new FixtureSourceProvider();
     const service = new StaticAnalysisService(provider, () => new Date("2026-08-28T00:00:00.000Z"));
     const result = await service.analyze("https://github.com/example/education-service", provider.collection.commitSha, policy(CRITERIA_CATALOG));
@@ -35,7 +35,7 @@ describe("static analysis decision", () => {
       [{ ...CRITERIA_CATALOG[0]!, criterionId: "server-mismatch", evaluatorKey: "unsupported.evaluator" }],
       [sourceFile("main.ts", "export const safe = true")],
     ],
-  ])("does not issue when a selected criterion returns %s", async (expected, selected, files) => {
+  ])("does not issue when a required criterion returns %s", async (expected, selected, files) => {
     const provider = new FixtureSourceProvider(files);
     const result = await new StaticAnalysisService(provider).analyze(
       provider.collection.repository.canonicalRepositoryUrl,
@@ -46,7 +46,7 @@ describe("static analysis decision", () => {
     expect(result.report.criteriaResults[0]?.result).toBe(expected);
   });
 
-  it("ignores an unselected ordinary failure", async () => {
+  it("fails when any fixed required criterion fails", async () => {
     const provider = new FixtureSourceProvider([
       sourceFile("package.json", '{"name":"safe"}'),
       sourceFile("package-lock.json", "{}"),
@@ -55,10 +55,13 @@ describe("static analysis decision", () => {
     const result = await new StaticAnalysisService(provider).analyze(
       provider.collection.repository.canonicalRepositoryUrl,
       provider.collection.commitSha,
-      policy([CRITERIA_CATALOG[2]!]),
+      policy(CRITERIA_CATALOG),
     );
-    expect(result.decision).toBe("PASS");
-    expect(result.report.criteriaResults).toHaveLength(1);
+    expect(result.decision).toBe("FAIL");
+    expect(result.report.criteriaResults).toHaveLength(CRITERIA_CATALOG.length);
+    expect(
+      result.report.criteriaResults.find((criterion) => criterion.criterionId === "no-unsafe-html-sinks")?.result,
+    ).toBe("FAIL");
   });
 
   it.each([

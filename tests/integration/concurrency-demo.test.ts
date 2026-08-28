@@ -35,7 +35,6 @@ async function activeFixture() {
   const policyService = new PolicyService(repository);
   const draft = await policyService.createDraft({
     name: "동시성 정책",
-    criterionIds: ["dependency-lockfile-present"],
     administratorId: "admin",
   });
   await policyService.publish(draft.snapshot.policyId, "admin");
@@ -71,7 +70,6 @@ describe("issuance concurrency", () => {
     );
     const replacement = await fixture.policyService.createDraft({
       name: "새 정책",
-      criterionIds: ["no-hardcoded-secrets"],
       administratorId: "admin",
     });
     await fixture.policyService.publish(replacement.snapshot.policyId, "admin");

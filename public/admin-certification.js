@@ -31,15 +31,11 @@ async function api(path, options = {}) {
 }
 
 function renderCriteria(safetyBlockers) {
-  criteriaList.innerHTML = criteria.map((criterion) => `<label class="checkbox-row"><input type="checkbox" name="criteria" value="${escapeHtml(criterion.criterionId)}" ${criterion.available && criterion.active ? "" : "disabled"}><span><strong>${escapeHtml(criterion.name)}</strong><span>criterionId: <code>${escapeHtml(criterion.criterionId)}</code></span><span>${escapeHtml(criterion.publicDescription)}</span><span>category: ${escapeHtml(criterion.category)} · version: ${escapeHtml(criterion.criterionVersion)} · evaluatorKey: <code>${escapeHtml(criterion.evaluatorKey)}</code></span><span>available: ${escapeHtml(criterion.available)} · active: ${escapeHtml(criterion.active)} · includedInActivePolicy: ${escapeHtml(criterion.includedInActivePolicy)} · displayOrder: ${escapeHtml(criterion.displayOrder)}</span></span></label>`).join("");
+  const requiredCriteria = criteria.filter((criterion) => criterion.requiredByRuleset);
+  criteriaList.innerHTML = requiredCriteria.length > 0
+    ? requiredCriteria.map((criterion) => `<div class="locked-item"><strong>필수 · ${escapeHtml(criterion.name)}</strong><br><span>criterionId: <code>${escapeHtml(criterion.criterionId)}</code></span><br><span>${escapeHtml(criterion.publicDescription)}</span><br><span>category: ${escapeHtml(criterion.category)} · version: ${escapeHtml(criterion.criterionVersion)} · evaluatorKey: <code>${escapeHtml(criterion.evaluatorKey)}</code></span><br><span>available: ${escapeHtml(criterion.available)} · active: ${escapeHtml(criterion.active)} · displayOrder: ${escapeHtml(criterion.displayOrder)}</span></div>`).join("")
+    : `<p class="form-error">현재 ruleset에 적용할 수 있는 필수 심사 항목이 없습니다.</p>`;
   safetyList.innerHTML = safetyBlockers.map((blocker) => `<div class="locked-item">잠금 · ${escapeHtml(blocker.name)} · v${escapeHtml(blocker.version)}</div>`).join("");
-  updateSelectionPreview();
-}
-
-function updateSelectionPreview() {
-  const selectedIds = [...document.querySelectorAll('input[name="criteria"]:checked')].map((input) => input.value);
-  const selectedLabel = selectedIds.length > 0 ? selectedIds.join(", ") : "없음";
-  document.querySelector("#selection-preview").textContent = `선택된 필수 항목 ${selectedIds.length}개 · ${selectedLabel}`;
 }
 
 function policyActions(policy) {
@@ -65,9 +61,6 @@ function renderBadges(badges) {
 function loadIntoForm(policy, clone = false) {
   editingPolicyId = clone ? null : policy.snapshot.policyId;
   document.querySelector("#policy-name").value = clone ? `${policy.snapshot.name} 후속` : policy.snapshot.name;
-  const selected = new Set(policy.snapshot.criteria.map((criterion) => criterion.criterionId));
-  document.querySelectorAll('input[name="criteria"]').forEach((input) => { input.checked = selected.has(input.value); });
-  updateSelectionPreview();
   document.querySelector("#save-policy").textContent = clone ? "새 초안 생성" : "초안 변경 저장";
   policyForm.scrollIntoView({ block: "start" });
 }
@@ -83,16 +76,13 @@ async function reload() {
 policyForm?.addEventListener("submit", async (event) => {
   event.preventDefault(); policyError.textContent = "";
   const name = document.querySelector("#policy-name").value;
-  const criterionIds = [...document.querySelectorAll('input[name="criteria"]:checked')].map((input) => input.value);
   try {
-    if (editingPolicyId) await api(`/api/admin/certification/policies/${editingPolicyId}`, { method: "PUT", body: JSON.stringify({ name, criterionIds }) });
-    else await api("/api/admin/certification/policies", { method: "POST", body: JSON.stringify({ name, criterionIds }) });
+    if (editingPolicyId) await api(`/api/admin/certification/policies/${editingPolicyId}`, { method: "PUT", body: JSON.stringify({ name }) });
+    else await api("/api/admin/certification/policies", { method: "POST", body: JSON.stringify({ name }) });
     editingPolicyId = null; policyForm.reset(); document.querySelector("#save-policy").textContent = "새 초안 생성"; await reload();
   } catch (error) { policyError.textContent = error instanceof Error ? error.message : "정책을 저장하지 못했습니다."; }
 });
 
-document.querySelector("#reset-policy")?.addEventListener("click", () => { editingPolicyId = null; policyForm.reset(); document.querySelector("#save-policy").textContent = "새 초안 생성"; updateSelectionPreview(); });
-criteriaList?.addEventListener("change", updateSelectionPreview);
 policiesBody?.addEventListener("click", async (event) => {
   const target = event.target.closest("button"); if (!target) return;
   const editId = target.dataset.editPolicy; const cloneId = target.dataset.clonePolicy; const publishId = target.dataset.publishPolicy;

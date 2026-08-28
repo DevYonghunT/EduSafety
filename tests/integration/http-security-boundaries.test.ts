@@ -26,7 +26,6 @@ async function setup(options: {
     const policyService = new PolicyService(repository, options.now);
     const draft = await policyService.createDraft({
       name: "HTTP 보안 경계 정책",
-      criterionIds: ["dependency-lockfile-present"],
       administratorId: "admin",
     });
     await policyService.publish(draft.snapshot.policyId, "admin");
