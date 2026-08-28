@@ -35,7 +35,7 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        에듀 세이프 — AI 판정은 초안이며 최종 판정 권한은 심사자에게 있습니다. · 도전형 해커톤 출품작 (팀 「우매한 봉우리」)
+        에듀 세이프 — AI 판정은 초안이며 최종 판정 권한은 심사자에게 있습니다. · 도전형 해커톤 출품작 (팀 「우매함의 봉우리」)
       </footer>
     </div>
   )

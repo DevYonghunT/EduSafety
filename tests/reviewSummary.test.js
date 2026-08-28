@@ -50,9 +50,10 @@ describe('판정 집계 (신뢰성 원칙 3·4 + hackathon-2 적용 조건)', ()
   it('카테고리 상태 = 최악 판정 (필수 미충족 > 미충족 > 확인 필요 > 충족)', () => {
     const j = fillAi(BASE, 'ok')
     j['R-db-locked'] = { verdict: 'fail' }
-    j['S-quota'] = { verdict: 'fail' }
-    j['S-notice'] = { verdict: 'needs_human' }
-    const s = computeSummary(BASE, j, {}, fillHuman(BASE, 'ok'))
+    j['S-abuse-limit'] = { verdict: 'fail' }
+    const h = fillHuman(BASE, 'ok')
+    h['H-2fa'] = { verdict: 'needs_human' }
+    const s = computeSummary(BASE, j, {}, h)
     expect(s.categoryStates.access).toBe('fail_required')
     expect(s.categoryStates.code).toBe('fail')
     expect(s.categoryStates.notice).toBe('needs_human')
@@ -64,17 +65,18 @@ describe('판정 집계 (신뢰성 원칙 3·4 + hackathon-2 적용 조건)', ()
     expect(s.score).toBeUndefined()
   })
 
-  // ── hackathon-2: 적용 조건 ──
-  it('기능이 없으면 공통 14항목만 적용, 나머지는 조건 미해당', () => {
+  // ── 적용 조건 (core-1) ──
+  it('기능이 없으면 공통 15항목만 적용, 나머지는 조건 미해당', () => {
     const s = computeSummary(BASE, {}, {}, {})
-    expect(s.items.length).toBe(14)
-    expect(s.inapplicable.length).toBe(16)
+    expect(s.items.length).toBe(15)
+    expect(s.inapplicable.length).toBe(22)
   })
 
-  it('기능을 켜면 해당 항목이 적용된다 — 학생 대면 +9, 실데이터 +2', () => {
-    expect(computeSummary({ studentFacing: true }, {}, {}, {}).items.length).toBe(23)
-    expect(computeSummary({ studentFacing: true, handlesRealData: true }, {}, {}, {}).items.length).toBe(25)
-    expect(computeSummary({ studentFacing: true, handlesRealData: true, showsAiOutput: true, isLearningContent: true }, {}, {}, {}).items.length).toBe(30)
+  it('기능을 켜면 해당 항목이 적용되고, 전부 켜면 37항목 전체가 적용된다', () => {
+    expect(computeSummary({ studentFacing: true }, {}, {}, {}).items.length).toBe(21)
+    expect(computeSummary({ studentFacing: true, handlesRealData: true }, {}, {}, {}).items.length).toBe(22)
+    const all = { studentFacing: true, collectsPersonalInfo: true, collectsSensitiveInfo: true, hasAssessmentOrCompetition: true, handlesRealData: true, showsAiOutput: true, isLearningContent: true }
+    expect(computeSummary(all, {}, {}, {}).items.length).toBe(37)
   })
 
   it('조건 미해당 항목은 판단불가·보류에 포함되지 않는다', () => {

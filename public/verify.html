@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="EduSafety 가스리스 서명 인증마크 공개 검증" />
+    <title>인증마크 검증 — EduSafety</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/verify.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="EduSafety 홈"><span class="brand-mark" aria-hidden="true">E</span><span>EduSafety</span></a>
+      <nav class="site-nav" aria-label="주요 메뉴"><a href="/">인증 요청</a><a href="/demo">DEMO_PASS</a></nav>
+    </header>
+    <main class="page-shell">
+      <header class="page-header"><p class="eyebrow">PUBLIC VERIFICATION</p><h1>인증마크 검증</h1><p>저장된 proof에서 UID, EIP-712 서명, 정책과 검사 snapshot을 다시 계산합니다.</p></header>
+      <div id="verification" class="content-grid" aria-live="polite">
+        <section class="card"><span class="status-badge">확인 중</span><h2>검증 결과를 불러오고 있습니다.</h2><p class="card-copy">잠시만 기다려 주세요.</p></section>
+      </div>
+      <aside class="disclaimer" aria-label="인증 범위 안내"><strong>특정 Git commit에 대한 정적 분석 및 서버 고정 심사 기준 전체의 통과 결과입니다.</strong><p>블록체인 기록 없음</p><p>실제 배포 서비스 전체를 보증하지 않습니다.</p></aside>
+    </main>
+    <footer><p>EduSafety · 공개 검증</p><p>EAS SIGNED · GASLESS</p></footer>
+  </body>
+</html>

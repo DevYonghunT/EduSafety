@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>관리자 로그인 — EduSafety</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/admin-login.js" defer></script>
+  </head>
+  <body>
+    <main class="login-shell">
+      <a class="brand" href="/" aria-label="EduSafety 홈"><span class="brand-mark" aria-hidden="true">E</span><span>EduSafety</span></a>
+      <section class="card login-card" aria-labelledby="login-title">
+        <p class="eyebrow">ADMIN</p><h1 class="login-title" id="login-title">관리자 로그인</h1><p class="card-copy">인증 정책과 발급 내역은 서버에서 관리자 권한을 확인한 뒤 표시됩니다.</p>
+        <form class="stack" id="login-form">
+          <div class="field"><label for="username">관리자 ID</label><input id="username" name="username" autocomplete="username" required /></div>
+          <div class="field"><label for="password">비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required /></div>
+          <p class="form-error" id="login-error" role="alert"></p><button type="submit" id="login-submit">로그인</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,4 +1,9 @@
-node_modules
-dist
 .DS_Store
 .vercel
+node_modules
+dist
+client-dist
+server-dist
+coverage
+.env
+*.log

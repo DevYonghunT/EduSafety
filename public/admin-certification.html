@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>인증 관리 — EduSafety</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/admin-certification.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="EduSafety 홈"><span class="brand-mark" aria-hidden="true">E</span><span>EduSafety Admin</span></a>
+      <button class="button-secondary" id="logout" type="button">로그아웃</button>
+    </header>
+    <main class="page-shell">
+      <header class="page-header"><p class="eyebrow">CERTIFICATION ADMIN</p><h1>인증 관리</h1><p>서버 ruleset의 활성·사용 가능 심사 항목 전체로 새 정책 버전을 만들고, 발행 이력과 인증 취소 상태를 관리합니다.</p></header>
+      <div class="admin-layout">
+        <section class="card" aria-labelledby="criteria-title">
+          <div class="admin-section-heading"><div><h2 id="criteria-title">1. 심사 항목</h2><p>표시된 모든 항목이 정책에 고정 적용됩니다.</p></div></div>
+          <form id="policy-form" class="stack">
+            <div class="field"><label for="policy-name">정책명</label><input id="policy-name" name="name" maxlength="120" required placeholder="예: 교육 서비스 정적 분석 기준" /></div>
+            <div id="criteria-list" class="stack" aria-live="polite"><p>항목을 불러오는 중입니다.</p></div>
+            <div><span class="field-label">항상 적용되는 안전 차단 조건</span><div id="safety-list" class="locked-list"></div></div>
+            <p class="form-error" id="policy-error" role="alert"></p>
+            <div class="actions"><button type="submit" id="save-policy">새 초안 생성</button></div>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="policies-title">
+          <div class="admin-section-heading"><div><h2 id="policies-title">2. 인증 정책</h2><p>발행된 정책은 수정할 수 없습니다.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>버전</th><th>정책</th><th>상태</th><th>항목</th><th>Policy hash</th><th>작업</th></tr></thead><tbody id="policies-body"><tr><td colspan="6">정책을 불러오는 중입니다.</td></tr></tbody></table></div>
+        </section>
+
+        <section class="card" aria-labelledby="badges-title">
+          <div class="admin-section-heading"><div><h2 id="badges-title">3. 발급 내역</h2><p>저장된 proof를 다시 검증한 현재 상태입니다.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>저장소 / commit</th><th>정책</th><th>UID / 발급자</th><th>시각</th><th>상태</th><th>작업</th></tr></thead><tbody id="badges-body"><tr><td colspan="6">발급 내역을 불러오는 중입니다.</td></tr></tbody></table></div>
+        </section>
+      </div>
+    </main>
+
+    <dialog id="revoke-dialog" aria-labelledby="revoke-title" aria-describedby="revoke-description">
+      <form class="dialog-content" id="revoke-form" method="dialog">
+        <h2 id="revoke-title">인증 취소</h2><p id="revoke-description">취소 상태는 운영 DB에 기록되며 되돌릴 수 없습니다.</p>
+        <div class="field"><label for="revoke-reason">취소 사유 코드</label><select id="revoke-reason" required><option value="ISSUED_IN_ERROR">잘못 발급됨</option><option value="POLICY_REPLACED">정책 교체</option><option value="REPOSITORY_UNAVAILABLE">저장소 확인 불가</option><option value="SECURITY_REVIEW">보안 재검토</option><option value="OTHER">기타 운영 사유</option></select></div>
+        <p class="form-error" id="revoke-error" role="alert"></p>
+        <div class="dialog-actions"><button class="button-secondary" type="button" id="cancel-revoke">돌아가기</button><button class="button-danger" type="submit">인증 취소</button></div>
+      </form>
+    </dialog>
+    <footer><p>EduSafety 관리자</p><p>정책과 취소 작업은 감사 로그에 기록됩니다.</p></footer>
+  </body>
+</html>

@@ -1,10 +1,11 @@
 // 심사 보고서 — 점수 없음: 종합판정 3값 + 카테고리별 상태 프로필 + 행동 중심 요약.
 // 모든 인용은 텍스트 노드로만 렌더한다 (원칙 6 — HTML 실행 금지).
 import { useState } from 'react'
-import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS } from '../data/rubric.js'
+import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS, rubricItems } from '../data/rubric.js'
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
-import { buildSupplementRequest } from '../lib/supplementRequest.js'
+import { buildSupplementRequest, CAUSES } from '../lib/supplementRequest.js'
+import CertificationMark from './CertificationMark.jsx'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -25,37 +26,90 @@ export function verdictColor(v, item) {
 
 export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
-  const [supplement, setSupplement] = useState(null)
+  const [showSupplement, setShowSupplement] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const targetLabel = repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`
+  const pinLabel = repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`
 
   const copySupplement = async () => {
     const req = buildSupplementRequest({ repoMeta, summary, judgments, overrides, humanInputs, gate })
-    setSupplement(req.text)
     try {
       await navigator.clipboard.writeText(req.text)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // 클립보드 권한이 없으면 아래 텍스트를 직접 복사하도록 보여주기만 한다
+      window.alert(req.text)
     }
   }
 
+  // ── 보완 요청서 문서 뷰 (인쇄/PDF용 — 제작 교사에게 전달하는 공식 문서) ──
+  if (showSupplement) {
+    const req = buildSupplementRequest({ repoMeta, summary, judgments, overrides, humanInputs, gate })
+    return (
+      <div className="report">
+        <div className="report-actions no-print">
+          <button className="btn-secondary" onClick={() => setShowSupplement(false)}>← 보고서로 돌아가기</button>
+          <button className="btn-secondary" onClick={copySupplement}>{copied ? '✅ 복사됨' : '📋 텍스트 복사'}</button>
+          <button className="btn-primary" onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
+        </div>
+
+        <header className="report-head">
+          <h2>🛡️ 에듀 세이프 심사 보완 요청서</h2>
+          <table className="meta-table">
+            <tbody>
+              <tr><th>대상</th><td>{targetLabel}</td></tr>
+              <tr><th>고정 지점</th><td><code>{pinLabel}</code></td></tr>
+              <tr><th>요청일</th><td>{today}</td></tr>
+              <tr><th>요청 항목</th><td>총 <strong>{req.count}</strong>건 — 아래 원인별로 정리했습니다</td></tr>
+            </tbody>
+          </table>
+        </header>
+
+        <p className="intro">
+          선생님, 제출해 주신 앱의 심사 중 아래 항목들은 지금 자료만으로 판정할 수 없었습니다.
+          보완해 주시면 같은 기준으로 심사를 이어가겠습니다. 각 항목의 쉬운 설명은 이 확인이 왜 필요한지에 대한 안내입니다.
+        </p>
+
+        {Object.entries(CAUSES).map(([key, cause]) => req.buckets[key].length > 0 && (
+          <section key={key}>
+            <h3>{cause.title}</h3>
+            <p className="hint">{cause.ask}</p>
+            <ul className="law-list">
+              {req.buckets[key].map((it) => (
+                <li key={it.id}>
+                  <strong>{it.question}</strong> <span className="vt-id">{it.id}{it.type === 'required' ? ' · 필수' : ''}</span>
+                  <div className="hint">{it.plain}</div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+
+        <section className="report-sign">
+          <h3>회신 안내</h3>
+          <p className="hint">보완 후 다시 제출해 주시면 같은 기준(루브릭 {RUBRIC_VERSION})으로 재심사합니다. 재심사는 새 제출물의 지문에 다시 고정됩니다.</p>
+          <div className="sign-row">
+            <div className="sign-cell">심사자 성명: ______________</div>
+            <div className="sign-cell">연락처: ______________</div>
+            <div className="sign-cell">회신 기한: ______________</div>
+          </div>
+        </section>
+      </div>
+    )
+  }
   return (
     <div className="report">
       <div className="report-actions no-print">
         {summary.actions.confirm > 0 && (
-          <button className="btn-secondary" onClick={copySupplement}>
-            {copied ? '✅ 복사됨' : `📋 보완 요청서 복사 (${summary.actions.confirm}건)`}
+          <button className="btn-secondary" onClick={() => setShowSupplement(true)}>
+            📄 보완 요청서 ({summary.actions.confirm}건) — 보기·인쇄
           </button>
         )}
-        <button className="btn-primary" onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
+        <button className="btn-primary" onClick={() => window.print()}>
+          🖨️ 인쇄 / PDF 저장
+        </button>
       </div>
-      {supplement && (
-        <details className="supplement no-print" open>
-          <summary>보완 요청서 미리보기 (제작 교사에게 전달)</summary>
-          <textarea readOnly value={supplement} rows={12} />
-        </details>
-      )}
 
       <header className="report-head">
         <h2>🛡️ 에듀 세이프 심사 보고서</h2>
@@ -64,7 +118,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             <tr><th>심사 대상</th><td>{repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`}</td></tr>
             <tr><th>고정 지점</th><td><code>{repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`}</code> — 이 심사는 이 제출물에 대한 것이며, 이후 수정하면 지문이 달라져 효력이 없습니다.</td></tr>
             <tr><th>루브릭 버전</th><td>{RUBRIC_VERSION}</td></tr>
-            <tr><th>기능 프로파일</th><td>{featureProfile(features)} — 적용 심사 항목 {summary.items.length} / 30</td></tr>
+            <tr><th>기능 프로파일</th><td>{featureProfile(features)} — 적용 심사 항목 {summary.items.length} / {rubricItems.length}</td></tr>
             <tr><th>보호 수준</th><td>{PROTECTION_LEVELS[protectionLevel].label} — {PROTECTION_LEVELS[protectionLevel].plain}</td></tr>
             {appSummary && <tr><th>앱 요약</th><td>{appSummary}</td></tr>}
             <tr><th>AI 분석 고지</th><td>
@@ -124,7 +178,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
                 <tr key={it.id}>
                   <td>
                     <div className="vt-q">{it.question}</div>
-                    <div className="vt-id">{it.id}{it.type === 'required' ? ' · 필수' : ''}</div>
+                    <div className="vt-id">{it.id}{it.type === 'required' ? ' · 필수' : ''}{it.level ? ` · ${it.level}` : ''}</div>
                   </td>
                   <td className="vt-auth">{AUTHORITY_LABELS[it.authority]}</td>
                   <td>
@@ -156,6 +210,11 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           </ul>
         </section>
       )}
+
+      <CertificationMark
+        repoMeta={repoMeta}
+        summary={summary}
+      />
 
       <section className="report-sign">
         <h3>심사 확인</h3>

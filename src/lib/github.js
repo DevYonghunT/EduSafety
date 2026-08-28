@@ -2,8 +2,8 @@
 // 로드 도중 새 커밋이 푸시되어도 "이 심사는 커밋 X에 대한 것"이 성립해야 한다.
 import { isScannablePath, MAX_FILE_SIZE, loadPriority } from './scanner.js'
 
-const MAX_FILES = 300
-const MAX_TOTAL_BYTES = 12 * 1024 * 1024
+const MAX_FILES = 800
+const MAX_TOTAL_BYTES = 16 * 1024 * 1024
 const CONCURRENCY = 8
 
 export function parseGithubUrl(input) {
@@ -44,6 +44,8 @@ export async function fetchRepoFiles({ owner, repo, branch, onProgress }) {
   // 이후 모든 조회는 SHA 기준 — 여기가 심사 무결성의 실체
   const tree = await ghJson(`https://api.github.com/repos/${owner}/${repo}/git/trees/${commitSha}?recursive=1`)
 
+  // 초대형 저장소는 GitHub이 트리 목록 자체를 잘라서 반환한다 — 숨기지 말고 고지한다.
+  const treeTruncated = Boolean(tree.truncated)
   const blobs = (tree.tree || []).filter((e) => e.type === 'blob')
   const candidates = blobs
     .filter((e) => isScannablePath(e.path) && (e.size ?? 0) <= MAX_FILE_SIZE)
@@ -81,5 +83,5 @@ export async function fetchRepoFiles({ owner, repo, branch, onProgress }) {
   files.sort((a, b) => a.path.localeCompare(b.path))
   const selectedSet = new Set(selected.map((e) => e.path))
   const skippedPaths = blobs.filter((e) => !selectedSet.has(e.path)).map((e) => e.path)
-  return { files, branch, commitSha, skippedCount: skippedPaths.length, skippedPaths, scannableSkipped }
+  return { files, branch, commitSha, skippedCount: skippedPaths.length, skippedPaths, scannableSkipped, treeTruncated }
 }

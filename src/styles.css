@@ -35,6 +35,16 @@ button {
   cursor: pointer;
 }
 
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(14, 122, 106, 0.28);
+  outline-offset: 3px;
+}
+
 .app {
   max-width: 880px;
   margin: 0 auto;
@@ -478,6 +488,8 @@ button {
 .report-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
@@ -488,6 +500,7 @@ button {
 
 .meta-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
   margin-bottom: 20px;
@@ -506,6 +519,11 @@ button {
 .meta-table td {
   padding: 6px 0;
   border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.meta-table code {
+  word-break: break-all;
 }
 
 .report-status {
@@ -514,6 +532,7 @@ button {
   padding: 16px 20px;
   margin-bottom: 22px;
   text-align: center;
+  break-after: avoid-page;
 }
 
 .status-word {
@@ -524,6 +543,201 @@ button {
 .status-actions {
   font-size: 0.92rem;
   margin-top: 6px;
+}
+
+.certification-mark {
+  --certification-muted: #56635f;
+  --certification-ok: #176747;
+  --certification-warn: #77500c;
+  --certification-danger: #a32f2f;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--muted);
+  border-radius: 12px;
+  padding: 18px 20px;
+  background: var(--paper);
+  break-inside: avoid-page;
+  page-break-inside: avoid;
+}
+
+.certification-mark.certification-ready,
+.certification-mark.certification-issued {
+  border-color: var(--primary);
+  border-left-color: var(--primary);
+}
+
+.certification-mark.certification-attention {
+  border-color: var(--warn);
+  border-left-color: var(--warn);
+}
+
+.certification-mark.certification-invalid {
+  border-color: var(--danger);
+  border-left-color: var(--danger);
+}
+
+.certification-mark.certification-ready {
+  background: var(--primary-soft);
+}
+
+.certification-mark-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.report .certification-mark h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.certification-kind {
+  margin-top: 2px;
+  color: var(--certification-muted);
+  font-size: 0.82rem;
+}
+
+.certification-state {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 9px;
+  background: var(--paper);
+  color: var(--certification-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.certification-issued .certification-state {
+  border-color: var(--ok);
+  color: var(--certification-ok);
+}
+
+.certification-attention .certification-state {
+  border-color: var(--warn);
+  color: var(--certification-warn);
+}
+
+.certification-invalid .certification-state {
+  border-color: var(--danger);
+  color: var(--certification-danger);
+}
+
+.certification-message {
+  margin-top: 14px;
+}
+
+.certification-message p {
+  margin-top: 3px;
+  color: var(--certification-muted);
+  font-size: 0.88rem;
+}
+
+.certification-message .certification-report-context {
+  margin: 0 0 12px;
+  padding-left: 10px;
+  border-left: 3px solid var(--warn);
+  color: var(--certification-warn);
+}
+
+.certification-message .btn-primary,
+.certification-message .btn-secondary {
+  margin-top: 12px;
+}
+
+.certification-not-issued {
+  border-left: 3px solid var(--warn);
+  padding-left: 12px;
+}
+
+.certification-not-issued ul {
+  margin: 9px 0 0 20px;
+  color: var(--certification-muted);
+  font-size: 0.82rem;
+}
+
+.certification-error {
+  color: var(--certification-danger);
+}
+
+.report-mark-body {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.certification-issued .report-mark-body {
+  color: var(--certification-ok);
+}
+
+.certification-attention .report-mark-body {
+  color: var(--certification-warn);
+}
+
+.certification-invalid .report-mark-body {
+  color: var(--certification-danger);
+}
+
+.report-mark-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.report-mark-copy {
+  min-width: 0;
+}
+
+.report-mark-copy strong {
+  color: currentColor;
+  font-size: 1.05rem;
+}
+
+.report-mark-copy p {
+  margin: 4px 0 0;
+  color: var(--certification-muted);
+  font-size: 0.84rem;
+}
+
+.report-mark-subject {
+  overflow-wrap: anywhere;
+}
+
+.report-mark-subject code {
+  word-break: break-all;
+}
+
+.certification-limit {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--certification-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .meta-table th {
+    width: 88px;
+  }
+
+  .certification-mark-head,
+  .report-mark-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .report h3 {
@@ -873,4 +1087,60 @@ button {
 
 .inapplicable-box {
   margin-top: 18px;
+}
+
+/* ── 업로드 존 (첨부 영역 강조) ── */
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px dashed var(--primary);
+  border-radius: 12px;
+  padding: 22px 14px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--primary-soft);
+  transition: background 0.15s;
+}
+
+.upload-zone:hover {
+  background: #d3ece5;
+}
+
+.upload-zone input {
+  display: none;
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+}
+
+.upload-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 검사 진행 중 표시 ── */
+.busy-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1.5px solid var(--primary);
+  font-size: 0.95rem;
+}
+
+.busy-live::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 3px solid #c5e3db;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: edusafe-spin 0.9s linear infinite;
+}
+
+@keyframes edusafe-spin {
+  to { transform: rotate(360deg); }
 }

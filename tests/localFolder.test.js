@@ -34,15 +34,26 @@ describe('폴더 업로드 — SHA-256 콘텐츠 지문 (여유)', () => {
 
   it('수집 상한에 걸리면 보안 설정·코드를 먼저 읽고, 밀린 검사 가능 파일 수를 보고한다', () => {
     const files = []
-    for (let i = 0; i < 601; i++) {
-      files.push({ name: `f${i}.js`, size: 10, webkitRelativePath: `앱/src/f${String(i).padStart(3, '0')}.js` })
+    for (let i = 0; i < 11; i++) {
+      files.push({ name: `f${i}.js`, size: 10, webkitRelativePath: `앱/src/f${String(i).padStart(2, '0')}.js` })
     }
     files.push({ name: 'firestore.rules', size: 10, webkitRelativePath: '앱/zz/firestore.rules' })
     files.push({ name: 'README.md', size: 10, webkitRelativePath: '앱/README.md' })
-    const { usable, scannableSkipped, skippedPaths } = filterFolderFiles(files)
-    expect(usable).toHaveLength(600)
+    const { usable, scannableSkipped, skippedPaths } = filterFolderFiles(files, 10)
+    expect(usable).toHaveLength(10)
     expect(usable[0].rel).toBe('zz/firestore.rules')
     expect(scannableSkipped).toBe(3)
     expect(skippedPaths).toContain('README.md')
+  })
+
+  it('파일 수가 적어도 총 용량 예산을 넘으면 후순위부터 밀린다', () => {
+    const files = [
+      { name: 'a.js', size: 500, webkitRelativePath: '앱/src/a.js' },
+      { name: 'b.js', size: 500, webkitRelativePath: '앱/src/b.js' },
+      { name: 'c.md', size: 500, webkitRelativePath: '앱/docs/c.md' },
+    ]
+    const { usable, scannableSkipped } = filterFolderFiles(files, 100, 1000)
+    expect(usable.map((u) => u.rel)).toEqual(['src/a.js', 'src/b.js'])
+    expect(scannableSkipped).toBe(1)
   })
 })

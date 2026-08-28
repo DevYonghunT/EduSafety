@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
 import { scanFiles, countBySeverity, suspectDataFiles, isVendorPath } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
-import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
+import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION, rubricItems } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayloadChunks } from '../lib/redact.js'
@@ -72,6 +72,8 @@ export default function ReviewMode() {
       const fingerprint = await computeFingerprint(read)
       const name = (fileList[0].webkitRelativePath || '제출 폴더').split('/')[0]
       const meta = { source: 'folder', name, fingerprint, skippedCount, skippedPaths, scannableSkipped }
+      setBusy(`규칙 스캔 중… (파일 ${read.length}개)`)
+      await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
       setFiles(read)
       setScan(scanFiles(read))
@@ -91,7 +93,9 @@ export default function ReviewMode() {
       setBusy('저장소 불러오는 중…')
       const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
-      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped }
+      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped, treeTruncated: result.treeTruncated }
+      setBusy(`규칙 스캔 중… (파일 ${result.files.length}개)`)
+      await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
       setFiles(result.files)
       setScan(scanFiles(result.files))
@@ -179,7 +183,14 @@ export default function ReviewMode() {
       </div>
 
       {error && <div className="error">⚠️ {error}</div>}
-      {busy && <div className="busy">⏳ {busy}</div>}
+      {busy && (
+        <div className="busy busy-live">
+          <div>
+            <strong>검사 진행 중</strong> — {busy}
+            <div className="hint">진행 중에는 이 화면을 닫거나 새로고침하지 마세요.</div>
+          </div>
+        </div>
+      )}
 
       {/* ── ① 불러오기 ── */}
       {step === 1 && (
@@ -200,11 +211,13 @@ export default function ReviewMode() {
               <div className="source-card">
                 <strong>📁 폴더 업로드</strong>
                 <p className="hint">GitHub이 없는 제출물은 폴더째 올립니다. 파일 전체의 SHA-256 콘텐츠 지문에 심사가 고정됩니다.</p>
-                <label className="field">앱 폴더 선택
+                <label className={`upload-zone ${busy ? 'upload-disabled' : ''}`}>
                   <input type="file" webkitdirectory="" directory="" multiple disabled={!!busy}
                     onChange={(e) => loadFolder(e.target.files)} />
+                  <span className="upload-icon">📂</span>
+                  <strong>여기를 눌러 앱 폴더 선택</strong>
+                  <span className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음</span>
                 </label>
-                <p className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음.</p>
               </div>
               <p className="hint source-note">
                 이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용되며, 이때 코드가 Anthropic API로 전송됩니다
@@ -244,6 +257,12 @@ export default function ReviewMode() {
                 return (
                   <div className="scan-box">
                     <strong>읽지 않은 파일 {repoMeta.skippedPaths.length}개 — 코드가 아니거나 상한 초과</strong>
+                    {repoMeta.treeTruncated && (
+                      <p className="gate-warn">
+                        🚨 <strong>GitHub이 저장소 파일 목록 자체를 잘라서 반환했습니다 (초대형 저장소).</strong>
+                        {' '}목록에 없는 파일은 심사 대상에서 아예 빠졌을 수 있으니, 폴더 업로드로 다시 제출받는 것을 권합니다.
+                      </p>
+                    )}
                     {(repoMeta.scannableSkipped || 0) > 0 && (
                       <p className="gate-warn">
                         🚨 <strong>검사 가능한 파일 {repoMeta.scannableSkipped}개가 수집 상한에 걸려 읽히지 못했습니다 — 심사 범위가 불완전합니다.</strong>
@@ -323,7 +342,7 @@ export default function ReviewMode() {
               </label>
             ))}
             <div className="level-line">
-              적용 심사 항목: <strong>{summary.items.length} / 30</strong> (조건 미해당 {summary.inapplicable.length}) ·
+              적용 심사 항목: <strong>{summary.items.length} / {rubricItems.length}</strong> (조건 미해당 {summary.inapplicable.length}) ·
               보호 수준: <strong>{PROTECTION_LEVELS[protectionLevel].label}</strong> — {PROTECTION_LEVELS[protectionLevel].plain}
             </div>
           </div>
@@ -401,7 +420,7 @@ export default function ReviewMode() {
                     <strong>{it.question}</strong>
                   </div>
                   <div className="item-sub">
-                    {it.id} · {it.type === 'required' ? '필수' : '점수'} · {AUTHORITY_LABELS[it.authority]} {it.aiVerifiable ? '' : '· 수동 판정 항목'}
+                    {it.id} · {it.type === 'required' ? '필수' : '점수'} · {AUTHORITY_LABELS[it.authority]}{it.level ? ` · 기준선 ${it.level}` : ''} {it.aiVerifiable ? '' : '· 수동 판정 항목'}
                   </div>
                   <p className="item-plain">{it.plain}</p>
 
