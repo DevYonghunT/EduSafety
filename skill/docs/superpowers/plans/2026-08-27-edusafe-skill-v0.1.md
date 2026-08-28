@@ -565,7 +565,7 @@ git -C $REPO commit -m "feat: 항목 정본 items.json 37개 + spec §6 동기�
 > `[REQ-9.2]` 모든 규칙의 `item`·`subcheck` 는 §6 에 실재하는 항목 id·하위 점검 id 를 가리켜야 한다.
 > `[REQ-9.3]` **스택 필터**: 0단계에서 감지한 스택에 포함되지 않는 규칙은 실행하지 않는다. `stacks: "all"` 인 규칙만 스택과 무관하게 실행한다. 감지된 스택이 없으면 `stacks: "all"` 규칙만 실행한다. 스택을 무시하고 전 규칙을 돌리면 무관한 프로젝트에서 오탐이 난다.
 > `[REQ-9.4]` `scan.json` 의 `rules_run` 에 이번 실행에서 **실제로 돌린 규칙 id 목록**을 기록한다. 부재 증명 항목의 `negative_scan` 근거는 이 목록을 인용한다.
-> `[REQ-9.5]` `maskSecret` **또는** `secretValue` 플래그가 있는 규칙의 hit 인용은 저장 전에 마스킹한다(REQ-7.11). `secretValue` 는 그 규칙이 시크릿·개인정보 값 자체를 매치한다는 뜻이므로 마스킹에서 빠질 수 없다.
+> `[REQ-9.5]` hit 인용은 저장 전에 마스킹한다(REQ-7.11). 마스킹 대상은 그 hit 을 만든 규칙의 매치만이 아니라 **인용 안에 나타난 `maskSecret`·`secretValue` 규칙의 모든 매치**이며, 스택 필터와 무관하게 마스킹 규칙 전부를 적용한다. `rrn-field`·`nextpublic-secret`·`vite-env-secret` 처럼 값이 아니라 이름을 매치하는 규칙이 있어서, hit 을 만든 규칙의 매치만 가리면 같은 줄의 주민등록번호·키가 그대로 남는다. 마스킹한 매치에 이어지는 값도 함께 가린다 — 매치 직후부터 공백·따옴표·쉼표·세미콜론·닫는 괄호를 만날 때까지의 연속 문자를 값으로 보고 함께 마스킹한다. 패턴이 이름만 매치하거나(`VITE_…=`) 값의 앞부분만 매치해도(JWT 의 첫 점까지) 뒤에 남는 원문을 없애기 위한 것이다.
 > `[REQ-9.6]` `scanMinified` 플래그가 없는 규칙은 압축된 파일에서 실행하지 않는다. 압축 파일 여부는 `scan.json` 의 파일 목록에 기록한다.
 > `[REQ-9.7]` 규칙의 `severity` 는 규칙의 심각도이지 항목의 판정이 아니다. 항목 판정은 §7 이 정한다.
 > `[REQ-9.8]` 스캔에서 건너뛴 파일마다 **서로 구분되는 사유 문자열**을 기록한다(`too-large`·`binary`·`symlink`·`excluded-dir`·`unsupported-extension`). 여러 사유를 같은 문자열로 뭉뚱그리면 커버리지 미달의 원인을 알 수 없다.
@@ -1095,7 +1095,13 @@ const activeProject = projectRules.filter(inStack)
 - `excludeLine` 이 그 줄에 매치되면 hit 로 세지 않는다.
 - 프로젝트 규칙은 파일 순회가 끝난 뒤 `check(files, allPaths)` 를 한 번씩 부르고, 반환된 항목마다 hit 을 만든다.
 - hit 마다 `documentation` 을 기록한다(REQ-7.14). 문서 파일 = 확장자가 `.md`·`.txt` 이거나 경로에 `docs/`·`.claude/`·`.agents/` 가 포함된 것.
-- `maskSecret: true` **또는** `secretValue: true` 인 규칙의 `snippet` 은 저장 전에 마스킹한다(REQ-9.5·REQ-7.11) — 매치된 값의 **앞 6자 + `****`**. 줄 전체를 저장하지 않고 매치 주변 200자까지만 남긴다.
+- `snippet` 은 저장 전에 마스킹한다(REQ-9.5·REQ-7.11). hit 이 난 줄 전체에 `maskSecret: true` **또는** `secretValue: true` 인 **모든 규칙의 패턴을 다시 적용**해 매치되는 부분을 각각 **앞 6자 + `****`** 로 바꾸되 **매치에 이어지는 값 끝까지** 함께 가리고(공백·따옴표·쉼표·세미콜론·닫는 괄호에서 멈춘다), 그 다음 매치 주변 200자까지만 남긴다. 줄 전체를 그대로 저장하지 않는다. 마스킹은 판정이 아니라 유출 방지이므로 스택 필터를 적용하지 않는다.
+
+  hit 을 만든 규칙 하나만 마스킹하면 부족하다. `rrn-field` 는 변수명 `jumin` 을, `nextpublic-secret`·`vite-env-secret` 는 환경변수 **이름**을 매치하므로, 그 매치만 가리면 같은 줄의 주민등록번호·키가 `scan.json` 에 그대로 남는다 — `const jumin**** = '990101-1234567'` (node 로 실측).
+
+  값 꼬리까지 가리는 이유: 패턴이 **이름만** 매치하거나(`VITE_API_SECRET=sk-live-…`) 값의 **앞부분만** 매치해도(`supabase-service-role` 의 `eyJ…` 는 JWT 의 첫 점에서 멈춘다) 뒤에 원문이 남는다. `.env` 는 스캔 대상 확장자라(REQ-5.7) 실제 교사 프로젝트에서 그대로 발생한다(node 로 실측).
+
+  구현은 규칙별 순차 치환이 아니다. **원본 문자열에서 모든 마스킹 규칙의 매치 구간을 먼저 모으고, 각 구간을 값 끝까지 넓힌 뒤, 겹치는 구간을 합쳐 한 번에 치환한다.** 순차로 치환하면 앞 규칙이 만든 `****` 가 뒤 규칙의 매치를 가려 놓친다.
 
   마스킹 여부를 규칙마다 손으로 확인하지 않는다. 한 곳에서 `const mustMask = (r) => Boolean(r.maskSecret || r.secretValue)` 로 판정하고 모든 경로가 그 함수를 부른다. 이 조합을 놓치면 `supabase-service-role`·`private-key-block`·`hardcoded-password` 같은 규칙이 **시크릿 원문을 `scan.json` 에 그대로 남긴다.**
 

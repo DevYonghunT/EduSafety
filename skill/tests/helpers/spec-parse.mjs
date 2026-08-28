@@ -127,3 +127,29 @@ export function specItems(spec) {
   }
   return out
 }
+
+// spec §9 패턴 규칙 표(7열)와 §9.1 프로젝트 규칙 표(6열) 파서 —
+// 규칙 카탈로그 정본(REQ-0.4)과 scan-rules.mjs 를 양방향 대조하기 위한 것.
+export function specRules(spec) {
+  const out = new Map()
+  const rowsOf = (text, cols) =>
+    text.split('\n')
+      .filter((l) => l.startsWith('|'))
+      .map(cells)
+      .filter((c) => c.length === cols && c[0].startsWith('`'))
+  const strip = (s) => s.replace(/`/g, '')
+
+  for (const c of rowsOf(section(spec, '## 9. 스캔 규칙 카탈로그', '### 9.1 프로젝트 규칙'), 7)) {
+    out.set(strip(c[0]), {
+      id: strip(c[0]), item: c[1], subcheck: strip(c[2]), severity: c[3], stacks: c[4],
+      flags: c[5] === '—' ? [] : c[5].split(', '), title: c[6], kind: 'pattern',
+    })
+  }
+  for (const c of rowsOf(section(spec, '### 9.1 프로젝트 규칙', '### 9.2 규칙 실행 규범'), 6)) {
+    out.set(strip(c[0]), {
+      id: strip(c[0]), item: c[1], subcheck: strip(c[2]), severity: c[3], stacks: c[4],
+      flags: [], title: c[5], kind: 'project',
+    })
+  }
+  return out
+}
