@@ -52,7 +52,7 @@ export default function CertificationMark({ repoMeta, summary }) {
 
   return (
     <section
-      className={`certification-mark ${mark.className} print-only`}
+      className={`certification-mark ${mark.className}`}
       aria-labelledby="report-status-mark-title"
     >
       <div className="certification-mark-head">

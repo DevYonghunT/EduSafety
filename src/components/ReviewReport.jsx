@@ -107,7 +107,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           </button>
         )}
         <button className="btn-primary" onClick={() => window.print()}>
-          🖨️ 심사 상태마크 포함 인쇄 / PDF 저장
+          🖨️ 인쇄 / PDF 저장
         </button>
       </div>
 

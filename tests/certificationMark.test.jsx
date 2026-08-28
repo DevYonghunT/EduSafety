@@ -35,11 +35,12 @@ function reportProps(overrides = {}) {
 }
 
 describe('보고서 출력 심사 상태마크', () => {
-  it('서버 정책 조회 없이 출력 전용 마크를 보고서에 항상 포함한다', () => {
+  it('④ 보고서 화면에 서버 정책 조회 없이 상태마크를 바로 표시한다', () => {
     const html = renderToStaticMarkup(createElement(ReviewReport, reportProps()))
 
-    expect(html).toContain('심사 상태마크 포함 인쇄 / PDF 저장')
-    expect(html).toContain('certification-mark certification-attention print-only')
+    expect(html).toContain('🖨️ 인쇄 / PDF 저장')
+    expect(html).toContain('certification-mark certification-attention')
+    expect(html).not.toContain('print-only')
     expect(html.match(/class="certification-mark /g)).toHaveLength(1)
     expect(html).not.toContain('활성 인증 정책')
     expect(html).not.toContain('인증마크 없이 출력')
@@ -56,7 +57,7 @@ describe('보고서 출력 심사 상태마크', () => {
       summary: summary(status, actions),
     }))
 
-    expect(html).toContain(`certification-mark ${className} print-only`)
+    expect(html).toContain(`certification-mark ${className}`)
     expect(html).toContain(label)
     expect(html).toContain(detail)
   })
@@ -72,7 +73,7 @@ describe('보고서 출력 심사 상태마크', () => {
     const folderMeta = { source: 'folder', name: '수업 앱', fingerprint: 'a'.repeat(64) }
     const html = renderToStaticMarkup(createElement(ReviewReport, reportProps({ repoMeta: folderMeta })))
 
-    expect(html).toContain('심사 상태마크 포함 인쇄 / PDF 저장')
+    expect(html).toContain('🖨️ 인쇄 / PDF 저장')
     expect(html).toContain('수업 앱')
     expect(html).toContain('콘텐츠 지문 aaaaaaaaaaaa')
   })

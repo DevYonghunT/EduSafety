@@ -493,10 +493,6 @@ a:focus-visible {
   margin-bottom: 14px;
 }
 
-.print-only {
-  display: none !important;
-}
-
 .report-head h2 {
   font-size: 1.35rem;
   margin-bottom: 14px;
@@ -842,10 +838,6 @@ a:focus-visible {
 @media print {
   .no-print, .header, .footer {
     display: none !important;
-  }
-
-  .print-only {
-    display: block !important;
   }
 
   body {
