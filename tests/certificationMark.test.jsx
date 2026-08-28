@@ -45,6 +45,8 @@ describe('보고서 출력 심사 상태마크', () => {
     expect(html).not.toContain('활성 인증 정책')
     expect(html).not.toContain('인증마크 없이 출력')
     expect(html).not.toContain('발급 요청')
+    expect(html.indexOf('에듀 세이프 심사 상태마크')).toBeGreaterThan(html.indexOf('판정표'))
+    expect(html.indexOf('에듀 세이프 심사 상태마크')).toBeLessThan(html.indexOf('심사 확인'))
   })
 
   it.each([

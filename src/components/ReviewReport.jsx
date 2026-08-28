@@ -141,11 +141,6 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
         {summary.status === 'hold' && <p className="hint">판단불가 항목이 남아 있어 종합 판정은 보류입니다 (원칙 3).</p>}
       </section>
 
-      <CertificationMark
-        repoMeta={repoMeta}
-        summary={summary}
-      />
-
       <section>
         <h3>카테고리별 상태 프로필</h3>
         <div className="cat-grid">
@@ -215,6 +210,11 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           </ul>
         </section>
       )}
+
+      <CertificationMark
+        repoMeta={repoMeta}
+        summary={summary}
+      />
 
       <section className="report-sign">
         <h3>심사 확인</h3>
