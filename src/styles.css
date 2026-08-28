@@ -843,3 +843,17 @@ button {
   font-size: 0.78rem;
   vertical-align: baseline;
 }
+
+.skipped-list summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.skipped-list ul {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 8px;
+  font-size: 0.8rem;
+}

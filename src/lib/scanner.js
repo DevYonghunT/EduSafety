@@ -56,6 +56,18 @@ export function scanFiles(files) {
   return { findings, scannedCount }
 }
 
+// 내용을 읽지 못하는 파일이라도 이름은 안다 — 학생 데이터일 수 있는 파일을 이름으로
+// 골라 심사자가 직접 열어보게 한다 (조용한 제외 금지의 파일명 층위).
+const SUSPECT_EXT = /\.(xlsx?|hwpx?|docx?|db|sqlite3?|accdb|mdb)$/i
+const SUSPECT_NAME = /(학생|명단|성적|상담|연락처|주소록|출석|반배정|생기부|roster|student|grade)/i
+
+export function suspectDataFiles(paths) {
+  return paths.filter((p) => {
+    const name = p.split('/').pop()
+    return SUSPECT_EXT.test(name) || SUSPECT_NAME.test(name)
+  })
+}
+
 export function countBySeverity(findings) {
   const counts = { critical: 0, warning: 0, info: 0 }
   for (const f of findings) counts[f.rule.severity]++

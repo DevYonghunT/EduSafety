@@ -7,26 +7,26 @@ const MAX_FILES = 200
 export function filterFolderFiles(fileList) {
   const all = [...fileList]
   const usable = []
-  let skippedCount = 0
+  const skippedPaths = []
   for (const f of all) {
     const rel = (f.webkitRelativePath || f.name).split('/').slice(1).join('/') || f.name
     if (!isScannablePath(rel) || f.size > MAX_FILE_SIZE || usable.length >= MAX_FILES) {
-      skippedCount++
+      skippedPaths.push(rel)
       continue
     }
     usable.push({ file: f, rel })
   }
-  return { usable, skippedCount, total: all.length }
+  return { usable, skippedPaths, skippedCount: skippedPaths.length, total: all.length }
 }
 
 export async function readFolderFiles(fileList) {
-  const { usable, skippedCount } = filterFolderFiles(fileList)
+  const { usable, skippedPaths, skippedCount } = filterFolderFiles(fileList)
   const files = []
   for (const { file, rel } of usable) {
     files.push({ path: rel, name: rel.split('/').pop(), text: await file.text() })
   }
   files.sort((a, b) => a.path.localeCompare(b.path))
-  return { files, skippedCount }
+  return { files, skippedCount, skippedPaths }
 }
 
 // 경로+내용을 정렬·연결해 지문 계산 — 파일 하나만 바뀌어도 지문이 달라진다.

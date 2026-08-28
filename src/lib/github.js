@@ -76,5 +76,7 @@ export async function fetchRepoFiles({ owner, repo, branch, onProgress }) {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, selected.length) }, worker))
 
   files.sort((a, b) => a.path.localeCompare(b.path))
-  return { files, branch, commitSha, skippedCount: blobs.length - selected.length }
+  const selectedSet = new Set(selected.map((e) => e.path))
+  const skippedPaths = blobs.filter((e) => !selectedSet.has(e.path)).map((e) => e.path)
+  return { files, branch, commitSha, skippedCount: skippedPaths.length, skippedPaths }
 }

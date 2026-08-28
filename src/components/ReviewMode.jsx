@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
-import { scanFiles, countBySeverity } from '../lib/scanner.js'
+import { scanFiles, countBySeverity, suspectDataFiles } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
 import { TRACKS, rubricItems, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
@@ -75,12 +75,12 @@ export default function ReviewMode() {
     setError('')
     try {
       setBusy('폴더 파일 읽는 중…')
-      const { files: read, skippedCount } = await readFolderFiles(fileList)
+      const { files: read, skippedCount, skippedPaths } = await readFolderFiles(fileList)
       if (read.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
       setBusy('SHA-256 콘텐츠 지문 계산 중…')
       const fingerprint = await computeFingerprint(read)
       const name = (fileList[0].webkitRelativePath || '제출 폴더').split('/')[0]
-      const meta = { source: 'folder', name, fingerprint, skippedCount }
+      const meta = { source: 'folder', name, fingerprint, skippedCount, skippedPaths }
       setRepoMeta(meta)
       setFiles(read)
       setScan(scanFiles(read))
@@ -100,7 +100,7 @@ export default function ReviewMode() {
       setBusy('저장소 불러오는 중…')
       const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
-      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount }
+      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths }
       setRepoMeta(meta)
       setFiles(result.files)
       setScan(scanFiles(result.files))
@@ -246,6 +246,36 @@ export default function ReviewMode() {
                 </ul>
                 {!gate.pass && <p className="gate-warn">게이트 미비 — 심사 대신 <strong>반려 권고</strong>. 자료를 보완받은 뒤 심사하는 것이 판단불가를 줄입니다.</p>}
               </div>
+
+              {(repoMeta.skippedPaths?.length || 0) > 0 && (() => {
+                const suspects = suspectDataFiles(repoMeta.skippedPaths)
+                return (
+                  <div className="scan-box">
+                    <strong>읽지 않은 파일 {repoMeta.skippedPaths.length}개 — 코드가 아니거나 상한 초과</strong>
+                    {suspects.length > 0 ? (
+                      <>
+                        <p className="gate-warn">
+                          ⚠️ 이 중 <strong>{suspects.length}개</strong>는 이름으로 볼 때 학생 데이터일 수 있습니다.
+                          심사 도구가 내용을 읽지 못하는 형식이니 <strong>직접 열어 확인</strong>해 주세요 — 학생 실데이터 포함은 미충족 사유입니다.
+                        </p>
+                        <ul className="scan-list">
+                          {suspects.slice(0, 20).map((p) => <li key={p}><code>{p}</code></li>)}
+                          {suspects.length > 20 && <li className="hint">… 외 {suspects.length - 20}개</li>}
+                        </ul>
+                      </>
+                    ) : (
+                      <p className="hint">이름 기준으로 학생 데이터로 의심되는 파일은 없습니다 (이미지·폰트 등).</p>
+                    )}
+                    <details className="skipped-list">
+                      <summary>읽지 않은 파일 전체 목록 보기</summary>
+                      <ul className="scan-list">
+                        {repoMeta.skippedPaths.slice(0, 200).map((p) => <li key={p}><code>{p}</code></li>)}
+                        {repoMeta.skippedPaths.length > 200 && <li className="hint">… 외 {repoMeta.skippedPaths.length - 200}개</li>}
+                      </ul>
+                    </details>
+                  </div>
+                )
+              })()}
 
               <div className="scan-box">
                 <strong>자동 규칙 스캔</strong>

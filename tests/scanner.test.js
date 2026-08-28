@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import rules from '../src/data/securityRules.js'
-import { scanFiles, isScannablePath, countBySeverity } from '../src/lib/scanner.js'
+import { scanFiles, isScannablePath, countBySeverity, suspectDataFiles } from '../src/lib/scanner.js'
 
 const f = (path, text) => ({ path, name: path.split('/').pop(), text })
 const hit = (id, text) => {
@@ -58,5 +58,22 @@ describe('규칙 스캔 (T4 완료 기준)', () => {
     expect(isScannablePath('assets/logo.png')).toBe(false)
     expect(isScannablePath('.env')).toBe(true)
     expect(isScannablePath('src/app.jsx')).toBe(true)
+  })
+
+  it('읽지 못한 파일 중 학생 데이터 의심 파일을 이름으로 감지한다', () => {
+    const paths = [
+      'docs/3학년-명단.xlsx',
+      'data/성적처리.hwp',
+      'app.db',
+      'img/학생사진.png',
+      'assets/logo.png',
+      'fonts/Pretendard.woff2',
+    ]
+    expect(suspectDataFiles(paths)).toEqual([
+      'docs/3학년-명단.xlsx',
+      'data/성적처리.hwp',
+      'app.db',
+      'img/학생사진.png',
+    ])
   })
 })
