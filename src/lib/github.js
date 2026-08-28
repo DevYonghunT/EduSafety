@@ -2,8 +2,8 @@
 // 로드 도중 새 커밋이 푸시되어도 "이 심사는 커밋 X에 대한 것"이 성립해야 한다.
 import { isScannablePath, MAX_FILE_SIZE, loadPriority } from './scanner.js'
 
-const MAX_FILES = 300
-const MAX_TOTAL_BYTES = 12 * 1024 * 1024
+const MAX_FILES = 500
+const MAX_TOTAL_BYTES = 16 * 1024 * 1024
 const CONCURRENCY = 8
 
 export function parseGithubUrl(input) {
