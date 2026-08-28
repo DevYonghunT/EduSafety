@@ -310,28 +310,7 @@ export default function ReviewMode() {
       {step === 2 && (
         <div>
           <h1>분류 확정</h1>
-          <p className="intro">AI가 4트랙 중 하나를 근거와 함께 제안하고, 심사자가 확정합니다. 트랙에 따라 심사 항목이 달라집니다.</p>
-
-          <div className="scan-box">
-            <strong>AI 설정 (심사자 개인 키 — 이 브라우저에만 저장)</strong>
-            <label className="field">Anthropic API 키
-              <input type="password" value={apiKey} onChange={(e) => saveKey(e.target.value)} placeholder="sk-ant-…" />
-            </label>
-            <label className="field">모델
-              <select value={model} onChange={(e) => saveModel(e.target.value)}>
-                {MODEL_OPTIONS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-            </label>
-            <button className="btn-primary" onClick={runClassify} disabled={!!busy || !apiKey.trim()}>🤖 AI 분류 실행</button>
-            {!apiKey.trim() && <p className="hint">API 키가 없으면 AI 없이 아래에서 직접 분류할 수 있습니다 (판정도 수동으로 진행).</p>}
-          </div>
-
-          {aiClassify && (
-            <div className="ai-suggest">
-              <strong>AI 제안</strong>: {aiClassify.track ? `${TRACKS[aiClassify.track].icon} ${TRACKS[aiClassify.track].label}` : '분류 불확실'} — {aiClassify.trackReason}
-              {aiClassify.appSummary && <div className="hint">{aiClassify.appSummary}</div>}
-            </div>
-          )}
+          <p className="intro">트랙에 따라 심사 항목이 달라집니다. 앱이 무엇인지는 심사자가 가장 잘 압니다 — 직접 확정하세요.</p>
 
           <div className="scan-box">
             <strong>트랙 확정 (심사자)</strong>
@@ -355,6 +334,29 @@ export default function ReviewMode() {
             ))}
             <div className="level-line">이 앱의 보호 수준: <strong>{PROTECTION_LEVELS[protectionLevel].label}</strong> — {PROTECTION_LEVELS[protectionLevel].plain}</div>
           </div>
+
+          <div className="scan-box">
+            <strong>AI 설정 — 3단계 판정 초안에 사용 (심사자 개인 키, 이 브라우저에만 저장)</strong>
+            <label className="field">Anthropic API 키
+              <input type="password" value={apiKey} onChange={(e) => saveKey(e.target.value)} placeholder="sk-ant-…" />
+            </label>
+            <label className="field">모델
+              <select value={model} onChange={(e) => saveModel(e.target.value)}>
+                {MODEL_OPTIONS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            </label>
+            <div>
+              <button className="btn-secondary" onClick={runClassify} disabled={!!busy || !apiKey.trim()}>🤖 분류·기능을 AI에게 제안받기 (선택)</button>
+            </div>
+            <p className="hint">{apiKey.trim() ? '분류가 애매할 때만 쓰는 보조 기능입니다 — 제안을 받아도 확정은 심사자가 합니다.' : 'API 키가 없어도 분류·심사 전 과정을 수동으로 진행할 수 있습니다.'}</p>
+          </div>
+
+          {aiClassify && (
+            <div className="ai-suggest">
+              <strong>AI 제안</strong>: {aiClassify.track ? `${TRACKS[aiClassify.track].icon} ${TRACKS[aiClassify.track].label}` : '분류 불확실'} — {aiClassify.trackReason}
+              {aiClassify.appSummary && <div className="hint">{aiClassify.appSummary}</div>}
+            </div>
+          )}
 
           <div className="btn-row">
             <button className="btn-primary" onClick={() => setStep(3)} disabled={!track}>③ 판정으로 계속</button>
