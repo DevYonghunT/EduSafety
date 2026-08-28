@@ -62,6 +62,50 @@ body {
   background: rgb(36 49 46 / 0.08);
 }
 
+.talk-timer {
+  position: fixed;
+  top: 10px;
+  right: 16px;
+  z-index: 100;
+  min-width: 96px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid rgb(14 122 106 / 0.32);
+  border-radius: 9px;
+  background: rgb(253 251 247 / 0.96);
+  box-shadow: 0 1px 4px rgb(36 49 46 / 0.08);
+  color: var(--accent-strong);
+  pointer-events: none;
+}
+
+.talk-timer[hidden] {
+  display: none;
+}
+
+.talk-timer .timer-icon {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.talk-timer time {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.talk-timer.is-finished {
+  border-color: rgb(214 69 69 / 0.36);
+  background: rgb(253 238 238 / 0.97);
+  color: var(--danger);
+}
+
 .reveal :focus-visible {
   outline: 3px solid rgb(14 122 106 / 0.3);
   outline-offset: 4px;
@@ -250,7 +294,79 @@ body {
   font-weight: 760;
 }
 
-/* 01 · 대 딸깍의 시대 */
+/* 01 · 표지 */
+.cover-slide {
+  background: var(--inverse) !important;
+}
+
+.cover-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 72px 96px;
+  background: var(--inverse);
+}
+
+.cover-center {
+  width: min(1120px, 100%);
+  text-align: center;
+}
+
+.cover-event {
+  color: #76d2bd;
+  font-size: 31px;
+  line-height: 1.35;
+  font-weight: 760;
+}
+
+.cover-event strong {
+  color: var(--inverse-text);
+  font-weight: 880;
+}
+
+.cover-separator {
+  width: 72px;
+  height: 4px;
+  display: block;
+  margin: 34px auto;
+  background: #76d2bd;
+}
+
+.reveal .cover-slide h1 {
+  color: var(--inverse-text);
+  font-size: 96px;
+  line-height: 1.04;
+  text-align: center;
+}
+
+.cover-authors {
+  margin-top: 42px !important;
+  color: var(--inverse-muted);
+  font-size: 28px;
+  line-height: 1.4;
+  font-weight: 720;
+}
+
+.cover-authors span {
+  margin: 0 12px;
+  color: #76d2bd;
+}
+
+.cover-start {
+  position: absolute;
+  right: 0;
+  bottom: 44px;
+  left: 0;
+  color: var(--inverse-muted);
+  font-size: 15px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* 02 · 대 딸깍의 시대 */
 .hero-news {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
@@ -286,7 +402,7 @@ body {
   background: #ffffff;
 }
 
-/* 02 · 우매함의 봉우리 */
+/* 03 · 우매함의 봉우리 */
 .peak-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -358,7 +474,7 @@ body {
   font-size: 16px;
 }
 
-/* 03 · 심의의 빈틈 */
+/* 04 · 심의의 빈틈 */
 .review-layout {
   display: flex;
   flex-direction: column;
@@ -442,7 +558,7 @@ body {
   color: var(--text);
 }
 
-/* 04 · 해결 */
+/* 05 · 해결 */
 .solution-slide {
   background: #fbfaf5 !important;
 }
@@ -567,7 +683,7 @@ body {
   font-weight: 850;
 }
 
-/* 05 · 스킬 시연 */
+/* 06 · 스킬 시연 */
 .demo-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
@@ -645,7 +761,7 @@ body {
   background: #111716;
 }
 
-/* 06 · 로컬 폴더 */
+/* 07 · 저장소 또는 로컬 폴더 */
 .local-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
@@ -717,7 +833,7 @@ body {
   object-position: center top;
 }
 
-/* 07 · URL 검사 */
+/* 08 · URL 검사 */
 .url-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.61fr) minmax(0, 0.39fr);
@@ -783,7 +899,7 @@ body {
   margin-right: 6px;
 }
 
-/* 08 · 차별점 */
+/* 09 · 차별점 */
 .compare-layout {
   display: flex;
   flex-direction: column;
@@ -877,7 +993,7 @@ body {
   color: var(--text);
 }
 
-/* 09 · 마무리 */
+/* 10 · 마무리 */
 .closing-slide,
 .closing-slide .slide-frame {
   background: var(--inverse) !important;
@@ -986,6 +1102,10 @@ body {
 
   .reveal .controls,
   .reveal .progress {
+    display: none !important;
+  }
+
+  .talk-timer {
     display: none !important;
   }
 
