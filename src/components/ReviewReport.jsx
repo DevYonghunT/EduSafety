@@ -61,8 +61,8 @@ export default function ReviewReport({ repoMeta, track, protectionLevel, appSumm
         <h2>🛡️ 에듀 세이프 심사 보고서</h2>
         <table className="meta-table">
           <tbody>
-            <tr><th>심사 대상</th><td>{repoMeta.owner}/{repoMeta.repo} ({repoMeta.branch})</td></tr>
-            <tr><th>고정 지점</th><td><code>커밋 {repoMeta.commitSha}</code> — 이 심사는 이 커밋에 대한 것이며, 이후 수정 시 효력이 없습니다.</td></tr>
+            <tr><th>심사 대상</th><td>{repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`}</td></tr>
+            <tr><th>고정 지점</th><td><code>{repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`}</code> — 이 심사는 이 제출물에 대한 것이며, 이후 수정하면 지문이 달라져 효력이 없습니다.</td></tr>
             <tr><th>루브릭 버전</th><td>{RUBRIC_VERSION}</td></tr>
             <tr><th>분류</th><td>{TRACKS[track].icon} {TRACKS[track].label}</td></tr>
             <tr><th>보호 수준</th><td>{PROTECTION_LEVELS[protectionLevel].label} — {PROTECTION_LEVELS[protectionLevel].plain}</td></tr>

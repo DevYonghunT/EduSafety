@@ -815,3 +815,25 @@ button {
   margin-bottom: 14px;
   font-weight: 600;
 }
+
+/* ── 입력 경로 2카드 ── */
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.source-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--paper);
+}
+
+.source-note {
+  grid-column: 1 / -1;
+}

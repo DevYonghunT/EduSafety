@@ -4,6 +4,7 @@ import { scanFiles, countBySeverity } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
 import { TRACKS, rubricItems, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
+import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayload } from '../lib/redact.js'
 import { classifyApp, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
@@ -56,6 +57,28 @@ export default function ReviewMode() {
 
   const saveKey = (v) => { setApiKey(v); localStorage.setItem('edusafe_api_key', v) }
   const saveModel = (v) => { setModel(v); localStorage.setItem('edusafe_model', v) }
+
+  const loadFolder = async (fileList) => {
+    if (!fileList || fileList.length === 0) return
+    setError('')
+    try {
+      setBusy('폴더 파일 읽는 중…')
+      const { files: read, skippedCount } = await readFolderFiles(fileList)
+      if (read.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
+      setBusy('SHA-256 콘텐츠 지문 계산 중…')
+      const fingerprint = await computeFingerprint(read)
+      const name = (fileList[0].webkitRelativePath || '제출 폴더').split('/')[0]
+      const meta = { source: 'folder', name, fingerprint, skippedCount }
+      setRepoMeta(meta)
+      setFiles(read)
+      setScan(scanFiles(read))
+      setGate(checkGate(read, meta))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy('')
+    }
+  }
 
   const loadRepo = async () => {
     const parsed = parseGithubUrl(repoUrl)
@@ -160,19 +183,34 @@ export default function ReviewMode() {
           <h1>앱 불러오기</h1>
           <p className="intro">심사는 커밋 SHA에 고정됩니다 — "이 심사는 커밋 X에 대한 것".</p>
           {!repoMeta && (
-            <form className="setup" onSubmit={(e) => { e.preventDefault(); if (!busy && repoUrl.trim()) loadRepo() }}>
-              <label className="field">심사 대상 GitHub 공개 저장소
-                <input type="text" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/아이디/저장소" disabled={!!busy} />
-              </label>
-              <button type="submit" className="btn-primary" disabled={!!busy || !repoUrl.trim()}>불러오기 + 규칙 스캔</button>
-              <p className="hint">이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용됩니다. 폴더 업로드는 추후 지원 예정.</p>
-            </form>
+            <div className="source-grid">
+              <form className="source-card" onSubmit={(e) => { e.preventDefault(); if (!busy && repoUrl.trim()) loadRepo() }}>
+                <strong>🐙 GitHub 저장소</strong>
+                <p className="hint">공개 저장소 주소로 불러옵니다. 심사는 커밋 SHA에 고정됩니다.</p>
+                <label className="field">저장소 주소
+                  <input type="text" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)}
+                    placeholder="https://github.com/아이디/저장소" disabled={!!busy} />
+                </label>
+                <button type="submit" className="btn-primary" disabled={!!busy || !repoUrl.trim()}>불러오기 + 규칙 스캔</button>
+              </form>
+              <div className="source-card">
+                <strong>📁 폴더 업로드</strong>
+                <p className="hint">GitHub이 없는 제출물은 폴더째 올립니다. 파일 전체의 SHA-256 콘텐츠 지문에 심사가 고정됩니다.</p>
+                <label className="field">앱 폴더 선택
+                  <input type="file" webkitdirectory="" directory="" multiple disabled={!!busy}
+                    onChange={(e) => loadFolder(e.target.files)} />
+                </label>
+                <p className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음.</p>
+              </div>
+              <p className="hint source-note">이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용됩니다.</p>
+            </div>
           )}
           {repoMeta && scan && gate && (
             <div className="loaded">
               <div className="repo-line">
-                📦 {repoMeta.owner}/{repoMeta.repo} ({repoMeta.branch}) · 커밋 <code>{repoMeta.commitSha.slice(0, 12)}</code> · 파일 {files.length}개
+                {repoMeta.commitSha
+                  ? <>📦 {repoMeta.owner}/{repoMeta.repo} ({repoMeta.branch}) · 커밋 <code>{repoMeta.commitSha.slice(0, 12)}</code> · 파일 {files.length}개</>
+                  : <>📁 {repoMeta.name} (폴더 제출) · 지문 <code>{repoMeta.fingerprint.slice(0, 12)}</code> · 파일 {files.length}개{repoMeta.skippedCount > 0 ? ` (스캔 불가 ${repoMeta.skippedCount}개 제외)` : ''}</>}
               </div>
 
               <div className="scan-box">
@@ -382,6 +420,7 @@ export default function ReviewMode() {
               const entry = saveRecord({
                 target: targetKey(repoMeta),
                 owner: repoMeta.owner, repo: repoMeta.repo, commitSha: repoMeta.commitSha,
+                name: repoMeta.name, fingerprint: repoMeta.fingerprint,
                 track, protectionLevel, status: summary.status, actions: summary.actions,
                 rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
               })
