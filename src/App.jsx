@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ReviewMode from './components/ReviewMode.jsx'
 import ReviewLedger from './components/ReviewLedger.jsx'
+import AboutPage from './components/AboutPage.jsx'
 
 const TABS = [
   { key: 'about', label: '🏠 소개' },
@@ -28,16 +29,7 @@ export default function App() {
       </header>
 
       <main className="main">
-        {view === 'about' && (
-          <section className="panel">
-            <h1>선생님이 만든 앱, 증거로 검증합니다</h1>
-            <p className="intro">
-              에듀 세이프는 교사가 바이브 코딩으로 만든 앱의 보안과 전반적 내용을 공인 기관의
-              심사자가 최종 심사하기 위한 심사자 전용 시스템입니다. AI가 코드에서 증거를 수집해
-              판정 초안을 만들고, 최종 판정은 사람이 합니다.
-            </p>
-          </section>
-        )}
+        {view === 'about' && <AboutPage onStart={() => setView('review')} />}
         {view === 'review' && <ReviewMode />}
         {view === 'ledger' && <ReviewLedger />}
       </main>
