@@ -1,0 +1,2370 @@
+{
+  "schema_version": "1",
+  "fields": [
+    {
+      "path": "schema_version",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "\"1\"",
+      "allowed": [
+        "1"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "edusafe_version",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "version.json 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "rubric_version",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "version.json 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "self_reported_skill_digest",
+      "type": "string?",
+      "required": false,
+      "spec_constraint": "sha256:…",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "checked_at",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ISO8601 + 타임존",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "name·stack·supported_stack·git·build_artifact_digest",
+      "allowed": null,
+      "keys": [
+        "name",
+        "stack",
+        "supported_stack",
+        "git",
+        "build_artifact_digest"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.name",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "비어 있지 않음",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.stack",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "html·vite-react·nextjs·firebase·supabase",
+      "allowed": [
+        "html",
+        "vite-react",
+        "nextjs",
+        "firebase",
+        "supabase"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.supported_stack",
+      "type": "boolean",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.git",
+      "type": "object(고정키)?",
+      "required": true,
+      "spec_constraint": "sha·dirty·untracked_included·refs_scanned",
+      "allowed": null,
+      "keys": [
+        "sha",
+        "dirty",
+        "untracked_included",
+        "refs_scanned"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.git.sha",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.git.dirty",
+      "type": "boolean",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.git.untracked_included",
+      "type": "boolean",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.git.refs_scanned",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "project.build_artifact_digest",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "sha256:…",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "검사 메타"
+      ]
+    },
+    {
+      "path": "coverage",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "runtime·scanner·history·build·code·evidence·teacher (각 축의 행은 §8.3.4)",
+      "allowed": null,
+      "keys": [
+        "runtime",
+        "scanner",
+        "history",
+        "build",
+        "code",
+        "evidence",
+        "teacher"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "profile",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "data_inventory·actors·entry·controller·student_facing·trusted_outcomes",
+      "allowed": null,
+      "keys": [
+        "data_inventory",
+        "actors",
+        "entry",
+        "controller",
+        "student_facing",
+        "trusted_outcomes"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.data_inventory",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 profile.data_inventory[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "field",
+        "kind",
+        "where"
+      ],
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.actors",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "anonymous·student·teacher·admin",
+      "allowed": [
+        "anonymous",
+        "student",
+        "teacher",
+        "admin"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.entry",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "비어 있지 않음",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.controller",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "school·teacher_personal·unknown",
+      "allowed": [
+        "school",
+        "teacher_personal",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.student_facing",
+      "type": "boolean",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.trusted_outcomes",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "db_paths",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 db_paths[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "table",
+        "op",
+        "file",
+        "line",
+        "controls",
+        "evidence"
+      ],
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "destinations",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 destinations[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "service",
+        "kind",
+        "purpose",
+        "controller_role",
+        "storage",
+        "region",
+        "data",
+        "file",
+        "line"
+      ],
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "summary",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "must_fix·recommended·info·needs_human·teacher_confirmed·documentation_hits",
+      "allowed": null,
+      "keys": [
+        "must_fix",
+        "recommended",
+        "info",
+        "needs_human",
+        "teacher_confirmed",
+        "documentation_hits"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "종합 판정 카드"
+      ]
+    },
+    {
+      "path": "summary.must_fix",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "items[] 재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 🔴"
+      ]
+    },
+    {
+      "path": "summary.recommended",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "items[] 재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 🟡"
+      ]
+    },
+    {
+      "path": "summary.info",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "items[] 재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ⚪"
+      ]
+    },
+    {
+      "path": "summary.teacher_confirmed",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "items[] 재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ✍️"
+      ]
+    },
+    {
+      "path": "summary.documentation_hits",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "scan.json 재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 각주"
+      ]
+    },
+    {
+      "path": "moe_checklist",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 moe_checklist[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "criterion",
+        "text",
+        "mapped_items",
+        "status"
+      ],
+      "validated_by": [
+        "계약",
+        "매핑 실재 확인"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "items",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "정확히 37개 · 원소는 items[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "item_id",
+        "category",
+        "base_severity",
+        "effective_severity",
+        "verdict",
+        "verification_level",
+        "sources",
+        "applicability_reason",
+        "demotion_reason",
+        "evidence",
+        "subchecks",
+        "reasoning",
+        "why_risky",
+        "fix_hint",
+        "basis"
+      ],
+      "validated_by": [
+        "계약",
+        "id 집합 일치"
+      ],
+      "rendered_in": [
+        "카테고리 아코디언"
+      ]
+    },
+    {
+      "path": "session",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 session[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "item_id",
+        "kind",
+        "question",
+        "answer",
+        "evidence_sha256"
+      ],
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "items[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "item_id·category·base_severity·effective_severity·verdict·verification_level·sources·applicability_reason·demotion_reason·evidence·subchecks·reasoning·why_risky·fix_hint·basis",
+      "allowed": null,
+      "keys": [
+        "item_id",
+        "category",
+        "base_severity",
+        "effective_severity",
+        "verdict",
+        "verification_level",
+        "sources",
+        "applicability_reason",
+        "demotion_reason",
+        "evidence",
+        "subchecks",
+        "reasoning",
+        "why_risky",
+        "fix_hint",
+        "basis"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 아코디언"
+      ]
+    },
+    {
+      "path": "items[].item_id",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 의 항목 id",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "항목 헤더"
+      ]
+    },
+    {
+      "path": "items[].category",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "1~8",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "아코디언 그룹"
+      ]
+    },
+    {
+      "path": "items[].base_severity",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "high·medium·low",
+      "allowed": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 배지"
+      ]
+    },
+    {
+      "path": "items[].effective_severity",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "high·medium·low",
+      "allowed": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§7.6 결정표"
+      ],
+      "rendered_in": [
+        "항목 배지·집계"
+      ]
+    },
+    {
+      "path": "items[].verdict",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "pass·fail·na·needs_human",
+      "allowed": [
+        "pass",
+        "fail",
+        "na",
+        "needs_human"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 배지"
+      ]
+    },
+    {
+      "path": "items[].verification_level",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "verified·attested·none",
+      "allowed": [
+        "verified",
+        "attested",
+        "none"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§7.1"
+      ],
+      "rendered_in": [
+        "출처 라벨"
+      ]
+    },
+    {
+      "path": "items[].sources",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "scanner·code·evidence·teacher",
+      "allowed": [
+        "scanner",
+        "code",
+        "evidence",
+        "teacher"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "출처 라벨"
+      ]
+    },
+    {
+      "path": "items[].applicability_reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "verdict=\"na\" 면 null 금지",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 본문"
+      ]
+    },
+    {
+      "path": "items[].demotion_reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 본문"
+      ]
+    },
+    {
+      "path": "items[].evidence",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 §8.3.5",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "판별 규칙"
+      ],
+      "rendered_in": [
+        "근거 코드 블록"
+      ]
+    },
+    {
+      "path": "items[].subchecks",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "§6 이 정의한 하위 점검 전부 · 원소는 items[].subchecks[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "id",
+        "verdict",
+        "coverage_status",
+        "sources",
+        "verification_level",
+        "reason",
+        "evidence"
+      ],
+      "validated_by": [
+        "계약",
+        "§6 대조(개수·id 집합)"
+      ],
+      "rendered_in": [
+        "항목 아코디언 내 하위 점검 목록"
+      ]
+    },
+    {
+      "path": "items[].subchecks[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "id·verdict·coverage_status·sources·verification_level·reason·evidence",
+      "allowed": null,
+      "keys": [
+        "id",
+        "verdict",
+        "coverage_status",
+        "sources",
+        "verification_level",
+        "reason",
+        "evidence"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "하위 점검 행"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].id",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 의 하위 점검 id",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "하위 점검 이름"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].verdict",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "pass·fail·na·needs_human",
+      "allowed": [
+        "pass",
+        "fail",
+        "na",
+        "needs_human"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "하위 점검 배지"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].coverage_status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "met·unmet",
+      "allowed": [
+        "met",
+        "unmet"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "하위 점검 배지"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].sources",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "scanner·code·evidence·teacher",
+      "allowed": [
+        "scanner",
+        "code",
+        "evidence",
+        "teacher"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "하위 점검 출처"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].verification_level",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "verified·attested·none",
+      "allowed": [
+        "verified",
+        "attested",
+        "none"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§7.1"
+      ],
+      "rendered_in": [
+        "하위 점검 출처"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "하위 점검 사유"
+      ]
+    },
+    {
+      "path": "items[].subchecks[].evidence",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 §8.3.5",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "판별 규칙"
+      ],
+      "rendered_in": [
+        "하위 점검 근거"
+      ]
+    },
+    {
+      "path": "items[].reasoning",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "비어 있지 않음",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "항목 본문"
+      ]
+    },
+    {
+      "path": "items[].why_risky",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "\"왜 위험한가\""
+      ]
+    },
+    {
+      "path": "items[].fix_hint",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "\"수정 방법\""
+      ]
+    },
+    {
+      "path": "items[].basis",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "\"근거 법령\""
+      ]
+    },
+    {
+      "path": "profile.data_inventory[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "field·kind·where",
+      "allowed": null,
+      "keys": [
+        "field",
+        "kind",
+        "where"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.data_inventory[].field",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.data_inventory[].kind",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "identifier·contact·sensitive·content·other",
+      "allowed": [
+        "identifier",
+        "contact",
+        "sensitive",
+        "content",
+        "other"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "profile.data_inventory[].where",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "프로필 표"
+      ]
+    },
+    {
+      "path": "db_paths[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "table·op·file·line·controls·evidence",
+      "allowed": null,
+      "keys": [
+        "table",
+        "op",
+        "file",
+        "line",
+        "controls",
+        "evidence"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "db_paths[].table",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "db_paths[].op",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "read·write·upload·api",
+      "allowed": [
+        "read",
+        "write",
+        "upload",
+        "api"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "db_paths[].file",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "db_paths[].line",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표"
+      ]
+    },
+    {
+      "path": "db_paths[].controls",
+      "type": "object(고정 5키)",
+      "required": true,
+      "spec_constraint": "authentication·ownership·role·validation·rate_limit",
+      "allowed": null,
+      "keys": [
+        "authentication",
+        "ownership",
+        "role",
+        "validation",
+        "rate_limit"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].controls.authentication",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "yes·no·unknown",
+      "allowed": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].controls.ownership",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "yes·no·unknown",
+      "allowed": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].controls.role",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "yes·no·unknown",
+      "allowed": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].controls.validation",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "yes·no·unknown",
+      "allowed": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].controls.rate_limit",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "yes·no·unknown",
+      "allowed": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 5열"
+      ]
+    },
+    {
+      "path": "db_paths[].evidence",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 §8.3.5",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "판별 규칙"
+      ],
+      "rendered_in": [
+        "DB 도달 경로 표의 근거"
+      ]
+    },
+    {
+      "path": "destinations[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "service·kind·purpose·controller_role·storage·region·data·file·line",
+      "allowed": null,
+      "keys": [
+        "service",
+        "kind",
+        "purpose",
+        "controller_role",
+        "storage",
+        "region",
+        "data",
+        "file",
+        "line"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].service",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].kind",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "processor·third_party·unknown",
+      "allowed": [
+        "processor",
+        "third_party",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].purpose",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].controller_role",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "processor·third_party·unknown",
+      "allowed": [
+        "processor",
+        "third_party",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].storage",
+      "type": "boolean",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].region",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "kr·us·eu·other·unknown",
+      "allowed": [
+        "kr",
+        "us",
+        "eu",
+        "other",
+        "unknown"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].data",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].file",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "destinations[].line",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "목적지 인벤토리 표"
+      ]
+    },
+    {
+      "path": "moe_checklist[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "criterion·text·mapped_items·status",
+      "allowed": null,
+      "keys": [
+        "criterion",
+        "text",
+        "mapped_items",
+        "status"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "moe_checklist[].criterion",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "1-1·1-2·1-3·2-1·3-1·4-1·5-1·5-2·5-3",
+      "allowed": [
+        "1-1",
+        "1-2",
+        "1-3",
+        "2-1",
+        "3-1",
+        "4-1",
+        "5-1",
+        "5-2",
+        "5-3"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "moe_checklist[].text",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§8.6 과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§8.6 대조"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "moe_checklist[].mapped_items",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "§6 의 항목 id",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "moe_checklist[].status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "충족·미충족·해당없음·확인필요",
+      "allowed": [
+        "충족",
+        "미충족",
+        "해당없음",
+        "확인필요"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "서식1 대조표"
+      ]
+    },
+    {
+      "path": "session[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "item_id·kind·question·answer·evidence_sha256",
+      "allowed": null,
+      "keys": [
+        "item_id",
+        "kind",
+        "question",
+        "answer",
+        "evidence_sha256"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "session[].item_id",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§6 의 항목 id",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§6 대조"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "session[].kind",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "evidence·teacher",
+      "allowed": [
+        "evidence",
+        "teacher"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "session[].question",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "§7.5 표의 질문과 일치",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "§7.5 대조"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "session[].answer",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "session[].evidence_sha256",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "sha256:…",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "확인 세션 기록"
+      ]
+    },
+    {
+      "path": "summary.needs_human",
+      "type": "object(고정 4키)",
+      "required": true,
+      "spec_constraint": "total·coverage·unsupported·unanswered",
+      "allowed": null,
+      "keys": [
+        "total",
+        "coverage",
+        "unsupported",
+        "unanswered"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ❓"
+      ]
+    },
+    {
+      "path": "summary.needs_human.total",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수 — 세 소계의 합",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ❓"
+      ]
+    },
+    {
+      "path": "summary.needs_human.coverage",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수 — 사유 coverage-insufficient",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ❓"
+      ]
+    },
+    {
+      "path": "summary.needs_human.unsupported",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수 — 사유 unsupported-stack",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ❓"
+      ]
+    },
+    {
+      "path": "summary.needs_human.unanswered",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수 — 확인 세션 미답변",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약",
+        "재계산 대조"
+      ],
+      "rendered_in": [
+        "종합 판정 카드 ❓"
+      ]
+    },
+    {
+      "path": "coverage.runtime",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "normal·degraded",
+      "allowed": [
+        "normal",
+        "degraded"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason·files_scanned·files_skipped·extensions·excluded_dirs",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason",
+        "files_scanned",
+        "files_skipped",
+        "extensions",
+        "excluded_dirs"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·agent-fallback",
+      "allowed": [
+        "ran",
+        "agent-fallback"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "no-node",
+      "allowed": [
+        "no-node"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    },
+    {
+      "path": "coverage.scanner.files_scanned",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.files_skipped",
+      "type": "array<object>",
+      "required": true,
+      "spec_constraint": "원소는 coverage.scanner.files_skipped[] 행",
+      "allowed": null,
+      "keys": null,
+      "element_required": [
+        "path",
+        "reason"
+      ],
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.files_skipped[]",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "path·reason",
+      "allowed": null,
+      "keys": [
+        "path",
+        "reason"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.files_skipped[].path",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.files_skipped[].reason",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "excluded-dir·unsupported-extension·too-large·binary·symlink·read-error",
+      "allowed": [
+        "excluded-dir",
+        "unsupported-extension",
+        "too-large",
+        "binary",
+        "symlink",
+        "read-error"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.extensions",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.scanner.excluded_dirs",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.history",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason·commits_scanned·refs_scanned",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason",
+        "commits_scanned",
+        "refs_scanned"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.history.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·partial·skipped",
+      "allowed": [
+        "ran",
+        "partial",
+        "skipped"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.history.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "no-git·timeout·shallow",
+      "allowed": [
+        "no-git",
+        "timeout",
+        "shallow"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    },
+    {
+      "path": "coverage.history.commits_scanned",
+      "type": "number",
+      "required": true,
+      "spec_constraint": "0 이상 정수",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.history.refs_scanned",
+      "type": "array<string>",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.build",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason·command·started_at·error",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason",
+        "command",
+        "started_at",
+        "error"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.build.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·skipped",
+      "allowed": [
+        "ran",
+        "skipped"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.build.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "declined·failed·no-script·non-interactive·prebuilt-artifact",
+      "allowed": [
+        "declined",
+        "failed",
+        "no-script",
+        "non-interactive",
+        "prebuilt-artifact"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    },
+    {
+      "path": "coverage.build.command",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.build.started_at",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "ISO8601 + 타임존",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.build.error",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.code",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.code.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·partial",
+      "allowed": [
+        "ran",
+        "partial"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.code.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "—",
+      "allowed": null,
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    },
+    {
+      "path": "coverage.evidence",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.evidence.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·skipped",
+      "allowed": [
+        "ran",
+        "skipped"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.evidence.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "not-requested·declined·non-interactive",
+      "allowed": [
+        "not-requested",
+        "declined",
+        "non-interactive"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    },
+    {
+      "path": "coverage.teacher",
+      "type": "object(고정키)",
+      "required": true,
+      "spec_constraint": "status·reason",
+      "allowed": null,
+      "keys": [
+        "status",
+        "reason"
+      ],
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.teacher.status",
+      "type": "string",
+      "required": true,
+      "spec_constraint": "ran·skipped",
+      "allowed": [
+        "ran",
+        "skipped"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약"
+      ]
+    },
+    {
+      "path": "coverage.teacher.reason",
+      "type": "string?",
+      "required": true,
+      "spec_constraint": "session-skipped·non-interactive",
+      "allowed": [
+        "session-skipped",
+        "non-interactive"
+      ],
+      "keys": null,
+      "element_required": null,
+      "validated_by": [
+        "계약"
+      ],
+      "rendered_in": [
+        "coverage 요약의 생략 사유"
+      ]
+    }
+  ],
+  "evidence_types": {
+    "quote": [
+      "type",
+      "source",
+      "file",
+      "line",
+      "quote"
+    ],
+    "negative_scan": [
+      "type",
+      "source",
+      "rules",
+      "files_scanned"
+    ]
+  }
+}

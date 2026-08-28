@@ -163,3 +163,86 @@ export function specRules(spec) {
   }
   return out
 }
+
+// ── spec §8.3 보고서 필드 계약 ────────────────────────────────────────────
+// 표의 원본 6열(경로·타입·필수·제약·검증·렌더)을 읽고, 파생 3필드
+// (allowed·keys·element_required)를 아래 규칙으로 계산한다.
+// report.contract.json 도 같은 규칙으로 만들어지므로, 대조(⑥)가 실제로 검증하는 것은
+// 손으로 옮긴 원본 6열이다.
+
+const BACKSLASH = String.fromCharCode(92)
+const BACKTICK = String.fromCharCode(96)
+
+// 백틱·굵게·마크다운 이스케이프 백슬래시를 벗긴다
+export const unmark = (s) =>
+  s.split(BACKTICK).join('').split('**').join('').split(BACKSLASH).join('').trim()
+
+// 제약 칸이 순수한 백틱 열거(`a`·`b`·`c`)일 때만 허용값으로 읽는다.
+// `sha256:…` 처럼 말줄임표가 든 것은 형식 예시이지 열거가 아니다.
+export function allowedFrom(rawCell) {
+  const cell = rawCell.trim()
+  if (cell === '' || cell === '—') return null
+  if (cell.includes('…')) return null
+  const tokens = cell.split('·').map((t) => t.trim())
+  const quoted = (t) => t.length > 2 && t.startsWith(BACKTICK) && t.endsWith(BACKTICK) && !t.slice(1, -1).includes(BACKTICK)
+  if (!tokens.every(quoted)) return null
+  return tokens.map((t) => t.slice(1, -1)).map((v) => (v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1) : v))
+}
+
+// 객체 행의 키 목록. 끝에 붙은 괄호 주석은 떼어 낸다.
+export function keysFrom(constraint) {
+  return constraint.replace(/ \(.*\)$/, '').split('·').map((k) => k.trim()).filter(Boolean)
+}
+
+export function specContract(spec) {
+  const from = spec.indexOf('#### 8.3.1 최상위')
+  const to = spec.indexOf('#### 8.3.5')
+  if (from < 0 || to < 0) throw new Error('spec §8.3 구간을 찾지 못했습니다')
+
+  const rows = spec.slice(from, to).split('\n')
+    .filter((l) => l.startsWith('|'))
+    .map((l) => ({ raw: l, c: cells(l) }))
+    .filter(({ c }) => c.length === 7 && c[0] !== '필드 경로' && !/^-+$/.test(c[0]))
+    .map(({ raw, c }) => {
+      if (cells(raw).length !== 7) throw new Error('계약표 행의 열 수가 7이 아닙니다: ' + raw)
+      const type = unmark(c[1])
+      // 객체 행과 array<object> 행의 제약 칸은 키 목록이지 값 열거가 아니다.
+      const isKeyList = type.startsWith('object') || type.startsWith('array<object>')
+      return {
+        path: unmark(c[0]),
+        type,
+        required: c[2] === '예',
+        spec_constraint: unmark(c[3]),
+        allowed: isKeyList ? null : allowedFrom(c[3]),
+        validated_by: unmark(c[5]).split(' + ').map((s) => s.trim()).filter(Boolean),
+        rendered_in: [unmark(c[6])].filter(Boolean),
+      }
+    })
+
+  // keys / element_required — keys 를 먼저 채운 뒤 배열 행이 그것을 참조한다 (REQ-8.29)
+  for (const f of rows) f.keys = f.type.startsWith('object') ? keysFrom(f.spec_constraint) : null
+  const byPath = new Map(rows.map((f) => [f.path, f]))
+  for (const f of rows) {
+    f.element_required = null
+    if (!f.type.startsWith('array<object>')) continue
+    if (f.spec_constraint.includes('§8.3.5')) continue // evidence 는 판별 규칙으로 닫는다
+    const m = f.spec_constraint.match(/원소는 (.+?) 행/)
+    if (!m) throw new Error(f.path + ': array<object> 행에 "원소는 … 행" 이 없습니다')
+    const el = byPath.get(m[1].trim())
+    if (!el) throw new Error(f.path + ': 원소 행을 찾지 못했습니다 — ' + m[1])
+    f.element_required = el.keys
+  }
+
+  // §8.3.5 evidence 판별 표
+  const eFrom = spec.indexOf('#### 8.3.5')
+  const eTo = spec.indexOf('### 8.4 HTML')
+  const evidence_types = {}
+  for (const line of spec.slice(eFrom, eTo).split('\n')) {
+    if (!line.startsWith('|')) continue
+    const c = cells(line)
+    if (c.length !== 3 || c[0] === '`type`' || /^-+$/.test(c[0])) continue
+    evidence_types[unmark(c[0])] = c[1].split('·').map((t) => unmark(t)).filter(Boolean)
+  }
+
+  return { fields: rows, evidence_types }
+}
