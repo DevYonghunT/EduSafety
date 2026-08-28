@@ -959,6 +959,22 @@ body {
   color: var(--accent);
 }
 
+.guide-proof {
+  margin-top: 4px;
+}
+
+.guide-proof span,
+.guide-proof strong {
+  display: block;
+}
+
+.guide-proof strong {
+  margin-top: 4px;
+  color: var(--accent-strong);
+  font-size: 17px;
+  font-weight: 850;
+}
+
 .compare-arrow {
   display: flex;
   flex-direction: column;
