@@ -9,7 +9,7 @@ export const rules = [
     severity: "critical", stacks: "all", scanMinified: true, maskSecret: true, secretValue: true,
     title: "Google API 키가 코드에 노출됨",
     pattern: /AIza[0-9A-Za-z\-_]{35}/g,
-    excludeLine: /apiKey\s*[:=]/,
+    excludeLine: /apiKey\s*:/,
   },
   {
     id: "openai-key", item: "R-secrets", subcheck: "key-pattern-match",
@@ -81,7 +81,7 @@ export const rules = [
     id: "innerhtml-dynamic", item: "S-injection", subcheck: "innerhtml-eval-variable-injection",
     severity: "warning", stacks: "all",
     title: "innerHTML에 변수·입력값을 넣고 있음",
-    pattern: /\.innerHTML\s*[+]?=\s*(?:[^;\n]*(?:\$\{|\+\s*[A-Za-z_$])|[A-Za-z_$][\w$.]*\s*;)/g,
+    pattern: /\.innerHTML\s*[+]?=\s*(?:[^;\n]*(?:\$\{|\+\s*[A-Za-z_$])|[A-Za-z_$][\w$.]*\s*(?:;|$))/gm,
     excludeLine: /(?:sanitize|purify|escape|clean\w*)\s*\(|DOMPurify/i,
   },
   {
@@ -178,7 +178,7 @@ export const rules = [
     id: "target-blank", item: "S-https", subcheck: "http-resource-endpoint",
     severity: "info", stacks: "all",
     title: "target=\"_blank\" 링크에 rel=\"noopener\" 누락",
-    pattern: /target\s*=\s*["']_blank["'](?![^>]*rel\s*=)/gi,
+    pattern: /<a\b(?=[^>]*target\s*=\s*["']_blank["'])(?![^>]*rel\s*=\s*["'][^"']*(?:noopener|noreferrer))[^>]*>/gi,
   },
   {
     id: "cors-wildcard", item: "R-server-guard", subcheck: "cors-wildcard",
@@ -280,24 +280,42 @@ export const projectRules = [
     title: 'RLS를 켜지 않은 테이블이 있음',
     // create table 로 만든 테이블 중 enable row level security 가 없는 것만 보고한다.
     // (줄 단위로 create table 을 잡으면 RLS 를 켠 정상 프로젝트에서도 매번 오탐한다)
+    //
+    // 리뷰 지적: 줄 단위로만 보면 여러 줄에 걸친 문장을 놓쳐 정상 프로젝트에 critical 오탐이 난다.
+    //   alter table public.students
+    //     enable row level security;
+    // 그래서 -- 주석을 지우고(줄 수는 보존해 줄 번호를 지킨다) 세미콜론 단위 문장으로 나눈 뒤
+    // 공백을 정규화해 본다. "public"."students" 같은 따옴표 식별자도 함께 처리한다.
     check(files) {
-      const created = new Map() // 테이블명 → {file, line}
+      const CREATE = /create\s+table\s+(?:if\s+not\s+exists\s+)?((?:"[^"]+"|[a-z0-9_]+)(?:\.(?:"[^"]+"|[a-z0-9_]+))?)/i
+      const RLS = /alter\s+table\s+((?:"[^"]+"|[a-z0-9_]+)(?:\.(?:"[^"]+"|[a-z0-9_]+))?)\s+enable\s+row\s+level\s+security/i
+      const bare = (name) => name.replace(/"/g, '').split('.').pop()
+      const created = new Map() // 테이블명(끝마디) → {file, line, name}
       const enabled = new Set()
+
       for (const f of files) {
         if (!/\.sql$/i.test(f.path)) continue
-        const lines = f.text.split('\n')
-        for (let i = 0; i < lines.length; i++) {
-          const create = /create\s+table\s+(?:if\s+not\s+exists\s+)?["']?([a-z0-9_]+(?:\.[a-z0-9_]+)?)["']?/i.exec(lines[i])
-          if (create && !created.has(create[1])) created.set(create[1], { file: f.path, line: i + 1 })
-          const rls = /alter\s+table\s+["']?([a-z0-9_]+(?:\.[a-z0-9_]+)?)["']?\s+enable\s+row\s+level\s+security/i.exec(lines[i])
-          if (rls) enabled.add(rls[1])
+        const cleaned = f.text.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+        let offset = 0
+        for (const stmt of cleaned.split(';')) {
+          const flat = stmt.replace(/\s+/g, ' ').trim()
+          // 문장 앞의 개행·들여쓰기를 건너뛴 위치로 줄 번호를 센다.
+          // 그러지 않으면 앞 문장의 세미콜론 다음 개행 때문에 한 줄 앞으로 밀린다.
+          const lead = stmt.length - stmt.replace(/^\s+/, '').length
+          const line = cleaned.slice(0, offset + lead).split('\n').length
+          const create = CREATE.exec(flat)
+          if (create && !created.has(bare(create[1]))) {
+            created.set(bare(create[1]), { file: f.path, line, name: create[1].replace(/"/g, '') })
+          }
+          const rls = RLS.exec(flat)
+          if (rls) enabled.add(bare(rls[1]))
+          offset += stmt.length + 1
         }
       }
-      const bare = (name) => name.includes('.') ? name.split('.').pop() : name
-      const enabledBare = new Set([...enabled].map(bare))
+
       return [...created.entries()]
-        .filter(([name]) => !enabledBare.has(bare(name)))
-        .map(([name, at]) => ({ file: at.file, line: at.line, snippet: `${name} 테이블에 enable row level security 가 없습니다` }))
+        .filter(([key]) => !enabled.has(key))
+        .map(([, at]) => ({ file: at.file, line: at.line, snippet: `${at.name} 테이블에 enable row level security 가 없습니다` }))
     },
   },
   {

@@ -47,6 +47,33 @@ const VALUE_STOP = /[\s'"`,;)\]}]/
 
 // 규칙별로 순차 치환하지 않는다. 앞 규칙이 만든 **** 가 뒤 규칙의 매치를 가려 놓치기 때문에,
 // 원본에서 모든 매치 구간을 먼저 모으고 값 끝까지 넓힌 뒤 겹치는 구간을 합쳐 한 번에 치환한다.
+// 매치 뒤에 이어지는 값의 끝을 찾는다.
+// ① 매치에 바로 붙은 연속 문자 (VITE_API_SECRET=sk-live-…)
+// ② 공백을 사이에 둔 대입값 (VITE_API_SECRET = "…" · { NEXT_PUBLIC_AI_TOKEN: "…" })
+//    — ① 만으로는 등호 앞 공백에서 멈춰 값이 그대로 남는다(리뷰 발견 1, node 로 실측).
+function endOfValue(text, from) {
+  // ① 은 대입 기호에서도 멈춘다. 여기서 `:` 를 삼켜 버리면 ② 가 대입을 알아보지 못해
+  //    { NEXT_PUBLIC_AI_TOKEN: "…" } 형태의 값이 그대로 남는다.
+  let end = from
+  while (end < text.length && !VALUE_STOP.test(text[end]) && text[end] !== '=' && text[end] !== ':') end += 1
+
+  let probe = end
+  while (probe < text.length && /\s/.test(text[probe])) probe += 1
+  if (probe >= text.length || (text[probe] !== '=' && text[probe] !== ':')) return end
+
+  probe += 1
+  while (probe < text.length && /\s/.test(text[probe])) probe += 1
+  const quote = text[probe]
+  if (quote === '"' || quote === "'" || quote === '`') {
+    probe += 1
+    while (probe < text.length && text[probe] !== quote) probe += 1
+    if (probe < text.length) probe += 1 // 닫는 따옴표까지 포함
+    return probe
+  }
+  while (probe < text.length && !VALUE_STOP.test(text[probe])) probe += 1
+  return probe
+}
+
 export function maskSecrets(text) {
   const spans = []
   for (const rule of MASK_PATTERNS) {
@@ -55,9 +82,7 @@ export function maskSecrets(text) {
     let m
     while ((m = re.exec(text)) !== null) {
       if (m[0] === '') { re.lastIndex += 1; continue }
-      let end = m.index + m[0].length
-      while (end < text.length && !VALUE_STOP.test(text[end])) end += 1
-      spans.push([m.index, end])
+      spans.push([m.index, endOfValue(text, m.index + m[0].length)])
     }
   }
   if (spans.length === 0) return text
@@ -100,7 +125,7 @@ const isIncludedName = (name) => {
 
 // 0단계 스택 감지. 아무 신호도 없으면 빈 배열을 돌려준다 —
 // 빈 폴더를 ["html"] 로 단정하면 미지원 프로젝트가 지원 스택으로 오인된다 (REQ-9.3).
-export function detectStacks(root, scannedPaths = []) {
+export function detectStacks(root, files = []) {
   const stacks = new Set()
   const there = (p) => existsSync(join(root, p))
   let pkg = null
@@ -112,8 +137,12 @@ export function detectStacks(root, scannedPaths = []) {
   if (has('vite')) stacks.add('vite-react')
   if (has('react') && !has('vite') && !has('next')) stacks.add('vite-react')
   if (there('firebase.json') || there('firestore.rules') || there('database.rules.json')) stacks.add('firebase')
+  // 리뷰 발견 3 — 설정 파일 없이 SDK 만 쓰는 앱이 흔하고, 바로 그 경우가
+  // "Firebase 를 쓰는데 보안 규칙 파일이 없다"를 알려야 하는 대표 사례다.
+  // 파일 존재만 보면 no-rules-file·firebase-no-appcheck 가 도달 불가능해진다.
+  if (has('firebase') || files.some((f) => /initializeApp\s*\(/.test(f.text))) stacks.add('firebase')
   if (there('supabase') || has('@supabase/supabase-js')) stacks.add('supabase')
-  if (scannedPaths.some((p) => /\.html?$/i.test(p))) stacks.add('html')
+  if (files.some((f) => /\.html?$/i.test(f.path))) stacks.add('html')
   return [...stacks]
 }
 
@@ -196,7 +225,7 @@ export function scanProject(root) {
   const absRoot = resolve(root)
   const { files, skipped } = walk(absRoot)
   const allPaths = [...files.map((f) => f.path), ...skipped.map((s) => s.path)]
-  const stacks = detectStacks(absRoot, files.map((f) => f.path))
+  const stacks = detectStacks(absRoot, files)
 
   // REQ-9.3 스택 필터 — 패턴 규칙과 프로젝트 규칙 모두에 적용한다
   const inStack = (r) => r.stacks === 'all' || r.stacks.some((s) => stacks.includes(s))

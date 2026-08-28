@@ -229,7 +229,10 @@ describe('maskSecrets (REQ-9.5)', () => {
   it('이름을 매치하는 규칙이어도 같은 줄의 값이 남지 않는다', () => {
     const out = maskSecrets("const jumin = '990101-1234567'")
     expect(out).not.toContain('990101-1234567')
-    expect(out).toContain('jumin****')
+    expect(out).not.toContain('990101')
+    // 변수명은 남아 교사가 위치를 알아볼 수 있고, 값은 마스킹 표식으로 대체된다
+    expect(out).toContain('jumin')
+    expect(out).toContain('****')
   })
 
   it('환경변수 이름만 매치해도 = 뒤의 값이 남지 않는다 (VITE_ · NEXT_PUBLIC_)', () => {
@@ -275,5 +278,84 @@ describe('제외 범위와 압축 파일', () => {
     const plain = scan.hits.filter((h) => h.file === 'src/plain.js').map((h) => h.rule)
     expect(plain).toContain('eval-usage')
     expect(scan.files.find((f) => f.path === 'src/plain.js').minified).toBe(false)
+  })
+})
+
+// ── Codex 리뷰 반영 회귀 ───────────────────────────────────────────────
+// 각 항목은 리뷰에서 실측으로 재현된 결함이다. 다시 생기면 여기서 빨간불이 된다.
+describe('리뷰 반영 회귀', () => {
+  const LEAK = 'abc123-super-secret-value'
+  let rroot
+  let rscan
+
+  beforeAll(() => {
+    rroot = makeProject({
+      // 발견 3 — firebase.json·firestore.rules 없이 의존성만 있다
+      'package.json': JSON.stringify({ name: 'r', dependencies: { firebase: '^10.0.0', '@supabase/supabase-js': '^2.0.0' } }),
+      'src/a.js': [
+        'const apiKey = "' + GOOGLE_KEY + '"',
+        'const cfg = { NEXT_PUBLIC_AI_TOKEN: "' + LEAK + '" }',
+        'el.innerHTML = userInput',
+      ].join('\n'),
+      'index.html': [
+        '<a rel="noopener" target="_blank">ok</a>',
+        '<a target="_blank" rel="nofollow">bad</a>',
+      ].join('\n'),
+      'supabase/schema.sql': [
+        'create table public.students (',
+        '  id uuid primary key',
+        ');',
+        '',
+        'alter table public.students',
+        '  enable row level security;',
+      ].join('\n'),
+    })
+    rscan = runScan(rroot)
+  })
+
+  afterAll(() => {
+    if (rroot) {
+      rmSync(rroot, { recursive: true, force: true })
+      rmSync(rroot + '-scan.json', { force: true })
+    }
+  })
+
+  it('발견 1 — 공백·콜론 대입값도 마스킹된다', () => {
+    const leaked = rscan.hits.filter((h) => h.snippet.includes(LEAK))
+    expect(leaked.map((h) => `${h.rule} @ ${h.file}:${h.line}`)).toEqual([])
+  })
+
+  it('발견 2 — apiKey = "AIza…" 를 다시 잡는다', () => {
+    const hit = rscan.hits.find((h) => h.rule === 'google-api-key' && h.file === 'src/a.js')
+    expect(hit, 'apiKey 대입 형태의 Google 키를 놓쳤습니다').toBeTruthy()
+    expect(hit.snippet).not.toContain(GOOGLE_KEY)
+  })
+
+  it('발견 3 — 설정 파일 없이 의존성만 있어도 firebase 스택을 감지한다', () => {
+    expect(rscan.stacks_detected).toContain('firebase')
+    expect(rscan.rules_run).toContain('no-rules-file')
+    expect(rscan.rules_run).toContain('firebase-no-appcheck')
+  })
+
+  it('발견 3 — initializeApp( 호출만 있어도 firebase 스택을 감지한다', () => {
+    const p = makeProject({ 'src/fb.js': "import { initializeApp } from 'firebase/app'\nconst app = initializeApp({})\n" })
+    const s = runScan(p)
+    expect(s.stacks_detected).toContain('firebase')
+    rmSync(p, { recursive: true, force: true })
+    rmSync(p + '-scan.json', { force: true })
+  })
+
+  it('발견 7 — 세미콜론 없는 innerHTML 대입을 잡는다', () => {
+    const hit = rscan.hits.find((h) => h.rule === 'innerhtml-dynamic' && h.file === 'src/a.js')
+    expect(hit, 'el.innerHTML = userInput 을 놓쳤습니다').toBeTruthy()
+  })
+
+  it('발견 8 — 여러 줄 alter 와 따옴표 식별자를 오탐하지 않는다', () => {
+    expect(rscan.hits.filter((h) => h.rule === 'supabase-rls-missing')).toEqual([])
+  })
+
+  it('발견 9 — rel 의 위치와 값을 순서 무관하게 본다', () => {
+    const lines = rscan.hits.filter((h) => h.rule === 'target-blank').map((h) => h.line)
+    expect(lines, 'rel="noopener" 가 앞에 있는 태그는 잡으면 안 되고, rel="nofollow" 는 잡아야 한다').toEqual([2])
   })
 })

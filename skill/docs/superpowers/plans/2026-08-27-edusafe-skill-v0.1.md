@@ -565,7 +565,7 @@ git -C $REPO commit -m "feat: 항목 정본 items.json 37개 + spec §6 동기�
 > `[REQ-9.2]` 모든 규칙의 `item`·`subcheck` 는 §6 에 실재하는 항목 id·하위 점검 id 를 가리켜야 한다.
 > `[REQ-9.3]` **스택 필터**: 0단계에서 감지한 스택에 포함되지 않는 규칙은 실행하지 않는다. `stacks: "all"` 인 규칙만 스택과 무관하게 실행한다. 감지된 스택이 없으면 `stacks: "all"` 규칙만 실행한다. 스택을 무시하고 전 규칙을 돌리면 무관한 프로젝트에서 오탐이 난다.
 > `[REQ-9.4]` `scan.json` 의 `rules_run` 에 이번 실행에서 **실제로 돌린 규칙 id 목록**을 기록한다. 부재 증명 항목의 `negative_scan` 근거는 이 목록을 인용한다.
-> `[REQ-9.5]` hit 인용은 저장 전에 마스킹한다(REQ-7.11). 마스킹 대상은 그 hit 을 만든 규칙의 매치만이 아니라 **인용 안에 나타난 `maskSecret`·`secretValue` 규칙의 모든 매치**이며, 스택 필터와 무관하게 마스킹 규칙 전부를 적용한다. `rrn-field`·`nextpublic-secret`·`vite-env-secret` 처럼 값이 아니라 이름을 매치하는 규칙이 있어서, hit 을 만든 규칙의 매치만 가리면 같은 줄의 주민등록번호·키가 그대로 남는다. 마스킹한 매치에 이어지는 값도 함께 가린다 — 매치 직후부터 공백·따옴표·쉼표·세미콜론·닫는 괄호를 만날 때까지의 연속 문자를 값으로 보고 함께 마스킹한다. 패턴이 이름만 매치하거나(`VITE_…=`) 값의 앞부분만 매치해도(JWT 의 첫 점까지) 뒤에 남는 원문을 없애기 위한 것이다.
+> `[REQ-9.5]` hit 인용은 저장 전에 마스킹한다(REQ-7.11). 마스킹 대상은 그 hit 을 만든 규칙의 매치만이 아니라 **인용 안에 나타난 `maskSecret`·`secretValue` 규칙의 모든 매치**이며, 스택 필터와 무관하게 마스킹 규칙 전부를 적용한다. `rrn-field`·`nextpublic-secret`·`vite-env-secret` 처럼 값이 아니라 이름을 매치하는 규칙이 있어서, hit 을 만든 규칙의 매치만 가리면 같은 줄의 주민등록번호·키가 그대로 남는다. 마스킹한 매치에 이어지는 값도 함께 가린다 — 매치 직후의 연속 문자(공백·따옴표·쉼표·세미콜론·닫는 괄호, 그리고 대입 기호 `=`·`:` 에서 멈춘다)를 값으로 보고, 그 뒤에 공백을 사이에 두고 `=` 나 `:` 가 오면 그 대입값(따옴표로 묶였으면 닫는 따옴표까지)도 함께 마스킹한다. 패턴이 이름만 매치하거나(`VITE_API_SECRET = "…"` · `{ NEXT_PUBLIC_AI_TOKEN: "…" }`) 값의 앞부분만 매치해도(JWT 의 첫 점까지) 뒤에 남는 원문을 없애기 위한 것이다.
 > `[REQ-9.6]` `scanMinified` 플래그가 없는 규칙은 압축된 파일에서 실행하지 않는다. 압축 파일 여부는 `scan.json` 의 파일 목록에 기록한다.
 > `[REQ-9.7]` 규칙의 `severity` 는 규칙의 심각도이지 항목의 판정이 아니다. 항목 판정은 §7 이 정한다.
 > `[REQ-9.8]` 스캔에서 건너뛴 파일마다 **서로 구분되는 사유 문자열**을 기록한다(`too-large`·`binary`·`symlink`·`excluded-dir`·`unsupported-extension`). 여러 사유를 같은 문자열로 뭉뚱그리면 커버리지 미달의 원인을 알 수 없다.
@@ -690,7 +690,7 @@ export const rules = [
     severity: "critical", stacks: "all", scanMinified: true, maskSecret: true, secretValue: true,
     title: "Google API 키가 코드에 노출됨",
     pattern: /AIza[0-9A-Za-z\-_]{35}/g,
-    excludeLine: /apiKey\s*[:=]/,
+    excludeLine: /apiKey\s*:/,
   },
   {
     id: "openai-key", item: "R-secrets", subcheck: "key-pattern-match",
@@ -762,7 +762,7 @@ export const rules = [
     id: "innerhtml-dynamic", item: "S-injection", subcheck: "innerhtml-eval-variable-injection",
     severity: "warning", stacks: "all",
     title: "innerHTML에 변수·입력값을 넣고 있음",
-    pattern: /\.innerHTML\s*[+]?=\s*(?:[^;\n]*(?:\$\{|\+\s*[A-Za-z_$])|[A-Za-z_$][\w$.]*\s*;)/g,
+    pattern: /\.innerHTML\s*[+]?=\s*(?:[^;\n]*(?:\$\{|\+\s*[A-Za-z_$])|[A-Za-z_$][\w$.]*\s*(?:;|$))/gm,
     excludeLine: /(?:sanitize|purify|escape|clean\w*)\s*\(|DOMPurify/i,
   },
   {
@@ -859,7 +859,7 @@ export const rules = [
     id: "target-blank", item: "S-https", subcheck: "http-resource-endpoint",
     severity: "info", stacks: "all",
     title: "target=\"_blank\" 링크에 rel=\"noopener\" 누락",
-    pattern: /target\s*=\s*["']_blank["'](?![^>]*rel\s*=)/gi,
+    pattern: /<a\b(?=[^>]*target\s*=\s*["']_blank["'])(?![^>]*rel\s*=\s*["'][^"']*(?:noopener|noreferrer))[^>]*>/gi,
   },
   {
     id: "cors-wildcard", item: "R-server-guard", subcheck: "cors-wildcard",
@@ -955,8 +955,12 @@ export const rules = [
 
 정규식 몇 개는 의도가 겉으로 드러나지 않는다. 그대로 옮기되 다음을 알고 있는다:
 
-- `google-api-key` 의 `excludeLine: /apiKey\s*[:=]/` — Firebase 웹 설정의 `apiKey`(공개돼도 되는 값)는 `firebase-config` 규칙이 따로 안내하므로 여기서 제외한다.
+- `google-api-key` 의 `excludeLine: /apiKey\s*:/` — Firebase 웹 설정의 `apiKey`(공개돼도 되는 값)는 `firebase-config` 규칙이 따로 안내하므로 여기서 제외한다. **콜론 형태만** 제외한다: 리뷰에서 `const apiKey = "AIza…"` 가 `[:=]` 때문에 버려지는데 `firebase-config` 는 콜론을 요구해 잡지 못한다는 것이 실측으로 드러났다 — 어느 규칙도 보고하지 않는 완전 미탐이었다.
 - `innerhtml-dynamic` 의 `excludeLine` — `sanitize`·`DOMPurify` 등을 거친 줄은 제외한다.
+- `innerhtml-dynamic` 의 두 번째 대안이 `(?:;|$)` 이고 플래그가 `gm` 인 이유 — 세미콜론 없이 끝나는 `el.innerHTML = userInput` 을 놓치던 것을 리뷰에서 실측으로 잡았다. 안전한 리터럴 대입(`el.innerHTML = ''`)은 식별자로 시작하지 않아 여전히 걸리지 않는다.
+- `target-blank` 가 `<a …>` 태그 전체를 잡는 이유 — 이전의 `target=…(?![^>]*rel\s*=)` 는 `rel` 이 `target` **앞**에 있으면 오탐하고, `rel="nofollow"` 처럼 값이 `noopener` 가 아니어도 미탐했다(둘 다 실측). 이제 속성 순서와 무관하게 보고 `rel` 값에 `noopener`·`noreferrer` 가 있는지까지 확인한다.
+- `innerhtml-dynamic` 의 두 번째 대안이 `(?:;|$)` 이고 플래그가 `gm` 인 이유 — 세미콜론 없이 끝나는 `el.innerHTML = userInput` 을 놓치던 것을 리뷰에서 실측으로 잡았다. 안전한 리터럴 대입(`el.innerHTML = ''`)은 식별자로 시작하지 않아 여전히 걸리지 않는다.
+- `target-blank` 가 `<a …>` 태그 전체를 잡는 이유 — 이전의 `target=…(?![^>]*rel\s*=)` 는 `rel` 이 `target` **앞**에 있으면 오탐하고, `rel="nofollow"` 처럼 값이 `noopener` 가 아니어도 미탐했다(둘 다 실측). 이제 속성 순서와 무관하게 보고 `rel` 값에 `noopener`·`noreferrer` 가 있는지까지 확인한다.
 - `console-sensitive` 의 `user(?![a-zA-Z0-9])` — `fileName`·`userCount`·`isUserLoggedIn` 같은 과탐을 막는 단어 경계다. 경계를 빼면 오탐이 쏟아진다. `name`·`student` 계열도 `user.name`·`studentName`·`학생 이름` 같은 "사람 이름" 문맥으로만 좁혀져 있다.
 - `admin-data-columns` 는 선행 탐색(lookahead) 조합이다. `이름|성명|name` 과 (`학번` 또는 `학년`+`반`+`번호`)와 연락처 열이 **한 줄에 모두** 있을 때만 hit 한다. 변형 표기를 놓치지 않으려고 이렇게 짰다.
 
@@ -973,24 +977,42 @@ export const projectRules = [
     title: 'RLS를 켜지 않은 테이블이 있음',
     // create table 로 만든 테이블 중 enable row level security 가 없는 것만 보고한다.
     // (줄 단위로 create table 을 잡으면 RLS 를 켠 정상 프로젝트에서도 매번 오탐한다)
+    //
+    // 리뷰 지적: 줄 단위로만 보면 여러 줄에 걸친 문장을 놓쳐 정상 프로젝트에 critical 오탐이 난다.
+    //   alter table public.students
+    //     enable row level security;
+    // 그래서 -- 주석을 지우고(줄 수는 보존해 줄 번호를 지킨다) 세미콜론 단위 문장으로 나눈 뒤
+    // 공백을 정규화해 본다. "public"."students" 같은 따옴표 식별자도 함께 처리한다.
     check(files) {
-      const created = new Map() // 테이블명 → {file, line}
+      const CREATE = /create\s+table\s+(?:if\s+not\s+exists\s+)?((?:"[^"]+"|[a-z0-9_]+)(?:\.(?:"[^"]+"|[a-z0-9_]+))?)/i
+      const RLS = /alter\s+table\s+((?:"[^"]+"|[a-z0-9_]+)(?:\.(?:"[^"]+"|[a-z0-9_]+))?)\s+enable\s+row\s+level\s+security/i
+      const bare = (name) => name.replace(/"/g, '').split('.').pop()
+      const created = new Map() // 테이블명(끝마디) → {file, line, name}
       const enabled = new Set()
+
       for (const f of files) {
         if (!/\.sql$/i.test(f.path)) continue
-        const lines = f.text.split('\n')
-        for (let i = 0; i < lines.length; i++) {
-          const create = /create\s+table\s+(?:if\s+not\s+exists\s+)?["']?([a-z0-9_]+(?:\.[a-z0-9_]+)?)["']?/i.exec(lines[i])
-          if (create && !created.has(create[1])) created.set(create[1], { file: f.path, line: i + 1 })
-          const rls = /alter\s+table\s+["']?([a-z0-9_]+(?:\.[a-z0-9_]+)?)["']?\s+enable\s+row\s+level\s+security/i.exec(lines[i])
-          if (rls) enabled.add(rls[1])
+        const cleaned = f.text.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+        let offset = 0
+        for (const stmt of cleaned.split(';')) {
+          const flat = stmt.replace(/\s+/g, ' ').trim()
+          // 문장 앞의 개행·들여쓰기를 건너뛴 위치로 줄 번호를 센다.
+          // 그러지 않으면 앞 문장의 세미콜론 다음 개행 때문에 한 줄 앞으로 밀린다.
+          const lead = stmt.length - stmt.replace(/^\s+/, '').length
+          const line = cleaned.slice(0, offset + lead).split('\n').length
+          const create = CREATE.exec(flat)
+          if (create && !created.has(bare(create[1]))) {
+            created.set(bare(create[1]), { file: f.path, line, name: create[1].replace(/"/g, '') })
+          }
+          const rls = RLS.exec(flat)
+          if (rls) enabled.add(bare(rls[1]))
+          offset += stmt.length + 1
         }
       }
-      const bare = (name) => name.includes('.') ? name.split('.').pop() : name
-      const enabledBare = new Set([...enabled].map(bare))
+
       return [...created.entries()]
-        .filter(([name]) => !enabledBare.has(bare(name)))
-        .map(([name, at]) => ({ file: at.file, line: at.line, snippet: `${name} 테이블에 enable row level security 가 없습니다` }))
+        .filter(([key]) => !enabled.has(key))
+        .map(([, at]) => ({ file: at.file, line: at.line, snippet: `${at.name} 테이블에 enable row level security 가 없습니다` }))
     },
   },
   {
@@ -1077,7 +1099,9 @@ CLI: `node edusafe/scripts/scan.mjs <projectRoot> [outPath]`. 기본 `outPath` �
 
 **스택 감지**
 
-`detectStacks(root)` 는 `package.json` 의 의존성과 파일 존재로 판정한다: `next` → `nextjs`, `vite` → `vite-react`, `react`(vite·next 없음) → `vite-react`, `firebase.json`·`firestore.rules`·`database.rules.json` → `firebase`, `supabase/` 디렉터리·`@supabase/supabase-js` → `supabase`, `.html` 파일 존재 → `html`.
+`detectStacks(root, files)` 는 `package.json` 의 의존성·소스 내용·파일 존재로 판정한다: `next` → `nextjs`, `vite` → `vite-react`, `react`(vite·next 없음) → `vite-react`, `firebase.json`·`firestore.rules`·`database.rules.json` → `firebase`, **`firebase` 의존성 또는 소스의 `initializeApp(` 호출 → `firebase`**, `supabase/` 디렉터리·`@supabase/supabase-js` → `supabase`, `.html` 파일 존재 → `html`.
+
+설정 파일 없이 SDK 만 쓰는 앱이 흔하다. 파일 존재만 신호로 삼으면 그런 프로젝트에서 `firebase` 스택이 감지되지 않아 `no-rules-file`·`firebase-no-appcheck` 가 **도달 불가능**해진다 — 정작 "규칙 파일이 없다"를 알려야 하는 대표 사례가 검사에서 빠진다(리뷰 지적).
 
 **아무 신호도 없으면 빈 배열 `[]` 을 돌려준다.** 이때는 `stacks: "all"` 규칙만 실행된다(REQ-9.3). 빈 폴더를 `["html"]` 로 단정하면 미지원 프로젝트가 지원 스택으로 오인된다.
 
@@ -1095,13 +1119,15 @@ const activeProject = projectRules.filter(inStack)
 - `excludeLine` 이 그 줄에 매치되면 hit 로 세지 않는다.
 - 프로젝트 규칙은 파일 순회가 끝난 뒤 `check(files, allPaths)` 를 한 번씩 부르고, 반환된 항목마다 hit 을 만든다.
 - hit 마다 `documentation` 을 기록한다(REQ-7.14). 문서 파일 = 확장자가 `.md`·`.txt` 이거나 경로에 `docs/`·`.claude/`·`.agents/` 가 포함된 것.
-- `snippet` 은 저장 전에 마스킹한다(REQ-9.5·REQ-7.11). hit 이 난 줄 전체에 `maskSecret: true` **또는** `secretValue: true` 인 **모든 규칙의 패턴을 다시 적용**해 매치되는 부분을 각각 **앞 6자 + `****`** 로 바꾸되 **매치에 이어지는 값 끝까지** 함께 가리고(공백·따옴표·쉼표·세미콜론·닫는 괄호에서 멈춘다), 그 다음 매치 주변 200자까지만 남긴다. 줄 전체를 그대로 저장하지 않는다. 마스킹은 판정이 아니라 유출 방지이므로 스택 필터를 적용하지 않는다.
+- `snippet` 은 저장 전에 마스킹한다(REQ-9.5·REQ-7.11). hit 이 난 줄 전체에 `maskSecret: true` **또는** `secretValue: true` 인 **모든 규칙의 패턴을 다시 적용**해 매치되는 부분을 각각 **앞 6자 + `****`** 로 바꾸되 **매치에 이어지는 값 끝까지** 함께 가리고(공백·따옴표·쉼표·세미콜론·닫는 괄호에서 멈추며, 공백 뒤에 `=`·`:` 가 오면 그 대입값까지 이어서 가린다), 그 다음 매치 주변 200자까지만 남긴다. 줄 전체를 그대로 저장하지 않는다. 마스킹은 판정이 아니라 유출 방지이므로 스택 필터를 적용하지 않는다.
 
   hit 을 만든 규칙 하나만 마스킹하면 부족하다. `rrn-field` 는 변수명 `jumin` 을, `nextpublic-secret`·`vite-env-secret` 는 환경변수 **이름**을 매치하므로, 그 매치만 가리면 같은 줄의 주민등록번호·키가 `scan.json` 에 그대로 남는다 — `const jumin**** = '990101-1234567'` (node 로 실측).
 
   값 꼬리까지 가리는 이유: 패턴이 **이름만** 매치하거나(`VITE_API_SECRET=sk-live-…`) 값의 **앞부분만** 매치해도(`supabase-service-role` 의 `eyJ…` 는 JWT 의 첫 점에서 멈춘다) 뒤에 원문이 남는다. `.env` 는 스캔 대상 확장자라(REQ-5.7) 실제 교사 프로젝트에서 그대로 발생한다(node 로 실측).
 
   구현은 규칙별 순차 치환이 아니다. **원본 문자열에서 모든 마스킹 규칙의 매치 구간을 먼저 모으고, 각 구간을 값 끝까지 넓힌 뒤, 겹치는 구간을 합쳐 한 번에 치환한다.** 순차로 치환하면 앞 규칙이 만든 `****` 가 뒤 규칙의 매치를 가려 놓친다.
+
+  값 끝을 "연속 문자"로만 정의하면 부족하다는 것이 리뷰에서 드러났다. `VITE_API_SECRET = "abc…"` 처럼 등호 앞뒤에 공백이 있으면 이름 직후 공백에서 멈춰 값이 그대로 남고, `{ NEXT_PUBLIC_AI_TOKEN: "abc…" }` 도 마찬가지였다(node 로 실측). 그래서 연속 문자 확장 뒤에 **공백 → `=`·`:` → 공백 → 값** 형태를 한 번 더 따라간다. 값이 따옴표로 묶였으면 닫는 따옴표까지 포함한다.
 
   마스킹 여부를 규칙마다 손으로 확인하지 않는다. 한 곳에서 `const mustMask = (r) => Boolean(r.maskSecret || r.secretValue)` 로 판정하고 모든 경로가 그 함수를 부른다. 이 조합을 놓치면 `supabase-service-role`·`private-key-block`·`hardcoded-password` 같은 규칙이 **시크릿 원문을 `scan.json` 에 그대로 남긴다.**
 

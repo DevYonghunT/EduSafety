@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { readSpec, readPlan, specStepTable, specRuleIds, planTasks } from './helpers/spec-parse.mjs'
+import { readSpec, readPlan, specStepTable, specRuleIds, planTasks, cellsExact } from './helpers/spec-parse.mjs'
 
 const spec = readSpec()
 const plan = readPlan()
 
 // 드라이브 문자 절대경로. 뒤에 실제 경로 문자가 와야 매치된다 —
 // REQ-0.7 이 예시로 쓴 `C:\…`(말줄임표)는 걸리지 않는다.
-const DRIVE_PATH = /\b[A-Za-z]:[\/][A-Za-z0-9._-]/g
+const DRIVE_PATH = /\b[A-Za-z]:[\\/][A-Za-z0-9._-]/g
 
 describe('문서 위생', () => {
   it('⑩ 두 문서에 드라이브 문자 절대경로가 없다', () => {
@@ -44,5 +44,31 @@ describe('문서 위생', () => {
 
     const noImpl = ids.filter((id) => !/\bpattern:|\bcheck\(/.test(blockOf(id)))
     expect(noImpl, `정규식도 판정 함수도 없는 규칙: ${noImpl.join(', ')}`).toEqual([])
+  })
+})
+
+// 리뷰 발견 6 — 계획서 원문은 [\/] 라 역슬래시 경로도 잡아야 한다.
+// 전사 과정에서 한 겹 벗겨져 [\/] 가 되면 Windows 절대경로를 놓친다.
+describe('⑩ 보강 — 역슬래시 경로', () => {
+  const BS = String.fromCharCode(92)
+  it('역슬래시 절대경로를 잡는다', () => {
+    expect(('C:' + BS + 'dev' + BS + 'EduSafety').match(DRIVE_PATH)).not.toBeNull()
+  })
+  it('슬래시 절대경로도 잡는다', () => {
+    expect('D:/work/app'.match(DRIVE_PATH)).not.toBeNull()
+  })
+  it('URL 과 말줄임표 예시는 잡지 않는다', () => {
+    expect('https://example.com/a'.match(DRIVE_PATH)).toBeNull()
+    expect(('`C:' + BS + '…`').match(DRIVE_PATH)).toBeNull()
+  })
+})
+
+// 리뷰 발견 4 — 셀 안 파이프로 열 수가 어긋난 행을 조용히 버리지 않는다.
+describe('표 파서 엄격성', () => {
+  it('예상 열 수가 아니면 예외를 던진다', () => {
+    expect(() => cellsExact('| `a` | b|c | scanner | all |', 4, '테스트')).toThrow(/열 수가 4/)
+  })
+  it('정상 행은 그대로 돌려준다', () => {
+    expect(cellsExact('| `a` | b | scanner | all |', 4, '테스트')).toEqual(['`a`', 'b', 'scanner', 'all'])
   })
 })
