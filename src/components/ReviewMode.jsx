@@ -373,7 +373,7 @@ export default function ReviewMode() {
             repoMeta={repoMeta} track={track} protectionLevel={protectionLevel}
             appSummary={aiClassify?.appSummary} summary={summary}
             judgments={judgments} overrides={overrides} humanInputs={humanInputs}
-            coverage={aiMeta?.coverage}
+            coverage={aiMeta?.coverage} gate={gate}
           />
           <div className="btn-row no-print">
             <button className="btn-secondary" onClick={() => setStep(3)}>← 판정으로 돌아가기</button>

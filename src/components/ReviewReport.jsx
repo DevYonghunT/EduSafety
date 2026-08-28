@@ -1,8 +1,10 @@
 // 심사 보고서 — 점수 없음: 종합판정 3값 + 카테고리별 상태 프로필 + 행동 중심 요약.
 // 모든 인용은 텍스트 노드로만 렌더한다 (원칙 6 — HTML 실행 금지).
+import { useState } from 'react'
 import { RUBRIC_VERSION, TRACKS, CATEGORIES, AUTHORITY_LABELS } from '../data/rubric.js'
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
+import { buildSupplementRequest } from '../lib/supplementRequest.js'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -21,14 +23,39 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, track, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage }) {
+export default function ReviewReport({ repoMeta, track, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+  const [supplement, setSupplement] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  const copySupplement = async () => {
+    const req = buildSupplementRequest({ repoMeta, summary, judgments, overrides, humanInputs, gate })
+    setSupplement(req.text)
+    try {
+      await navigator.clipboard.writeText(req.text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // 클립보드 권한이 없으면 아래 텍스트를 직접 복사하도록 보여주기만 한다
+    }
+  }
 
   return (
     <div className="report">
       <div className="report-actions no-print">
+        {summary.actions.confirm > 0 && (
+          <button className="btn-secondary" onClick={copySupplement}>
+            {copied ? '✅ 복사됨' : `📋 보완 요청서 복사 (${summary.actions.confirm}건)`}
+          </button>
+        )}
         <button className="btn-primary" onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
       </div>
+      {supplement && (
+        <details className="supplement no-print" open>
+          <summary>보완 요청서 미리보기 (제작 교사에게 전달)</summary>
+          <textarea readOnly value={supplement} rows={12} />
+        </details>
+      )}
 
       <header className="report-head">
         <h2>🛡️ 에듀 세이프 심사 보고서</h2>
