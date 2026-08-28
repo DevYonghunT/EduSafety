@@ -72,6 +72,8 @@ export default function ReviewMode() {
       const fingerprint = await computeFingerprint(read)
       const name = (fileList[0].webkitRelativePath || '제출 폴더').split('/')[0]
       const meta = { source: 'folder', name, fingerprint, skippedCount, skippedPaths, scannableSkipped }
+      setBusy(`규칙 스캔 중… (파일 ${read.length}개)`)
+      await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
       setFiles(read)
       setScan(scanFiles(read))
@@ -91,7 +93,9 @@ export default function ReviewMode() {
       setBusy('저장소 불러오는 중…')
       const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
-      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped }
+      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped, treeTruncated: result.treeTruncated }
+      setBusy(`규칙 스캔 중… (파일 ${result.files.length}개)`)
+      await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
       setFiles(result.files)
       setScan(scanFiles(result.files))
@@ -244,6 +248,12 @@ export default function ReviewMode() {
                 return (
                   <div className="scan-box">
                     <strong>읽지 않은 파일 {repoMeta.skippedPaths.length}개 — 코드가 아니거나 상한 초과</strong>
+                    {repoMeta.treeTruncated && (
+                      <p className="gate-warn">
+                        🚨 <strong>GitHub이 저장소 파일 목록 자체를 잘라서 반환했습니다 (초대형 저장소).</strong>
+                        {' '}목록에 없는 파일은 심사 대상에서 아예 빠졌을 수 있으니, 폴더 업로드로 다시 제출받는 것을 권합니다.
+                      </p>
+                    )}
                     {(repoMeta.scannableSkipped || 0) > 0 && (
                       <p className="gate-warn">
                         🚨 <strong>검사 가능한 파일 {repoMeta.scannableSkipped}개가 수집 상한에 걸려 읽히지 못했습니다 — 심사 범위가 불완전합니다.</strong>

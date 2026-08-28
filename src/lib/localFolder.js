@@ -2,7 +2,9 @@
 // 심사 고정은 커밋 SHA 대신 파일 경로+내용 전체의 SHA-256 콘텐츠 지문으로 한다 (원칙 5).
 import { isScannablePath, MAX_FILE_SIZE, loadPriority } from './scanner.js'
 
-const MAX_FILES = 1500
+// 파일 수 상한은 병리적 케이스 방어용이고, 실질 한도는 총 용량 예산이다 —
+// 3만 파일급 저장소도 스캔 가능분(대부분 node_modules 제외 후)은 예산 안에서 전부 읽는다.
+const MAX_FILES = 5000
 const MAX_TOTAL_BYTES = 40 * 1024 * 1024
 
 export function filterFolderFiles(fileList, maxFiles = MAX_FILES, maxBytes = MAX_TOTAL_BYTES) {
