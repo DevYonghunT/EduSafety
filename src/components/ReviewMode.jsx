@@ -41,7 +41,6 @@ export default function ReviewMode() {
   const [filter, setFilter] = useState('')
   const [savedRound, setSavedRound] = useState(null)
   const [noticeCopied, setNoticeCopied] = useState(false)
-  const [certification, setCertification] = useState({ phase: 'idle' })
 
   const copyTeacherNotice = async () => {
     try {
@@ -73,7 +72,6 @@ export default function ReviewMode() {
       const fingerprint = await computeFingerprint(read)
       const name = (fileList[0].webkitRelativePath || '제출 폴더').split('/')[0]
       const meta = { source: 'folder', name, fingerprint, skippedCount, skippedPaths, scannableSkipped }
-      setCertification({ phase: 'idle' })
       setBusy(`규칙 스캔 중… (파일 ${read.length}개)`)
       await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
@@ -96,7 +94,6 @@ export default function ReviewMode() {
       const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
       const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped, treeTruncated: result.treeTruncated }
-      setCertification({ phase: 'idle' })
       setBusy(`규칙 스캔 중… (파일 ${result.files.length}개)`)
       await new Promise((r) => setTimeout(r, 30))
       setRepoMeta(meta)
@@ -161,7 +158,7 @@ export default function ReviewMode() {
     setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
     setFeatures({}); setAiSuggest(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
-    setSavedRound(null); setCertification({ phase: 'idle' }); setError('')
+    setSavedRound(null); setError('')
   }
 
   const counts = useMemo(() => {
@@ -504,7 +501,6 @@ export default function ReviewMode() {
             appSummary={aiSuggest?.appSummary} summary={summary}
             judgments={judgments} overrides={overrides} humanInputs={humanInputs}
             coverage={aiMeta?.coverage} gate={gate} model={model} aiUsed={aiRan}
-            certification={certification} onCertificationChange={setCertification}
           />
           <div className="btn-row no-print">
             <button className="btn-primary" disabled={!!savedRound} onClick={() => {

@@ -1,76 +1,79 @@
-const BADGE_STATUS_LABELS = {
-  VALID: '유효',
-  STALE: '현재 HEAD 변경',
-  UNVERIFIED: '현재 상태 확인 불가',
-  EXPIRED: '만료',
-  REVOKED: '취소',
+import { RUBRIC_VERSION } from '../data/rubric.js'
+
+const MARK_STATES = {
+  pass_candidate: {
+    className: 'certification-issued',
+    symbol: '✓',
+    label: '필수 요건 통과',
+    summary: (actions) => `권장 수정 ${actions.shouldFix}건 · 사람 확인 ${actions.confirm}건`,
+  },
+  hold: {
+    className: 'certification-attention',
+    symbol: '!',
+    label: '판정 보류',
+    summary: (actions) => `사람 확인 ${actions.confirm}건 · 확인 완료 전 통과로 보지 않음`,
+  },
+  fail_candidate: {
+    className: 'certification-invalid',
+    symbol: '×',
+    label: '필수 요건 미충족',
+    summary: (actions) => `반드시 수정 ${actions.mustFix}건 · 수정 후 재심사 필요`,
+  },
 }
 
-const COMMIT_SHA = /^[0-9a-f]{40}$/i
-
-function repositoryUrl(repoMeta) {
-  if (!repoMeta?.owner || !repoMeta?.repo) return null
-  return `https://github.com/${repoMeta.owner}/${repoMeta.repo}`
+function fixedPoint(repoMeta) {
+  if (repoMeta?.commitSha) return `커밋 ${repoMeta.commitSha.slice(0, 12)}`
+  if (repoMeta?.fingerprint) return `콘텐츠 지문 ${repoMeta.fingerprint.slice(0, 12)}`
+  return '고정 지점 정보 없음'
 }
 
-export function certificationSubject(repoMeta) {
-  const githubUrl = repositoryUrl(repoMeta)
-  if (!githubUrl || !COMMIT_SHA.test(repoMeta?.commitSha || '')) return null
+function targetName(repoMeta) {
+  if (repoMeta?.owner && repoMeta?.repo) return `${repoMeta.owner}/${repoMeta.repo}`
+  return repoMeta?.name || '제출물'
+}
+
+export function reportStatusMark(repoMeta, summary) {
+  const state = MARK_STATES[summary?.status] || MARK_STATES.hold
+  const actions = {
+    mustFix: Number(summary?.actions?.mustFix) || 0,
+    shouldFix: Number(summary?.actions?.shouldFix) || 0,
+    confirm: Number(summary?.actions?.confirm) || 0,
+  }
   return {
-    repositoryUrl: githubUrl,
-    commitSha: repoMeta.commitSha.toLowerCase(),
-    subjectKey: `${githubUrl}\0${repoMeta.commitSha.toLowerCase()}`,
+    ...state,
+    detail: state.summary(actions),
+    target: targetName(repoMeta),
+    fixedPoint: fixedPoint(repoMeta),
   }
 }
 
-export function printableCertification(repoMeta, certification) {
-  const subject = certificationSubject(repoMeta)
-  if (!subject || certification?.subjectKey !== subject.subjectKey) return null
-  if (certification.phase !== 'issued' || certification.response?.outcome !== 'ISSUED') return null
-  if (certification.response.badge?.status === 'INVALID') return null
-  return certification.response
-}
-
-export default function CertificationMark({ repoMeta, certification }) {
-  const response = printableCertification(repoMeta, certification)
-  if (!response) return null
-
-  const badge = response.badge
-  const statusLabel = BADGE_STATUS_LABELS[badge.status] || badge.status
+export default function CertificationMark({ repoMeta, summary }) {
+  const mark = reportStatusMark(repoMeta, summary)
 
   return (
-    <section className="certification-mark certification-issued print-only" aria-label="보고서 인증마크">
+    <section
+      className={`certification-mark ${mark.className} print-only`}
+      aria-labelledby="report-status-mark-title"
+    >
       <div className="certification-mark-head">
         <div>
-          <h3>인증마크</h3>
-          <p className="certification-kind">EAS Offchain v2 기반 가스리스 서명 인증마크</p>
+          <h3 id="report-status-mark-title">에듀 세이프 심사 상태마크</h3>
+          <p className="certification-kind">루브릭 {RUBRIC_VERSION} · 보고서 출력본 판정 요약</p>
         </div>
-        <span className="certification-state">{statusLabel}</span>
+        <span className="certification-state">{mark.label}</span>
       </div>
-      <div className="certification-result">
-        <a
-          className="certification-showcase"
-          href={response.verificationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="인증마크 공개 검증 페이지 열기"
-        >
-          <img
-            src={response.svgUrl}
-            alt={`EduSafety 인증마크, 상태 ${statusLabel}, 커밋 ${badge.commitSha.slice(0, 7)}`}
-            width="560"
-            height="172"
-          />
-        </a>
-        <div className="certification-proof-summary">
-          <strong>이 보고서 출력 시점에 확인된 인증마크입니다.</strong>
-          <p>커밋 <code>{badge.commitSha.slice(0, 7)}</code> · {badge.policy.name} v{badge.policy.policyVersion}</p>
-          {badge.status !== 'VALID' && <p className="certification-status-note">{badge.reason}</p>}
-          <a href={response.verificationUrl} target="_blank" rel="noopener noreferrer">공개 검증 보기</a>
+
+      <div className="report-mark-body">
+        <span className="report-mark-symbol" aria-hidden="true">{mark.symbol}</span>
+        <div className="report-mark-copy">
+          <strong>{mark.label}</strong>
+          <p>{mark.detail}</p>
+          <p className="report-mark-subject"><span>{mark.target}</span> · <code>{mark.fixedPoint}</code></p>
         </div>
       </div>
+
       <p className="certification-limit">
-        특정 Git commit을 서버의 고정 심사 기준으로 정적 분석한 결과입니다. 블록체인에 기록되지 않으며 실제 배포 서비스 전체를 보증하지 않습니다.
+        이 표시는 고정된 제출물에 대한 본 심사 보고서의 판정 요약이며, 별도로 발급되거나 검증되는 증명서가 아닙니다.
       </p>
     </section>
   )

@@ -1,12 +1,11 @@
 // 심사 보고서 — 점수 없음: 종합판정 3값 + 카테고리별 상태 프로필 + 행동 중심 요약.
 // 모든 인용은 텍스트 노드로만 렌더한다 (원칙 6 — HTML 실행 금지).
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS, rubricItems } from '../data/rubric.js'
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest, CAUSES } from '../lib/supplementRequest.js'
-import { issueCertificationBadge, settleCertificationRequest } from '../lib/certificationBadge.js'
-import CertificationMark, { certificationSubject } from './CertificationMark.jsx'
+import CertificationMark from './CertificationMark.jsx'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -18,7 +17,6 @@ const STATE_COLORS = {
 }
 
 const STATUS_COLORS = { pass_candidate: 'var(--ok)', hold: 'var(--warn)', fail_candidate: 'var(--danger)' }
-let printRequestSequence = 0
 
 export function verdictColor(v, item) {
   if (v === 'fail') return item.type === 'required' ? STATE_COLORS.fail_required : STATE_COLORS.fail
@@ -26,68 +24,10 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed, certification, onCertificationChange = () => {} }) {
+export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const [showSupplement, setShowSupplement] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [printError, setPrintError] = useState('')
-  const [printJob, setPrintJob] = useState(null)
-  const [preparingPrint, setPreparingPrint] = useState(false)
-  const mountedRef = useRef(true)
-  const subject = certificationSubject(repoMeta)
-  const subjectKeyRef = useRef(subject?.subjectKey || null)
-  subjectKeyRef.current = subject?.subjectKey || null
-  const scopedCertification = certification?.subjectKey && certification.subjectKey !== subject?.subjectKey
-    ? { phase: 'idle' }
-    : certification || { phase: 'idle' }
-  const printBusy = preparingPrint || scopedCertification.phase === 'loading' || Boolean(printJob)
-
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!printJob || printJob.subjectKey !== subject?.subjectKey) return undefined
-    let cancelled = false
-    let queued = false
-    const finishPrint = () => {
-      if (!cancelled && mountedRef.current) setPrintJob(null)
-    }
-    const openPrintDialog = () => {
-      if (queued || cancelled) return
-      queued = true
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        if (cancelled) return
-        window.addEventListener('afterprint', finishPrint, { once: true })
-        try {
-          window.print()
-        } catch {
-          window.removeEventListener('afterprint', finishPrint)
-          finishPrint()
-          setPrintError('인쇄 창을 열지 못했습니다. 브라우저 설정을 확인해 주세요.')
-        }
-      }))
-    }
-    const image = new Image()
-    image.onload = openPrintDialog
-    image.onerror = () => {
-      if (!cancelled && mountedRef.current) {
-        setPrintJob(null)
-        setPrintError('인증마크 이미지를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
-      }
-    }
-    image.src = printJob.response.svgUrl
-    if (image.complete && image.naturalWidth > 0) openPrintDialog()
-    return () => {
-      cancelled = true
-      window.removeEventListener('afterprint', finishPrint)
-      image.onload = null
-      image.onerror = null
-    }
-  }, [printJob, subject?.subjectKey])
 
   const targetLabel = repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`
   const pinLabel = repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`
@@ -102,68 +42,6 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
       window.alert(req.text)
     }
   }
-
-  const printWithoutCertification = () => {
-    setPrintError('')
-    setPrintJob(null)
-    requestAnimationFrame(() => requestAnimationFrame(() => window.print()))
-  }
-
-  const printWithCertification = async () => {
-    setPrintError('')
-    if (!subject) {
-      window.print()
-      return
-    }
-    if (printBusy) return
-
-    const requestId = `${subject.subjectKey}:${++printRequestSequence}`
-    setPreparingPrint(true)
-    onCertificationChange({ phase: 'loading', subjectKey: subject.subjectKey, requestId })
-    try {
-      const response = await issueCertificationBadge({
-        repositoryUrl: subject.repositoryUrl,
-        commitSha: subject.commitSha,
-      })
-      if (!mountedRef.current || subjectKeyRef.current !== subject.subjectKey) return
-      const next = {
-        phase: response.outcome === 'ISSUED' ? 'issued' : 'not_issued',
-        response,
-      }
-      onCertificationChange((current) => settleCertificationRequest(
-        current,
-        { subjectKey: subject.subjectKey, requestId },
-        next,
-      ))
-      if (response.outcome === 'ISSUED' && response.badge.status !== 'INVALID') {
-        setPrintJob({ subjectKey: subject.subjectKey, response })
-      } else {
-        setPrintError(response.outcome === 'ISSUED'
-          ? '인증 proof를 유효하게 확인하지 못해 인증마크 포함 출력을 중단했습니다.'
-          : '서버의 고정 심사 기준을 통과하지 못해 인증마크를 발급하지 못했습니다.')
-      }
-    } catch (error) {
-      if (!mountedRef.current || subjectKeyRef.current !== subject.subjectKey) return
-      onCertificationChange((current) => settleCertificationRequest(
-        current,
-        { subjectKey: subject.subjectKey, requestId },
-        {
-          phase: 'error',
-          error: {
-            code: error?.code || 'CERTIFICATION_REQUEST_FAILED',
-            message: error?.message || '인증마크 발급 요청을 처리하지 못했습니다.',
-          },
-        },
-      ))
-      setPrintError(error?.message || '인증마크를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.')
-    } finally {
-      if (mountedRef.current && subjectKeyRef.current === subject.subjectKey) setPreparingPrint(false)
-    }
-  }
-
-  const certificationForPrint = printJob
-    ? { phase: 'issued', subjectKey: printJob.subjectKey, response: printJob.response }
-    : { phase: 'idle' }
 
   // ── 보완 요청서 문서 뷰 (인쇄/PDF용 — 제작 교사에게 전달하는 공식 문서) ──
   if (showSupplement) {
@@ -228,21 +106,10 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             📄 보완 요청서 ({summary.actions.confirm}건) — 보기·인쇄
           </button>
         )}
-        <button className="btn-primary" onClick={printWithCertification} disabled={printBusy}>
-          {printBusy
-            ? '인증마크 준비 중…'
-            : subject ? '🖨️ 인증마크 포함 인쇄 / PDF 저장' : '🖨️ 인쇄 / PDF 저장'}
+        <button className="btn-primary" onClick={() => window.print()}>
+          🖨️ 심사 상태마크 포함 인쇄 / PDF 저장
         </button>
       </div>
-      {printError && (
-        <div className="report-print-error no-print" role="alert">
-          <span>{printError}</span>
-          <button type="button" className="btn-secondary" onClick={printWithoutCertification}>인증마크 없이 출력</button>
-        </div>
-      )}
-      {!subject && (
-        <p className="report-print-note no-print">폴더 제출물은 exact Git commit에 고정할 수 없어 인증마크 없이 출력됩니다.</p>
-      )}
 
       <header className="report-head">
         <h2>🛡️ 에듀 세이프 심사 보고서</h2>
@@ -276,7 +143,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
 
       <CertificationMark
         repoMeta={repoMeta}
-        certification={certificationForPrint}
+        summary={summary}
       />
 
       <section>

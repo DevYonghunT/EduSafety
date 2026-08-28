@@ -1,44 +1,28 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import CertificationMark, {
-  certificationSubject,
-  printableCertification,
-} from '../src/components/CertificationMark.jsx'
+import CertificationMark, { reportStatusMark } from '../src/components/CertificationMark.jsx'
 import ReviewReport from '../src/components/ReviewReport.jsx'
 
 const COMMIT_SHA = '3ed41cb2c8329d5d47e276c3018a0c6c9f6a0878'
 const repoMeta = { owner: 'DevYonghunT', repo: 'All-Ai-Tutor', branch: 'main', commitSha: COMMIT_SHA }
-const subjectKey = `https://github.com/DevYonghunT/All-Ai-Tutor\0${COMMIT_SHA}`
-const actions = { mustFix: 0, shouldFix: 0, confirm: 0 }
 
-function issuedCertification(overrides = {}) {
+function summary(status, actions = {}) {
   return {
-    phase: 'issued',
-    subjectKey,
-    response: {
-      outcome: 'ISSUED',
-      existing: false,
-      verificationUrl: `https://edusafety.example/verify/0x${'a'.repeat(64)}`,
-      svgUrl: `https://edusafety.example/api/badges/0x${'a'.repeat(64)}.svg?variant=showcase`,
-      badge: {
-        uid: `0x${'a'.repeat(64)}`,
-        status: 'VALID',
-        commitSha: COMMIT_SHA,
-        policy: { name: 'EduSafety 고정 기준', policyVersion: 3 },
-      },
-    },
-    ...overrides,
+    status,
+    actions: { mustFix: 0, shouldFix: 0, confirm: 0, ...actions },
+    categoryStates: {},
+    items: [],
   }
 }
 
 function reportProps(overrides = {}) {
   return {
     repoMeta,
-    track: 'subject_tool',
+    features: {},
     protectionLevel: 'L0',
     appSummary: '',
-    summary: { status: 'hold', actions, categoryStates: {}, items: [] },
+    summary: summary('hold', { confirm: 15 }),
     judgments: {},
     overrides: {},
     humanInputs: {},
@@ -46,84 +30,63 @@ function reportProps(overrides = {}) {
     gate: null,
     model: '',
     aiUsed: false,
-    certification: { phase: 'idle' },
-    onCertificationChange: () => {},
     ...overrides,
   }
 }
 
-describe('보고서 출력 인증마크', () => {
-  it('exact GitHub commit을 정규화된 출력 subject로 만든다', () => {
-    expect(certificationSubject(repoMeta)).toEqual({
-      repositoryUrl: 'https://github.com/DevYonghunT/All-Ai-Tutor',
-      commitSha: COMMIT_SHA,
-      subjectKey,
-    })
-    expect(certificationSubject({ source: 'folder', fingerprint: 'a'.repeat(64) })).toBeNull()
-  })
-
-  it('발급 전에는 보고서 본문에 인증 카드나 항목별 발급 메뉴를 표시하지 않는다', () => {
+describe('보고서 출력 심사 상태마크', () => {
+  it('서버 정책 조회 없이 출력 전용 마크를 보고서에 항상 포함한다', () => {
     const html = renderToStaticMarkup(createElement(ReviewReport, reportProps()))
 
-    expect(html).toContain('인증마크 포함 인쇄 / PDF 저장')
-    expect(html).not.toContain('인증마크 발급 요청')
-    expect(html).not.toContain('class="certification-mark')
-    expect(html).not.toContain('선택 항목')
+    expect(html).toContain('심사 상태마크 포함 인쇄 / PDF 저장')
+    expect(html).toContain('certification-mark certification-attention print-only')
+    expect(html.match(/class="certification-mark /g)).toHaveLength(1)
+    expect(html).not.toContain('활성 인증 정책')
+    expect(html).not.toContain('인증마크 없이 출력')
+    expect(html).not.toContain('발급 요청')
   })
 
-  it('인쇄 시 재검증된 발급 결과는 출력 전용 영역으로 렌더한다', () => {
-    const certification = issuedCertification()
-    const html = renderToStaticMarkup(createElement(CertificationMark, { repoMeta, certification }))
+  it.each([
+    ['pass_candidate', { shouldFix: 2 }, 'certification-issued', '필수 요건 통과', '권장 수정 2건'],
+    ['hold', { confirm: 15 }, 'certification-attention', '판정 보류', '사람 확인 15건'],
+    ['fail_candidate', { mustFix: 3 }, 'certification-invalid', '필수 요건 미충족', '반드시 수정 3건'],
+  ])('%s 상태를 색상뿐 아니라 문구와 건수로 구분한다', (status, actions, className, label, detail) => {
+    const html = renderToStaticMarkup(createElement(CertificationMark, {
+      repoMeta,
+      summary: summary(status, actions),
+    }))
 
-    expect(html).toContain('certification-mark certification-issued print-only')
-    expect(html).toContain('이 보고서 출력 시점에 확인된 인증마크입니다.')
-    expect(html).toContain('EduSafety 고정 기준 v3')
-    expect(html).toContain('variant=showcase')
-    expect(html).toContain(`href="${certification.response.verificationUrl}"`)
+    expect(html).toContain(`certification-mark ${className} print-only`)
+    expect(html).toContain(label)
+    expect(html).toContain(detail)
   })
 
-  it('화면에 캐시된 과거 발급 결과는 인쇄 재검증 전까지 출력 영역에 재사용하지 않는다', () => {
-    const html = renderToStaticMarkup(createElement(ReviewReport, reportProps({
-      certification: issuedCertification(),
-    })))
-
-    expect(html).not.toContain('class="certification-mark')
-    expect(html).toContain('인증마크 포함 인쇄 / PDF 저장')
-  })
-
-  it('다른 저장소의 결과와 INVALID proof는 출력하지 않는다', () => {
-    const otherSubject = issuedCertification({
-      subjectKey: `https://github.com/other/repository\0${'f'.repeat(40)}`,
+  it('GitHub 보고서는 저장소와 고정 커밋을 표시한다', () => {
+    expect(reportStatusMark(repoMeta, summary('pass_candidate'))).toMatchObject({
+      target: 'DevYonghunT/All-Ai-Tutor',
+      fixedPoint: '커밋 3ed41cb2c832',
     })
-    expect(printableCertification(repoMeta, otherSubject)).toBeNull()
-
-    const invalid = issuedCertification({
-      response: {
-        ...issuedCertification().response,
-        badge: { ...issuedCertification().response.badge, status: 'INVALID' },
-      },
-    })
-    expect(printableCertification(repoMeta, invalid)).toBeNull()
-    expect(renderToStaticMarkup(createElement(CertificationMark, { repoMeta, certification: invalid }))).toBe('')
   })
 
-  it('폴더 제출 보고서는 인증마크 없이 출력된다는 점을 알린다', () => {
+  it('폴더 제출 보고서도 콘텐츠 지문에 고정된 상태마크를 출력한다', () => {
     const folderMeta = { source: 'folder', name: '수업 앱', fingerprint: 'a'.repeat(64) }
     const html = renderToStaticMarkup(createElement(ReviewReport, reportProps({ repoMeta: folderMeta })))
 
-    expect(html).toContain('🖨️ 인쇄 / PDF 저장')
-    expect(html).toContain('인증마크 없이 출력됩니다.')
-    expect(html).not.toContain('인증마크 포함 인쇄')
+    expect(html).toContain('심사 상태마크 포함 인쇄 / PDF 저장')
+    expect(html).toContain('수업 앱')
+    expect(html).toContain('콘텐츠 지문 aaaaaaaaaaaa')
   })
 
-  it('인증마크 한계 문구는 고정 전체 기준과 오프체인 범위를 정확히 설명한다', () => {
+  it('서버 발급·검증 증명서로 오해할 표현이나 링크를 넣지 않는다', () => {
     const html = renderToStaticMarkup(createElement(CertificationMark, {
       repoMeta,
-      certification: issuedCertification(),
+      summary: summary('hold', { confirm: 1 }),
     }))
 
-    expect(html).toContain('서버의 고정 심사 기준')
-    expect(html).toContain('블록체인에 기록되지 않으며')
-    expect(html).not.toContain('선택된 심사 항목')
+    expect(html).toContain('별도로 발급되거나 검증되는 증명서가 아닙니다.')
+    expect(html).not.toContain('EAS')
+    expect(html).not.toContain('UID')
+    expect(html).not.toContain('href=')
+    expect(html).not.toContain('전체 항목 통과')
   })
 })

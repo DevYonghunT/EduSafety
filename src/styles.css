@@ -493,29 +493,6 @@ a:focus-visible {
   margin-bottom: 14px;
 }
 
-.report-print-error,
-.report-print-note {
-  margin: -2px 0 14px;
-  color: #77500c;
-  font-size: 0.86rem;
-}
-
-.report-print-error {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.report-print-error .btn-secondary {
-  flex: 0 0 auto;
-}
-
-.report-print-note {
-  text-align: right;
-}
-
 .print-only {
   display: none !important;
 }
@@ -559,6 +536,7 @@ a:focus-visible {
   padding: 16px 20px;
   margin-bottom: 22px;
   text-align: center;
+  break-after: avoid-page;
 }
 
 .status-word {
@@ -582,7 +560,8 @@ a:focus-visible {
   border-radius: 12px;
   padding: 18px 20px;
   background: var(--paper);
-  break-inside: avoid;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .certification-mark.certification-ready,
@@ -686,42 +665,62 @@ a:focus-visible {
   color: var(--certification-danger);
 }
 
-.certification-result {
+.report-mark-body {
   display: grid;
-  grid-template-columns: minmax(280px, 1.5fr) minmax(180px, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   margin-top: 16px;
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  padding: 14px;
 }
 
-.certification-showcase {
-  display: block;
+.certification-issued .report-mark-body {
+  color: var(--certification-ok);
+}
+
+.certification-attention .report-mark-body {
+  color: var(--certification-warn);
+}
+
+.certification-invalid .report-mark-body {
+  color: var(--certification-danger);
+}
+
+.report-mark-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.report-mark-copy {
   min-width: 0;
-  border-radius: 16px;
-  line-height: 0;
 }
 
-.certification-showcase img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 16px;
+.report-mark-copy strong {
+  color: currentColor;
+  font-size: 1.05rem;
 }
 
-.certification-proof-summary p {
-  margin: 5px 0 8px;
+.report-mark-copy p {
+  margin: 4px 0 0;
   color: var(--certification-muted);
   font-size: 0.84rem;
 }
 
-.certification-proof-summary .certification-status-note {
-  color: var(--certification-warn);
+.report-mark-subject {
+  overflow-wrap: anywhere;
 }
 
-.certification-proof-summary a {
-  color: var(--primary-deep);
-  font-size: 0.86rem;
-  font-weight: 700;
+.report-mark-subject code {
+  word-break: break-all;
 }
 
 .certification-limit {
@@ -738,13 +737,10 @@ a:focus-visible {
   }
 
   .certification-mark-head,
-  .certification-result {
+  .report-mark-body {
     display: flex;
     flex-direction: column;
-  }
-
-  .certification-showcase {
-    width: 100%;
+    align-items: flex-start;
   }
 }
 
