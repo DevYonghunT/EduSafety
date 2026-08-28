@@ -173,6 +173,35 @@ body {
   margin-bottom: 17px !important;
 }
 
+.emoji-inline,
+.emoji-punch,
+.mood-trip,
+.statement-mark small,
+.compare-arrow span {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.emoji-inline {
+  width: 29px;
+  height: 29px;
+  display: inline-grid;
+  place-items: center;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 18px;
+  line-height: 1;
+  vertical-align: -0.22em;
+}
+
+.emoji-punch {
+  display: inline-block;
+  margin-left: 9px;
+  font-size: 1.12em;
+  line-height: 1;
+  vertical-align: -0.1em;
+}
+
 .slide-content {
   min-height: 0;
   flex: 1;
@@ -304,6 +333,29 @@ body {
 
 .peak-image img {
   object-fit: contain;
+}
+
+.mood-trip {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 1px 5px rgb(36 49 46 / 0.08);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.mood-trip b {
+  color: var(--muted);
+  font-family: Inter, Pretendard, sans-serif;
+  font-size: 16px;
 }
 
 /* 03 · 심의의 빈틈 */
@@ -471,6 +523,7 @@ body {
 }
 
 .statement-mark {
+  position: relative;
   width: 104px;
   height: 104px;
   display: grid;
@@ -480,6 +533,21 @@ body {
   color: #ffffff;
   font-size: 52px;
   font-weight: 900;
+}
+
+.statement-mark small {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .product-statement p {
@@ -701,6 +769,10 @@ body {
   line-height: 1.5;
 }
 
+.scope-note > span {
+  margin-right: 6px;
+}
+
 /* 08 · 차별점 */
 .compare-layout {
   display: flex;
@@ -762,11 +834,24 @@ body {
 }
 
 .compare-arrow {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   color: var(--accent);
-  font-size: 38px;
   font-weight: 850;
+}
+
+.compare-arrow span {
+  font-size: 27px;
+  line-height: 1;
+}
+
+.compare-arrow b {
+  color: var(--accent);
+  font-size: 19px;
+  line-height: 1;
 }
 
 .difference-line {
