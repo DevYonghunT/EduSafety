@@ -23,7 +23,7 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, track, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate }) {
+export default function ReviewReport({ repoMeta, track, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const [supplement, setSupplement] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -67,6 +67,11 @@ export default function ReviewReport({ repoMeta, track, protectionLevel, appSumm
             <tr><th>분류</th><td>{TRACKS[track].icon} {TRACKS[track].label}</td></tr>
             <tr><th>보호 수준</th><td>{PROTECTION_LEVELS[protectionLevel].label} — {PROTECTION_LEVELS[protectionLevel].plain}</td></tr>
             {appSummary && <tr><th>앱 요약</th><td>{appSummary}</td></tr>}
+            <tr><th>AI 분석 고지</th><td>
+              {aiUsed
+                ? `Anthropic API(${model}) 사용 — 데이터 파일 내용 미전송, 비밀키 마스킹 후 전송${coverage ? `, 검토 커버리지 ${coverage.coveragePercent}%` : ''}. AI 판정은 초안이며 근거 미확인 판정은 자동 강등됨.`
+                : 'AI 분석 미사용 — 심사자 수동 판정으로만 진행됨 (외부 전송 없음).'}
+            </td></tr>
             <tr><th>심사일</th><td>{today}</td></tr>
           </tbody>
         </table>

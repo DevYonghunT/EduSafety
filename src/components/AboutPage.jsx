@@ -1,3 +1,5 @@
+import { DATA_NOTICE_POINTS } from '../lib/dataNotice.js'
+
 const WHY = [
   { icon: '⛰️', title: '우매한 봉우리 문제', body: '바이브 코딩은 전문성 없이도 "작동하는 앱"을 즉시 만들어 줍니다. 화면이 돌아가는 순간 만든 사람은 자신이 무엇을 모르는지 모르는 지점에 서게 되고, 절벽 아래에 있는 것은 학생의 개인정보입니다.' },
   { icon: '🧒', title: '학생 데이터가 걸려 있다', body: '교사 제작 앱은 감정 기록·성적·이름 같은 민감정보를 자주 다룹니다. 만든 교사도 검증할 전문성이 없고, 검증해 줄 공적 체계도 없습니다.' },
@@ -78,6 +80,16 @@ export default function AboutPage({ onStart }) {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="about-section">
+        <h2>제출된 코드는 어떻게 처리되나 (제작 교사님께)</h2>
+        <ul className="law-list">
+          {DATA_NOTICE_POINTS.map((p) => (
+            <li key={p.title}><strong>{p.title}</strong> — {p.body}</li>
+          ))}
+        </ul>
+        <p className="hint">같은 내용이 심사 화면의 "제출 교사용 안내문"과 심사 보고서에도 표기됩니다 — 심사 도구가 스스로 개인정보 원칙을 지킵니다.</p>
       </section>
 
       <section className="about-section">

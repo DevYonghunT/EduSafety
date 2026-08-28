@@ -9,6 +9,7 @@ import { buildAiPayload } from '../lib/redact.js'
 import { classifyApp, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
 import { saveRecord, targetKey } from '../lib/ledger.js'
+import { buildTeacherNotice } from '../lib/dataNotice.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
 
 const STEPS = ['① 불러오기', '② 분류 확정', '③ 판정 확인', '④ 보고서']
@@ -47,6 +48,17 @@ export default function ReviewMode() {
   const [humanInputs, setHumanInputs] = useState({})
   const [filter, setFilter] = useState('')
   const [savedRound, setSavedRound] = useState(null)
+  const [noticeCopied, setNoticeCopied] = useState(false)
+
+  const copyTeacherNotice = async () => {
+    try {
+      await navigator.clipboard.writeText(buildTeacherNotice())
+      setNoticeCopied(true)
+      setTimeout(() => setNoticeCopied(false), 2500)
+    } catch {
+      window.alert(buildTeacherNotice())
+    }
+  }
 
   const protectionLevel = deriveProtectionLevel(features)
   const trackItems = useMemo(() => (track ? rubricItems.filter((it) => it.tracks.includes(track)) : []), [track])
@@ -202,7 +214,14 @@ export default function ReviewMode() {
                 </label>
                 <p className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음.</p>
               </div>
-              <p className="hint source-note">이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용됩니다.</p>
+              <p className="hint source-note">
+                이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용되며, 이때 코드가 Anthropic API로 전송됩니다
+                (데이터 파일 미전송·비밀키 마스킹 — 자세한 내용은 소개 페이지).
+                제작 교사에게는 제출 전에 데이터 처리 방식을 안내해 주세요:{' '}
+                <button type="button" className="btn-secondary btn-inline" onClick={copyTeacherNotice}>
+                  {noticeCopied ? '✅ 복사됨' : '📋 제출 교사용 안내문 복사'}
+                </button>
+              </p>
             </div>
           )}
           {repoMeta && scan && gate && (
@@ -413,7 +432,7 @@ export default function ReviewMode() {
             repoMeta={repoMeta} track={track} protectionLevel={protectionLevel}
             appSummary={aiClassify?.appSummary} summary={summary}
             judgments={judgments} overrides={overrides} humanInputs={humanInputs}
-            coverage={aiMeta?.coverage} gate={gate}
+            coverage={aiMeta?.coverage} gate={gate} model={model} aiUsed={aiRan}
           />
           <div className="btn-row no-print">
             <button className="btn-primary" disabled={!!savedRound} onClick={() => {
