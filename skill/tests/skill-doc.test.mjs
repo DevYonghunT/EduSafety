@@ -183,6 +183,18 @@ describe('SKILL.md 절차서', () => {
     expect(fromSpec.length, 'spec §7.6 표를 읽지 못했습니다').toBe(4)
     expect(fromSkill, 'SKILL.md 의 결정표가 spec 과 다릅니다').toEqual(fromSpec)
   })
+  // REQ-5.3 은 "이 실행이 대화형인지 스킬은 스스로 판단할 수 없다" 고 못박는다.
+  // 그러므로 절차서가 모드 판별을 전제한 분기를 지시하면 그 지시는 실행될 수 없다.
+  // 실제로 1단계에 "대화형일 때만 묻는다" 를 넣었다가 이 문제로 되돌린 적이 있다.
+  it('⑬ 절차서가 대화형 여부로 동작을 가르지 않는다 (REQ-5.3)', () => {
+    const banned = ['대화형일 때만', '대화형이면', '비대화형이면', '대화형인 경우', '비대화형인 경우']
+    for (const phrase of banned) {
+      expect(SKILL, `SKILL.md 가 모드 판별을 전제합니다: "${phrase}" — REQ-5.3 상 판별할 수 없습니다`)
+        .not.toContain(phrase)
+    }
+    // 판별할 수 없다는 사실 자체는 절차서에 남아 있어야 한다
+    expect(SKILL).toMatch(/대화형인지 스스로 판단할 수 없다/)
+  })
 })
 
 describe('README', () => {

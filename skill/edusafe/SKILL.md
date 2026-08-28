@@ -33,7 +33,7 @@ description: 교사가 만든 교육용 앱을 개인정보 보호법·안전조
 | 단계 | 하는 일 | 대기·승인 | 사람이 없을 때 | coverage 기록 |
 |---|---|---|---|---|
 | 0 준비 | 프로젝트 루트·스택·git 유무·Node 유무 감지. 남은 `.staging-*` 정리 | 없음 | 해당 없음 — 감지 결과 한 줄 보고 후 바로 1단계 | `runtime` |
-| 1 스캔 | `scripts/scan.mjs` 실행 → `scan.json` | 예외 시 있음 | **묻지 않고 `degraded` 로 강등해 계속한다.** 스킬 폴더 경로를 얻지 못한 예외 경로에서만 대화형으로 1회 묻는다 | `scanner` |
+| 1 스캔 | `scripts/scan.mjs` 실행 → `scan.json` | 없음 | 해당 없음 — 스킬 폴더 경로를 얻지 못하면 **안내만 남기고 `degraded` 로 강등해 계속한다** | `scanner` |
 | 2 히스토리 | git 로컬 ref 전체에서 키·`.env`·데이터 파일 스캔 | 없음 | 해당 없음 | `history` |
 | 3 빌드(선택) | install·build 명령을 보여주고 각각 승인 후 실행 | **있음** | **묻지 않고 건너뛴다.** 단 기존 빌드 산출물이 이미 있으면 빌드 없이 읽기 전용으로 스캔한다 | `build` |
 | 4a 프로필 | data_inventory·actors·entry·controller·db_paths·destinations 작성 | 없음 | 해당 없음 | `code` |
@@ -71,7 +71,7 @@ description: 교사가 만든 교육용 앱을 개인정보 보호법·안전조
 node <이 스킬 폴더>/scripts/scan.mjs <프로젝트 루트> <staging 폴더>/scan.json
 ```
 
-경로를 얻을 수 없으면 전역 경로를 임의로 뒤지지 않는다. **대화형일 때만** 사용자에게 설치 경로를 1회 확인받는다. 비대화형(`claude -p` 등)이면 묻지 않고 바로 넘어간다 — 여기서 응답을 기다리면 보고서가 하나도 나오지 않는다. 그래도 경로가 없으면 `coverage.runtime = "degraded"` 로 강등해 실행한다.
+경로를 얻을 수 없으면 전역 경로를 임의로 뒤지지 않는다. 설치 경로를 알려 달라는 안내를 1회 남기고, **응답을 기다리지 않고 그대로 진행한다.** `coverage.runtime = "degraded"` 로 강등해 실행한다. 이 실행이 대화형인지 판별하려 들지 않는다 — 판별할 수 없고, 여기서 응답을 기다리면 보고서가 하나도 나오지 않는다.
 
 스캔 범위는 포함 확장자 목록에 해당하는 파일이다. 제외는 `node_modules`·`dist`·`.next`·`build`·`out`·`.git`·`edusafe-report/`·2MB 초과·바이너리·symlink.
 
