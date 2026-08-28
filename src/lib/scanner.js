@@ -58,14 +58,28 @@ export function scanFiles(files) {
 
 // 내용을 읽지 못하는 파일이라도 이름은 안다 — 학생 데이터일 수 있는 파일을 이름으로
 // 골라 심사자가 직접 열어보게 한다 (조용한 제외 금지의 파일명 층위).
+// 영문 키워드는 단어 시작 위치만 매치 — 'upgrade'/'degrade'가 'grade'로 잡히지 않게.
 const SUSPECT_EXT = /\.(xlsx?|hwpx?|docx?|db|sqlite3?|accdb|mdb)$/i
-const SUSPECT_NAME = /(학생|명단|성적|상담|연락처|주소록|출석|반배정|생기부|roster|student|grade)/i
+const SUSPECT_NAME = /(학생|명단|성적|상담|연락처|주소록|출석|반배정|생기부)|(?<![a-z])(roster|student|grade)/i
+
+export function isVendorPath(path) {
+  return SKIP_PATH.test(path)
+}
 
 export function suspectDataFiles(paths) {
   return paths.filter((p) => {
+    if (isVendorPath(p)) return false
     const name = p.split('/').pop()
     return SUSPECT_EXT.test(name) || SUSPECT_NAME.test(name)
   })
+}
+
+// 수집 상한에 걸릴 때 무엇을 먼저 읽을지 — 보안 설정 > 코드 > 문서 순.
+export function loadPriority(path) {
+  const name = path.split('/').pop()
+  if (/\.rules$|^\.env|firestore|firebase\.json|vercel\.json|supabase|package\.json/i.test(name)) return 0
+  if (/\.(md|txt)$/i.test(name)) return 2
+  return 1
 }
 
 export function countBySeverity(findings) {

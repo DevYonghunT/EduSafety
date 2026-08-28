@@ -1,9 +1,9 @@
 // GitHub 공개 저장소 로드 — 신뢰성 원칙 5: 브랜치명이 아니라 커밋 SHA에 심사를 고정한다.
 // 로드 도중 새 커밋이 푸시되어도 "이 심사는 커밋 X에 대한 것"이 성립해야 한다.
-import { isScannablePath, MAX_FILE_SIZE } from './scanner.js'
+import { isScannablePath, MAX_FILE_SIZE, loadPriority } from './scanner.js'
 
-const MAX_FILES = 200
-const MAX_TOTAL_BYTES = 8 * 1024 * 1024
+const MAX_FILES = 300
+const MAX_TOTAL_BYTES = 12 * 1024 * 1024
 const CONCURRENCY = 8
 
 export function parseGithubUrl(input) {
@@ -45,14 +45,17 @@ export async function fetchRepoFiles({ owner, repo, branch, onProgress }) {
   const tree = await ghJson(`https://api.github.com/repos/${owner}/${repo}/git/trees/${commitSha}?recursive=1`)
 
   const blobs = (tree.tree || []).filter((e) => e.type === 'blob')
-  const candidates = blobs.filter((e) => isScannablePath(e.path) && (e.size ?? 0) <= MAX_FILE_SIZE)
+  const candidates = blobs
+    .filter((e) => isScannablePath(e.path) && (e.size ?? 0) <= MAX_FILE_SIZE)
+    .sort((a, b) => loadPriority(a.path) - loadPriority(b.path) || a.path.localeCompare(b.path))
   const selected = []
   let total = 0
   for (const e of candidates) {
-    if (selected.length >= MAX_FILES || total + (e.size ?? 0) > MAX_TOTAL_BYTES) break
+    if (selected.length >= MAX_FILES || total + (e.size ?? 0) > MAX_TOTAL_BYTES) continue
     selected.push(e)
     total += e.size ?? 0
   }
+  const scannableSkipped = candidates.length - selected.length
 
   const queue = [...selected]
   const files = []
@@ -78,5 +81,5 @@ export async function fetchRepoFiles({ owner, repo, branch, onProgress }) {
   files.sort((a, b) => a.path.localeCompare(b.path))
   const selectedSet = new Set(selected.map((e) => e.path))
   const skippedPaths = blobs.filter((e) => !selectedSet.has(e.path)).map((e) => e.path)
-  return { files, branch, commitSha, skippedCount: skippedPaths.length, skippedPaths }
+  return { files, branch, commitSha, skippedCount: skippedPaths.length, skippedPaths, scannableSkipped }
 }

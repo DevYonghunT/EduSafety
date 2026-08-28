@@ -68,12 +68,23 @@ describe('규칙 스캔 (T4 완료 기준)', () => {
       'img/학생사진.png',
       'assets/logo.png',
       'fonts/Pretendard.woff2',
+      'app/StudentSignupForm.tsx',
     ]
     expect(suspectDataFiles(paths)).toEqual([
       'docs/3학년-명단.xlsx',
       'data/성적처리.hwp',
       'app.db',
       'img/학생사진.png',
+      'app/StudentSignupForm.tsx',
     ])
+  })
+
+  it('의심 감지 오탐 방지 — upgrade/degrade 부분 일치·node_modules 제외', () => {
+    expect(suspectDataFiles([
+      'node_modules/undici/lib/api/api-upgrade.js',
+      'node_modules/next/dist/client/graceful-degrade-boundary.js',
+      'lib/upgradeinsecurerequests.js',
+      'node_modules/some-lib/student-roster.xlsx',
+    ])).toEqual([])
   })
 })

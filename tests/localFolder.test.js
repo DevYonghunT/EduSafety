@@ -26,8 +26,23 @@ describe('폴더 업로드 — SHA-256 콘텐츠 지문 (여유)', () => {
       { name: 'logo.png', size: 10, webkitRelativePath: '내앱/img/logo.png' },
       { name: 'x.js', size: 10, webkitRelativePath: '내앱/node_modules/x.js' },
     ]
-    const { usable, skippedCount } = filterFolderFiles(files)
+    const { usable, skippedCount, scannableSkipped } = filterFolderFiles(files)
     expect(usable.map((u) => u.rel)).toEqual(['index.html'])
     expect(skippedCount).toBe(2)
+    expect(scannableSkipped).toBe(0)
+  })
+
+  it('수집 상한에 걸리면 보안 설정·코드를 먼저 읽고, 밀린 검사 가능 파일 수를 보고한다', () => {
+    const files = []
+    for (let i = 0; i < 601; i++) {
+      files.push({ name: `f${i}.js`, size: 10, webkitRelativePath: `앱/src/f${String(i).padStart(3, '0')}.js` })
+    }
+    files.push({ name: 'firestore.rules', size: 10, webkitRelativePath: '앱/zz/firestore.rules' })
+    files.push({ name: 'README.md', size: 10, webkitRelativePath: '앱/README.md' })
+    const { usable, scannableSkipped, skippedPaths } = filterFolderFiles(files)
+    expect(usable).toHaveLength(600)
+    expect(usable[0].rel).toBe('zz/firestore.rules')
+    expect(scannableSkipped).toBe(3)
+    expect(skippedPaths).toContain('README.md')
   })
 })
