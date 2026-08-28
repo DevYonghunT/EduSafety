@@ -2316,7 +2316,11 @@ git -C $REPO commit -m "feat: 배포 zip·sha256·manifest 빌드"
 - [ ] **Step 3: 비대화형으로 실행한다 — 출시 게이트**
 
 ```
-claude -p "/edusafe" --cwd <픽스처 경로>
+# 픽스처 폴더를 작업 디렉터리로 두고 실행한다.
+# claude 에 --cwd 플래그는 없다(2.1.216 확인) — 프로세스의 작업 디렉터리가 검사 대상이다.
+# -p 기본 출력은 끝나야 한 번에 나오므로, 멈춘 것인지 일하는 중인지 구별하려면
+# stream-json 이 필요하다. 스캔·렌더는 node 로 돌므로 Bash(node *) 를 허용해야 한다.
+claude -p "/edusafe" --output-format stream-json --verbose --allowedTools "Bash(node *)" "Bash(git *)" Read Write Glob Grep
 ```
 
 확인할 것:
