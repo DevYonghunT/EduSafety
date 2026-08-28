@@ -124,3 +124,134 @@ button {
   color: var(--muted);
   text-align: center;
 }
+
+.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid #f3c8c8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 14px 0;
+  font-size: 0.9rem;
+}
+
+.busy {
+  background: var(--primary-soft);
+  color: var(--primary-deep);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 14px 0;
+  font-size: 0.9rem;
+}
+
+.setup {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.field input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.field input:focus {
+  outline: 2px solid var(--primary);
+  border-color: transparent;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-deep);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 15px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.repo-line {
+  background: var(--primary-soft);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin: 16px 0;
+}
+
+.repo-line code {
+  background: #fff;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.83rem;
+}
+
+.scan-box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scan-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.sev {
+  display: inline-block;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 8px;
+  vertical-align: 1px;
+}

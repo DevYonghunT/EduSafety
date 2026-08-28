@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ReviewMode from './components/ReviewMode.jsx'
 
 const TABS = [
   { key: 'about', label: '🏠 소개' },
@@ -36,12 +37,7 @@ export default function App() {
             </p>
           </section>
         )}
-        {view === 'review' && (
-          <section className="panel">
-            <h1>앱 심사</h1>
-            <p className="intro">심사 흐름 구현 예정 (T5~T7)</p>
-          </section>
-        )}
+        {view === 'review' && <ReviewMode />}
         {view === 'ledger' && (
           <section className="panel">
             <h1>심사 기록</h1>
