@@ -3,404 +3,463 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/presentation/" />
     <meta
       name="description"
-      content="EduSafety의 exact commit 정적 분석, 정책 기반 판정, EAS Offchain v2 가스리스 서명과 공개 검증 구조를 소개하는 발표자료"
+      content="서울특별시교육청 교사 개발자 해커톤 도전형 발표작 ‘우매함의 봉우리’"
     />
-    <title>EduSafety — 구현 발표</title>
+    <title>우매함의 봉우리 — 교사 개발자 해커톤</title>
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reset.css" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reveal.css" />
-    <link rel="stylesheet" href="./presentation.css" />
+    <link rel="stylesheet" href="./presentation.css?v=20260829-guides" />
   </head>
   <body>
-    <main class="reveal" aria-label="EduSafety 구현 발표">
+    <main class="reveal" aria-label="우매함의 봉우리 발표자료">
       <div class="slides">
         <section class="deck-slide cover-slide" aria-labelledby="slide-1-title">
-          <div class="slide-frame cover-layout">
-            <header class="slide-topbar">
-              <span class="brand"><span class="brand-mark" aria-hidden="true">E</span>EduSafety</span>
-              <span class="slide-meta">IMPLEMENTATION OVERVIEW</span>
-            </header>
-            <div class="cover-copy">
-              <p class="eyebrow">EXACT COMMIT · VERSIONED POLICY · GASLESS</p>
-              <h1 id="slide-1-title">정적 분석 결과를,<br />검증 가능한 서명으로.</h1>
-              <p class="cover-lead">
-                특정 GitHub 커밋을 실행하지 않고 분석한 뒤,<br />고정된 정책의 판정을 다시 검증할 수 있는 증거로 남깁니다.
-              </p>
+          <div class="cover-frame">
+            <div class="cover-center">
+              <p class="cover-event">서울특별시교육청 교사 개발자 해커톤 <strong>도전형</strong></p>
+              <span class="cover-separator" aria-hidden="true"></span>
+              <h1 id="slide-1-title">우매함의 봉우리</h1>
+              <p class="cover-authors">덕수고 김용훈 <span aria-hidden="true">·</span> 명지중 이승열 <span aria-hidden="true">·</span> 증산중 서호성</p>
             </div>
-            <div class="cover-mark" aria-hidden="true">
-              <span>E</span>
-              <small>OFFCHAIN v2</small>
-            </div>
-            <footer class="slide-footer">
-              <span>Node.js · TypeScript · PostgreSQL · ethers</span>
-              <span>01</span>
-            </footer>
+            <p class="cover-start">SPACE로 발표 시작</p>
           </div>
           <aside class="notes">
-            EduSafety는 저장소 전체를 막연하게 인증하지 않습니다. 특정 커밋과 특정 정책 버전에 대한 정적 분석 결과를 서명으로 묶는 서비스입니다.
-
-            [Sources]
-            - README.md:3-5
-            - public/index.html:23-27
+            서울특별시교육청 교사 개발자 해커톤 도전형 발표를 시작합니다. 저희 발표 제목은 ‘우매함의 봉우리’입니다.
           </aside>
         </section>
 
         <section class="deck-slide" aria-labelledby="slide-2-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">01 · SUBJECT</span>
-              <span class="slide-meta">REPRODUCIBLE TARGET</span>
+              <span class="brand"><span class="brand-mark" aria-hidden="true">E</span>EduSafe</span>
+              <span class="slide-meta">02 · WHY NOW</span>
             </header>
-            <div class="slide-content split-layout exact-layout">
-              <div class="copy-column">
-                <h2 id="slide-2-title">움직이는 브랜치 대신,<br /><span class="accent-text">40자리 SHA</span></h2>
-                <p class="lead-copy">인증 대상을 다시 찾아갈 수 있는 하나의 코드 시점으로 고정합니다.</p>
-                <div class="commit-proof" aria-label="exact commit 입력 형식 예시">
-                  <span class="mono-label">repository</span>
-                  <code>github.com/owner/repository</code>
-                  <span class="mono-label">commit</span>
-                  <code>0123456789abcdef0123456789abcdef01234567</code>
-                </div>
-                <p class="support-copy">브랜치명과 짧은 SHA는 받지 않습니다.</p>
+
+            <div class="slide-content hero-news">
+              <div class="hero-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">👆</span>2026 · VIBE CODING</p>
+                <h1 id="slide-2-title">2026년은 바야흐로<br /><span class="accent-text">대 딸깍의 시대!</span></h1>
+                <p class="lead-copy">아이디어를 말하고 몇 번만 누르면, 교사도 직접 앱을 만들 수 있습니다.</p>
+                <p class="question-line">그런데 만드는 속도만큼<br />안전도 확인하고 있을까요?<span class="emoji-punch" aria-hidden="true">🫣</span></p>
               </div>
-              <figure class="screen-frame screen-crop-right">
-                <img src="./assets/product-home.jpg" alt="EduSafety 인증 요청 화면의 저장소 URL과 exact commit 입력 폼" />
-                <figcaption>현재 구현된 인증 요청 화면</figcaption>
+
+              <figure class="media-panel news-image">
+                <img
+                  src="./assets/click-era.png"
+                  alt="2026년 교육 현장의 AI 바이브 코딩 도입과 교사 앱 제작 사례를 보여 주는 뉴스 화면"
+                />
+                <figcaption>교육 현장에도 빠르게 들어온 ‘바이브 코딩’</figcaption>
               </figure>
             </div>
-            <footer class="slide-footer"><span>GitHub repository ID + canonical URL + exact commit</span><span>02</span></footer>
+
+            <footer class="slide-footer">
+              <span>SPACE 다음 장 · SHIFT + SPACE 이전</span>
+              <span>02 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            서버는 40자리 SHA를 요구하고 GitHub numeric repository ID, canonical URL, exact commit을 확인합니다. 수집이 끝난 뒤에도 같은 저장소와 커밋인지 다시 확인합니다.
+            사진을 보면 요즘 분위기를 바로 느낄 수 있습니다. 예전에는 개발 지식이 있어야 했던 일을 이제는 AI와 몇 번의 대화만으로 시작할 수 있습니다. 저희도 이 ‘딸깍의 시대’에서 출발했습니다.
 
             [Sources]
-            - src/app.ts:24-27
-            - src/github/client.ts:361-398
-            - src/github/client.ts:529-568
-            - public/presentation/assets/product-home.jpg (local capture)
+            - assets/click-era.png (사용자 제공 자료, 2026-08-29)
           </aside>
         </section>
 
         <section class="deck-slide" aria-labelledby="slide-3-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">02 · PIPELINE</span>
-              <span class="slide-meta">ONE PINNED SNAPSHOT</span>
+              <span class="section-label">03 · BLIND SPOT</span>
+              <span class="slide-meta">WORKING ≠ SAFE</span>
             </header>
-            <div class="slide-content process-layout">
-              <div class="title-row">
-                <h2 id="slide-3-title">입력부터 공개 검증까지<br />하나의 snapshot이 이어집니다</h2>
-                <p>요청 시작 시점의 ACTIVE 정책을 먼저 고정합니다.</p>
+
+            <div class="slide-content peak-layout">
+              <div class="peak-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">😎</span>작동한 순간, 자신감은 가장 빨리 올라갑니다</p>
+                <h2 id="slide-3-title">우리는 ‘우매함의 봉우리’<br />어디쯤에 있을까요?</h2>
+                <p class="lead-copy"><strong>앱이 잘 켜진다</strong>는 사실은, <strong>그 앱이 안전하다</strong>는 뜻이 아닙니다.</p>
+                <div class="risk-lines" aria-label="화면에서 드러나지 않는 위험 예시">
+                  <p><span>01</span>코드에 남은 API 키</p>
+                  <p><span>02</span>외부에 열린 데이터베이스</p>
+                  <p><span>03</span>학생 정보의 불필요한 전송</p>
+                </div>
               </div>
-              <ol class="process-rail" aria-label="인증 발급 흐름">
-                <li><span class="step-number">01</span><strong>입력</strong><small>Repository + SHA</small></li>
-                <li><span class="step-number">02</span><strong>정책 고정</strong><small>Policy snapshot</small></li>
-                <li><span class="step-number">03</span><strong>정적 분석</strong><small>Fixed evaluators</small></li>
-                <li><span class="step-number">04</span><strong>서명</strong><small>EAS Offchain v2</small></li>
-                <li><span class="step-number">05</span><strong>공개 검증</strong><small>Proof + current HEAD</small></li>
-              </ol>
-              <p class="process-result"><span>PASS</span>일 때만 UID와 인증마크가 생성됩니다.</p>
+
+              <figure class="media-panel peak-image">
+                <img
+                  src="./assets/peak-of-ignorance.webp"
+                  alt="자신감과 지식·경험의 관계를 우매함의 봉우리, 절망의 계곡, 깨달음의 오르막으로 표현한 도표"
+                />
+                <div class="mood-trip" role="img" aria-label="자신만만함에서 당황을 거쳐 배움으로 가는 과정">
+                  <span aria-hidden="true">😎</span><b aria-hidden="true">→</b><span aria-hidden="true">😨</span><b aria-hidden="true">→</b><span aria-hidden="true">🧠</span>
+                </div>
+                <figcaption>화면만으로는 ‘모르는 것을 모르는 지점’을 찾기 어렵습니다</figcaption>
+              </figure>
             </div>
-            <footer class="slide-footer"><span>정책 변경 중에도 요청의 기준은 바뀌지 않음</span><span>03</span></footer>
+
+            <footer class="slide-footer">
+              <span>작동과 안전 사이에는 확인해야 할 코드가 있습니다.</span>
+              <span>03 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            발급의 핵심은 같은 snapshot이 입력, 분석, 서명, 검증까지 이어지는 것입니다. 분석 도중 정책이 바뀌어도 이미 시작된 요청의 기준은 바뀌지 않습니다.
+            AI는 작동하는 결과를 아주 빨리 보여 줍니다. 그 순간 자신감은 커지지만, 무엇을 확인하지 않았는지는 알기 어렵습니다. 학교 앱이라면 그 보이지 않는 위험 뒤에 학생 정보가 있을 수 있습니다.
 
             [Sources]
-            - src/certification/issue-service.ts:63-145
-            - src/app.ts:292-318
+            - assets/peak-of-ignorance.webp (사용자 제공 자료, 2026-08-29)
+            - EduSafe_활동기록_README.md:17-21
           </aside>
         </section>
 
-        <section class="deck-slide inverse-slide" aria-labelledby="slide-4-title">
+        <section class="deck-slide" aria-labelledby="slide-4-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">03 · SAFETY BOUNDARY</span>
-              <span class="slide-meta">READ, NEVER RUN</span>
+              <span class="section-label">04 · SCHOOL REVIEW</span>
+              <span class="slide-meta">WHAT CAN WE ACTUALLY CHECK?</span>
             </header>
-            <div class="slide-content boundary-layout">
-              <div class="boundary-zero" aria-label="실행 횟수 0">
-                <strong>0</strong>
-                <span>repository<br />commands</span>
+
+            <div class="slide-content review-layout">
+              <div class="review-heading">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🧐</span>학습지원 소프트웨어 학교운영위원회 심의는 이미 제도 안에 있습니다</p>
+                <h2 id="slide-4-title">그런데… 정말 <span class="accent-text">‘심의’할 근거</span>가<br />충분할까요?</h2>
               </div>
-              <div class="boundary-copy">
-                <h2 id="slide-4-title">대상 저장소의 코드는<br />한 줄도 실행하지 않습니다</h2>
-                <p class="lead-copy">GitHub REST API로 tree와 blob만 읽고, 서버에 고정된 evaluator만 적용합니다.</p>
-                <p class="negative-list"><s>install</s><s>build</s><s>test</s><s>lifecycle</s></p>
+
+              <div class="review-contrast" aria-label="화면에서 보이는 정보와 코드에서 확인해야 할 정보 비교">
+                <div class="contrast-side visible-side">
+                  <span class="contrast-kicker">화면에서 보이는 것</span>
+                  <strong>“기능이 잘 됩니다”</strong>
+                  <p>로그인된다 · 저장된다 · 결과가 나온다</p>
+                </div>
+                <div class="contrast-symbol" aria-hidden="true">≠</div>
+                <div class="contrast-side hidden-side">
+                  <span class="contrast-kicker">코드에서 확인할 것</span>
+                  <strong>“학생에게 안전합니다”</strong>
+                  <p>개인정보 · 권한 · 외부 전송 · 비밀키</p>
+                </div>
               </div>
-              <dl class="limit-row" aria-label="정적 수집 한계">
-                <div><dt>500</dt><dd>최대 파일</dd></div>
-                <div><dt>256 KiB</dt><dd>파일당</dd></div>
-                <div><dt>8 MiB</dt><dd>전체 합계</dd></div>
-                <div><dt>FAIL CLOSED</dt><dd>누락·한계 도달</dd></div>
-              </dl>
+
+              <p class="review-conclusion"><span class="emoji-inline" aria-hidden="true">🔎</span>심의를 대신하는 판정이 아니라, <strong>심의할 때 볼 근거</strong>가 필요합니다.</p>
             </div>
-            <footer class="slide-footer"><span>수집 범위가 불완전하면 발급하지 않음</span><span>04</span></footer>
+
+            <footer class="slide-footer">
+              <span>근거 · 초·중등교육법 제29조의2 / 학습지원 소프트웨어 선정기준</span>
+              <span>04 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            저장소의 명령을 실행하지 않는 것이 가장 중요한 안전 경계입니다. 파일 수와 용량을 제한하고, tree truncation이나 수집 실패처럼 coverage가 불완전한 경우 이를 숨기지 않고 발급을 차단합니다.
+            초·중등교육법 제29조의2는 학교가 학습지원 소프트웨어를 교육 자료로 선정할 때 기준을 따르고 학교운영위원회 심의를 거치도록 정합니다. 문제는 화면과 자기점검표만으로 코드 안의 위험을 확인하기 어렵다는 점입니다. EduSafe는 심의를 대신하지 않고, 심의자가 참고할 근거를 만들고자 했습니다.
 
             [Sources]
-            - README.md:3-5
-            - src/github/client.ts:4-12
-            - src/github/client.ts:400-528
+            - https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&amp;lsJoLnkSeq=1032275677
+            - https://www.moe.go.kr/boardCnts/viewRenew.do?boardID=294&amp;boardSeq=105007&amp;lev=0&amp;m=020
           </aside>
         </section>
 
-        <section class="deck-slide" aria-labelledby="slide-5-title">
+        <section class="deck-slide solution-slide" aria-labelledby="slide-5-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">04 · POLICY</span>
-              <span class="slide-meta">CONFIGURABLE CRITERIA, FIXED ENGINE</span>
+              <span class="section-label">05 · OUR ANSWER</span>
+              <span class="slide-meta">EDUSAFE</span>
             </header>
-            <div class="slide-content policy-layout">
-              <div class="policy-copy">
-                <h2 id="slide-5-title">정책은 선택하고,<br />검사 방법은 고정합니다</h2>
-                <p class="lead-copy">관리자는 허용된 항목만 선택합니다. 검사 로직은 서버가 소유합니다.</p>
-                <p class="policy-state"><span>DRAFT</span><b>→</b><span>ACTIVE</span><b>→</b><span>ARCHIVED</span></p>
+
+            <div class="slide-content solution-layout">
+              <div class="solution-heading">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🛡️</span>그래서 만들었습니다</p>
+                <h2 id="slide-5-title">학교에서 바로 써 볼 수 있는<br /><span class="accent-text">보안점검 앱, EduSafety</span></h2>
+                <p class="lead-copy">만드는 중부터 배포한 뒤까지, 서로 다른 세 지점에서 위험 신호를 확인합니다.</p>
               </div>
-              <div class="criteria-list" aria-label="현재 제공되는 다섯 개 심사 항목">
-                <p><span>01</span>하드코딩된 비밀정보 없음</p>
-                <p><span>02</span>위험한 동적 코드 실행 없음</p>
-                <p><span>03</span>의존성 잠금 파일 사용</p>
-                <p><span>04</span>안전하지 않은 HTML 주입 없음</p>
-                <p><span>05</span>제한된 CORS 정책</p>
+
+              <div class="solution-rail" aria-label="EduSafety의 세 가지 점검 경로">
+                <div class="solution-step">
+                  <span class="step-index">01</span>
+                  <strong>SKILL.md</strong>
+                  <p>만드는 중<br />자가점검</p>
+                </div>
+                <div class="rail-arrow" aria-hidden="true">→</div>
+                <div class="solution-step">
+                  <span class="step-index">02</span>
+                  <strong>GitHub URL · 폴더</strong>
+                  <p>공개 레포 주소 또는<br />내 폴더로 검사</p>
+                </div>
+                <div class="rail-arrow" aria-hidden="true">→</div>
+                <div class="solution-step">
+                  <span class="step-index">03</span>
+                  <strong>HTTPS URL</strong>
+                  <p>배포 후<br />외부 노출 검사</p>
+                </div>
               </div>
-              <div class="blocker-band"><strong>7개 안전 차단 조건</strong><span>정책 선택과 무관하게 항상 잠금</span></div>
+
+              <div class="product-statement">
+                <span class="statement-mark" aria-hidden="true">E<small>🛡️</small></span>
+                <p><strong>범용 보안 경고</strong>를<br /><span>한국 학교가 판단할 질문과 근거</span>로 바꿉니다.</p>
+              </div>
             </div>
-            <footer class="slide-footer"><span>Ruleset 2026.08.1 · 서버 allowlist</span><span>05</span></footer>
+
+            <footer class="slide-footer">
+              <span>자동 판정이 아니라, 사람이 판단할 근거를 만듭니다.</span>
+              <span>05 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            관리자가 선택한 항목은 모두 필수가 됩니다. DB 항목과 컴파일된 evaluator의 ID와 버전이 맞아야 정책에 넣을 수 있고, 일곱 개 안전 차단 조건은 선택과 무관하게 항상 적용됩니다.
+            EduSafe는 세 지점을 연결합니다. 만드는 동안에는 스킬로 스스로 점검하고, 공개 전에는 프로젝트 폴더를 살펴봅니다. 배포한 뒤에는 URL로 외부에 드러난 위험 신호를 확인합니다. 공개 저장소와 로컬 폴더를 읽고, 학교 맥락의 항목으로 사람이 판단할 수 있게 만든 것이 핵심입니다.
 
             [Sources]
-            - src/certification/catalog.ts:3-71
-            - src/certification/policy-service.ts:29-60
-            - README.md:55-63
+            - src/components/ReviewMode.jsx:197-223
+            - src/App.jsx:7-11
+            - EduSafe_활동기록_README.md:17-53
           </aside>
         </section>
 
         <section class="deck-slide" aria-labelledby="slide-6-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">05 · DECISION</span>
-              <span class="slide-meta">FAIL CLOSED</span>
+              <span class="section-label">06 · DEMO 01</span>
+              <span class="slide-meta">SKILL.md</span>
             </header>
-            <div class="slide-content decision-layout">
-              <div class="decision-title">
-                <h2 id="slide-6-title">PASS가 아니면<br />서명도 없습니다</h2>
-                <p>분석 뒤, 서명 직전에도 무결성 gate를 다시 통과해야 합니다.</p>
+
+            <div class="slide-content demo-layout">
+              <div class="demo-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🪄</span>교사용 자가점검 스킬</p>
+                <h2 id="slide-6-title">SKILL.md를 넣고,<br /><span class="accent-text">한 번 더 딸깍</span></h2>
+                <p class="lead-copy">평소 쓰던 AI 코딩 도구가 정해 둔 순서로 프로젝트를 살펴봅니다.</p>
+
+                <ol class="demo-steps">
+                  <li><span>1</span><p><strong>코드를 읽고</strong><small>검사 범위와 파일을 확인</small></p></li>
+                  <li><span>2</span><p><strong>위험을 찾고</strong><small>근거와 판단 이유를 정리</small></p></li>
+                  <li><span>3</span><p><strong>고칠 일을 남깁니다</strong><small>사람이 읽는 HTML 보고서</small></p></li>
+                </ol>
+
+                <p class="demo-duration"><span aria-hidden="true">🎬</span> 직접 시연 · 1분 11초</p>
               </div>
-              <div class="decision-equation" aria-label="발급 판정식">
-                <div><strong>5 / 5</strong><span>선택 항목 PASS</span></div>
-                <b aria-hidden="true">+</b>
-                <div><strong>0 / 7</strong><span>차단 조건 triggered</span></div>
-                <b aria-hidden="true">=</b>
-                <div class="issue-result"><strong>ISSUE</strong><span>서명·UID 생성</span></div>
-              </div>
-              <p class="fail-line"><span>FAIL</span><span>ERROR</span><span>NOT_RUN</span><span>NOT_APPLICABLE</span><span>UNKNOWN</span><span>결과 누락</span><b>→ NOT_ISSUED</b></p>
+
+              <figure class="video-panel">
+                <video
+                  controls
+                  playsinline
+                  preload="metadata"
+                  poster="./assets/skill-demo-poster.jpg"
+                  aria-label="Claude Code에서 EduSafe 자가점검 스킬을 실행하는 시연 영상"
+                >
+                  <source src="./assets/skill-demo.mp4" type="video/mp4" />
+                  브라우저가 영상을 지원하지 않습니다.
+                </video>
+                <figcaption>스킬 실행 → 항목별 판단 → 확인할 질문 생성</figcaption>
+              </figure>
             </div>
-            <footer class="slide-footer"><span>criteria count · PASS · blocker · report hash 재확인</span><span>06</span></footer>
+
+            <footer class="slide-footer">
+              <span>이 결과는 인증이 아니라, 배포 전 자가점검입니다.</span>
+              <span>06 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            분석 서비스의 결과를 그대로 서명하지 않습니다. 결과 수, 모든 PASS 여부, blocker, canonical report hash를 서명 직전에 다시 확인합니다. 하나라도 어긋나면 발급하지 않습니다.
+            별도로 만든 교사용 자가점검 스킬을 직접 시연합니다. 복잡한 새 프로그램을 익히지 않아도 평소 쓰던 AI 코딩 도구에서 점검을 시작할 수 있습니다. 이 결과는 인증서가 아니라, 제작자가 배포 전에 스스로 보는 거울입니다.
 
             [Sources]
-            - src/domain/types.ts:1-10
-            - src/analysis/service.ts:130-136
-            - src/certification/issue-service.ts:92-116
+            - assets/skill-demo.mp4 (사용자 제공 시연 영상, 2026-08-29)
+            - 2026-08-27-edusafe-skill-design.md (사용자 제공 설계 문서)
           </aside>
         </section>
 
-        <section class="deck-slide signature-slide" aria-labelledby="slide-7-title">
+        <section class="deck-slide" aria-labelledby="slide-7-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">06 · ATTESTATION</span>
-              <span class="slide-meta">EAS OFFCHAIN v2</span>
+              <span class="section-label">07 · DEMO 02</span>
+              <span class="slide-meta">REPO OR FOLDER</span>
             </header>
-            <div class="slide-content signature-layout">
-              <div class="signature-heading">
-                <h2 id="slide-7-title">검증 가능한 증거에<br />가스비는 들지 않습니다</h2>
-                <p>결과와 정책을 canonical payload로 묶고 EIP-712로 서명합니다.</p>
+
+            <div class="slide-content local-layout">
+              <div class="local-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🐙</span>공개 저장소와 로컬 폴더, 두 가지 입력 경로</p>
+                <h2 id="slide-7-title">GitHub 공개 레포 주소<br />또는 내 컴퓨터의 폴더로<br /><span class="accent-text">로컬 검사</span></h2>
+                <p class="lead-copy">공개 저장소는 URL을 사이트에 입력하고, 공개하지 않은 프로젝트는 내 컴퓨터 폴더를 선택합니다.</p>
+
+                <div class="local-flow" aria-label="GitHub 공개 저장소 주소 또는 로컬 폴더 검사 흐름">
+                  <p><span>URL 입력 · 폴더 선택</span><b>→</b><span>정적 규칙</span><b>→</b><span>근거·보완</span></p>
+                  <small>공개 저장소는 커밋 SHA, 폴더는 콘텐츠 지문에 검사를 고정합니다.</small>
+                </div>
+
+                <p class="live-option"><span>🧪 LIVE</span> 원하시면 이 단계도 현장에서 직접 구동합니다.</p>
               </div>
-              <div class="hash-stack" aria-label="서명 입력 hash">
-                <p><span>reportHash</span><code>0x8d7a…ae31</code></p>
-                <p><span>policyHash</span><code>0x2c51…9f08</code></p>
-                <p><span>criteriaHash</span><code>0xb493…47cc</code></p>
-              </div>
-              <div class="signature-path" aria-label="서명 생성 흐름">
-                <span>canonical JSON</span><b>→</b><span>ABI string</span><b>→</b><span>EIP-712 Attest</span><b>→</b><span>UID + signature</span>
-              </div>
-              <dl class="zero-cost-row">
-                <div><dt>0</dt><dd>RPC</dd></div>
-                <div><dt>0</dt><dd>트랜잭션</dd></div>
-                <div><dt>0</dt><dd>테스트 ETH</dd></div>
-                <div><dt>0</dt><dd>가스비</dd></div>
-              </dl>
+
+              <figure class="media-panel report-image">
+                <img src="./assets/local-report.jpg" alt="EduSafety GitHub 공개 저장소 또는 로컬 프로젝트 검사 결과 HTML 보고서 화면" />
+                <figcaption>항목별 판정 · 근거 · 수정 방법</figcaption>
+              </figure>
             </div>
-            <footer class="slide-footer"><span>32-byte random salt · provider 없는 Wallet.signTypedData</span><span>07</span></footer>
+
+            <footer class="slide-footer">
+              <span>최대 200개 파일 · 파일당 2 MiB · SHA-256 콘텐츠 지문</span>
+              <span>07 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            매 발급마다 32바이트 salt를 만들고 EAS Offchain v2 규칙으로 UID를 계산합니다. chain ID와 verifying contract는 서명 domain의 일부일 뿐, 이 인증이 블록체인에 기록된다는 뜻은 아닙니다.
+            공개 GitHub 저장소는 주소를 사이트에 입력해 불러옵니다. 기본 브랜치의 정확한 커밋 SHA를 확인해 파일을 수집합니다. 아직 공개하지 않았거나 GitHub에 없는 프로젝트는 내 컴퓨터 폴더를 선택할 수 있습니다. 두 경로 모두 대상 앱을 실행하지 않고 정적 규칙으로 먼저 확인합니다. 선택형 AI 판정을 쓰면 마스킹된 코드가 Anthropic으로 전송될 수 있으므로, ‘절대 외부 전송 없음’이라고 표현하지는 않습니다.
 
             [Sources]
-            - src/certification/attestation.ts:98-133
-            - src/certification/attestation.ts:157-209
-            - README.md:3-5
+            - src/components/ReviewMode.jsx:98-105, 202-223
+            - src/lib/github.js:1-67
+            - src/lib/localFolder.js:5-41
+            - src/lib/scanner.js:5-10
+            - assets/local-report.jpg (사용자 제공 시연 영상에서 추출)
           </aside>
         </section>
 
         <section class="deck-slide" aria-labelledby="slide-8-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">07 · VERIFICATION</span>
-              <span class="slide-meta">REBUILD, RECOVER, COMPARE</span>
+              <span class="section-label">08 · DEMO 03</span>
+              <span class="slide-meta">PUBLIC URL</span>
             </header>
-            <div class="slide-content verification-layout">
-              <div class="verification-copy">
-                <h2 id="slide-8-title">공개 검증은 proof를<br />처음부터 다시 계산합니다</h2>
-                <ul class="check-list">
-                  <li>report · policy · criteria hash</li>
-                  <li>canonical statement · ABI data</li>
-                  <li>EIP-712 signature · attester</li>
-                  <li>EAS Offchain UID</li>
-                  <li>만료 · 취소 · 현재 기본 브랜치 HEAD</li>
-                </ul>
-              </div>
-              <div class="status-ladder" aria-label="검증 상태 우선순위">
-                <p data-tone="danger"><span>01</span><strong>INVALID</strong><small>무결성 실패</small></p>
-                <p data-tone="danger"><span>02</span><strong>REVOKED</strong><small>운영 취소</small></p>
-                <p data-tone="warning"><span>03</span><strong>EXPIRED</strong><small>유효기간 종료</small></p>
-                <p data-tone="warning"><span>04</span><strong>UNVERIFIED</strong><small>현재 상태 확인 불가</small></p>
-                <p data-tone="warning"><span>05</span><strong>STALE</strong><small>현재 HEAD 변경</small></p>
-                <p data-tone="success"><span>06</span><strong>VALID</strong><small>proof와 HEAD 일치</small></p>
+
+            <div class="slide-content url-layout">
+              <figure class="video-panel url-video">
+                <video
+                  controls
+                  playsinline
+                  preload="metadata"
+                  poster="./assets/url-scan-poster.jpg"
+                  aria-label="EduSafe에 sendev.kr 주소를 입력해 URL 보안 점검을 실행하는 시연 영상"
+                >
+                  <source src="./assets/url-scan.mp4" type="video/mp4" />
+                  브라우저가 영상을 지원하지 않습니다.
+                </video>
+                <figcaption>sendev.kr 녹화 시연 · 56초</figcaption>
+              </figure>
+
+              <div class="url-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🔎</span>배포까지 끝났다면</p>
+                <h2 id="slide-8-title">마지막은<br /><span class="accent-text">URL 검사</span></h2>
+                <p class="url-chip">https://sendev.kr/</p>
+                <div class="url-checks" aria-label="URL 검사의 확인 범위">
+                  <p><span>01</span><strong>TLS와 HTTP 상태</strong></p>
+                  <p><span>02</span><strong>보안 응답 헤더</strong></p>
+                  <p><span>03</span><strong>첫 HTML의 공개 신호</strong></p>
+                </div>
+                <p class="scope-note"><span aria-hidden="true">🛑</span>침투 테스트가 아닙니다. 소유했거나 허가받은 HTTPS 주소만 저영향 방식으로 확인합니다.</p>
               </div>
             </div>
-            <footer class="slide-footer"><span>저장된 상태 문자열이 아니라 snapshot과 proof를 재구성</span><span>08</span></footer>
+
+            <footer class="slide-footer">
+              <span>JavaScript 실행 없음 · 로그인 없음 · 크롤링 없음 · 공격 없음</span>
+              <span>08 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            STALE은 서명 무결성은 맞지만 현재 HEAD가 달라졌다는 뜻입니다. UNVERIFIED는 GitHub를 일시적으로 확인하지 못한 상태이므로 INVALID와 구분합니다.
+            마지막은 이미 배포한 서비스의 URL 검사입니다. TLS와 보안 헤더, 첫 HTML에서 공개된 위험 신호를 살펴봅니다. 침투 테스트가 아니며, 반드시 본인이 소유했거나 점검 허가를 받은 주소에만 사용합니다. 영상에는 실제로 접근 가능한 sendev.kr을 입력한 녹화 시연이 담겨 있습니다.
 
             [Sources]
-            - src/certification/verification-service.ts:53-170
-            - src/certification/attestation.ts:224-295
+            - src/security-scan/service.ts:163-173, 615-767
+            - src/components/SecurityAuditPage.jsx:681-691
+            - assets/url-scan.mp4 (사용자 제공 시연 영상, 2026-08-29)
           </aside>
         </section>
 
         <section class="deck-slide" aria-labelledby="slide-9-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">08 · RELIABILITY</span>
-              <span class="slide-meta">DATABASE-ENFORCED INVARIANTS</span>
+              <span class="section-label">09 · DIFFERENCE</span>
+              <span class="slide-meta">GENERAL AI → SCHOOL CONTEXT</span>
             </header>
-            <div class="slide-content reliability-layout">
-              <div class="reliability-heading">
-                <h2 id="slide-9-title">운영 이력은<br />덮어쓰지 않습니다</h2>
-                <p>애플리케이션뿐 아니라 PostgreSQL도 불변성과 중복 방지를 강제합니다.</p>
+
+            <div class="slide-content compare-layout">
+              <div class="compare-heading">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🤖</span>“Claude에 그냥 물어봐도 되는 것 아닌가요?”</p>
+                <h2 id="slide-9-title">맞습니다. 차이는 AI가 아니라<br /><span class="accent-text">AI에게 건네는 학교의 기준</span>입니다.</h2>
               </div>
-              <dl class="reliability-metrics">
-                <div><dt>1</dt><dd>동시에 ACTIVE인 정책</dd></div>
-                <div><dt>1</dt><dd>동일 subject + policy 발급</dd></div>
-                <div><dt>4</dt><dd>동시 분석 상한</dd></div>
-                <div><dt>6/min</dt><dd>IP별 공개 발급 요청</dd></div>
-              </dl>
-              <div class="immutable-line">
-                <span>정책 snapshot</span><span>분석</span><span>proof</span><span>취소</span><span>감사 로그</span><strong>IMMUTABLE</strong>
+
+              <div class="versus-grid" aria-label="범용 Claude 질문과 EduSafe를 결합한 Claude 점검 비교">
+                <div class="compare-side generic-side">
+                  <span class="compare-label">CLAUDE</span>
+                  <strong>“이 코드, 안전해?”</strong>
+                  <ul>
+                    <li>폭넓은 보안 조언</li>
+                    <li>질문마다 달라지는 범위</li>
+                    <li>학교 맥락은 사용자가 설명</li>
+                  </ul>
+                </div>
+                <div class="compare-arrow" role="img" aria-label="Claude와 학교 기준을 더합니다">
+                  <span aria-hidden="true">🤖</span><b aria-hidden="true">+</b><span aria-hidden="true">🏫</span>
+                </div>
+                <div class="compare-side guided-side">
+                  <span class="compare-label">CLAUDE + EDUSAFE</span>
+                  <strong>“학교 앱 기준으로 살펴봐”</strong>
+                  <ul>
+                    <li>고정 규칙으로 위험 신호 수집</li>
+                    <li>개인정보·학생 안전·수업 맥락</li>
+                    <li>근거와 보완 사항을 학교 언어로</li>
+                    <li class="guide-proof">
+                      <span>교육부 「학습지원 소프트웨어 선정 기준 및 가이드라인」</span>
+                      <strong>+ 그 외 공공기관 공식 문서 29건을 검사항목 설계에 반영</strong>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <p class="test-evidence"><strong>215</strong><span>테스트 통과</span><small>PostgreSQL 시나리오: 20개 요청 → 단일 행·UID</small></p>
+
+              <p class="difference-line">검사를 하는 순간, 교사도 <strong>한국 학교가 알아야 할 법과 기준</strong>을 함께 만나게 됩니다.</p>
             </div>
-            <footer class="slide-footer"><span>새 정책은 새 hash로 발급 · 과거 proof는 보존</span><span>09</span></footer>
+
+            <footer class="slide-footer">
+              <span>법률 판단이나 공식 인증이 아니라, 심의를 위한 참고 근거입니다.</span>
+              <span>09 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            동일한 repository ID, commit, policy hash, ruleset 조합은 한 번만 저장됩니다. 새 정책 hash라면 같은 commit에도 새 인증을 만들 수 있고 과거 proof는 그대로 보존됩니다. 이번 로컬 검증에서는 215개 테스트가 통과했고 4개가 건너뛰어졌습니다.
+            범용 AI도 보안 문제를 찾을 수 있습니다. EduSafe는 Claude와 경쟁하는 도구가 아니라, Claude를 학교의 기준에 맞게 쓰도록 돕는 장치입니다. 범용 보안 경고를 개인정보, 학생 안전, 수업 적합성처럼 학교가 실제로 묻게 되는 항목으로 이어 줍니다. 검사항목 설계에는 교육부 「학습지원 소프트웨어 선정 기준 및 가이드라인」을 포함해 공공기관 공식 원문 30건을 검토해 반영했습니다. 슬라이드의 ‘그 외 29건’은 이 교육부 문서 한 건을 제외한 수입니다. 다만 이 결과가 법률 준수나 안전을 자동으로 보증하지는 않습니다.
 
             [Sources]
-            - migrations/001_eas_offchain_v2_certification.sql:53-55
-            - migrations/001_eas_offchain_v2_certification.sql:124-166
-            - migrations/001_eas_offchain_v2_certification.sql:200-380
-            - tests/integration/postgres.test.ts:50-145
-            - README.md:72-77
+            - src/data/rubric.js:8-165
+            - src/lib/reviewAi.js:7-45
+            - src/components/AboutPage.jsx:25-32
+            - docs/해커톤-기획서.md:206-216
           </aside>
         </section>
 
-        <section class="deck-slide product-slide" aria-labelledby="slide-10-title">
+        <section class="deck-slide closing-slide" aria-labelledby="slide-10-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">09 · PRODUCT</span>
-              <span class="slide-meta">REQUEST → PROOF</span>
+              <span class="brand inverse-brand"><span class="brand-mark" aria-hidden="true">E</span>EduSafe</span>
+              <span class="slide-meta">10 · WHAT REMAINS</span>
             </header>
-            <div class="slide-content product-layout">
-              <div class="product-heading">
-                <h2 id="slide-10-title">신뢰 흐름은 제품 화면으로 이어집니다</h2>
-                <p>인증 요청과 공개 표시가 같은 정책·commit·서명 언어를 사용합니다.</p>
-              </div>
-              <div class="product-screens">
-                <figure>
-                  <img src="./assets/product-home.jpg" alt="EduSafety 인증 요청 랜딩 페이지" />
-                  <figcaption><strong>01 · 인증 요청</strong><span>Repository + exact commit</span></figcaption>
-                </figure>
-                <figure>
-                  <img src="./assets/product-demo.jpg" alt="EduSafety 인증마크 정적 데모 페이지" />
-                  <figcaption><strong>02 · 공개 표시</strong><span>상태 + commit + policy + signature</span></figcaption>
-                </figure>
-              </div>
-              <p class="product-footnote">관리자 화면에서는 정책 발행, 발급 이력, 취소를 운영합니다. <strong>DEMO_PASS는 정적 디자인 예시입니다.</strong></p>
-            </div>
-            <footer class="slide-footer"><span>/ · /verify/:uid · /admin/certification · /demo</span><span>10</span></footer>
-          </div>
-          <aside class="notes">
-            실제 제품은 인증 요청, 공개 검증, 관리자 정책과 발급 관리로 이어집니다. 오른쪽 DEMO_PASS는 정적 디자인 예시이므로 실제 proof 사례처럼 설명하지 않습니다.
 
-            [Sources]
-            - public/index.html:23-59
-            - public/verify.html:17-22
-            - public/admin-certification.html:18-47
-            - public/demo.html:15-20
-            - public/presentation/assets/product-home.jpg (local capture)
-            - public/presentation/assets/product-demo.jpg (local capture)
-          </aside>
-        </section>
-
-        <section class="deck-slide closing-slide" aria-labelledby="slide-11-title">
-          <div class="slide-frame">
-            <header class="slide-topbar">
-              <span class="brand"><span class="brand-mark" aria-hidden="true">E</span>EduSafety</span>
-              <span class="slide-meta">SCOPE OF TRUST</span>
-            </header>
             <div class="slide-content closing-layout">
-              <h2 id="slide-11-title">정확한 범위가<br />신뢰를 만듭니다</h2>
-              <div class="scope-columns">
-                <div>
-                  <p class="scope-label success-label">보증하는 것</p>
-                  <strong>특정 exact commit</strong>
-                  <strong>선택 정책의 정적 분석 PASS</strong>
-                  <strong>서명과 snapshot의 무결성</strong>
-                </div>
-                <div>
-                  <p class="scope-label danger-label">보증하지 않는 것</p>
-                  <span>이후 commit</span>
-                  <span>런타임 동작과 배포 환경</span>
-                  <span>운영 보안 전체</span>
-                </div>
+              <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🚧</span>솔직한 현재 위치</p>
+              <h2 id="slide-10-title">비록 블록체인 인증마크는<br /><span>달지 못했지만,</span></h2>
+              <p class="closing-lead">‘딸깍’으로 만든 앱을 배포하기 전에<br /><strong>한 번 멈춰서 확인하는 흐름</strong>은 만들었습니다.</p>
+
+              <div class="closing-rail" aria-label="현재 구현과 다음 단계">
+                <div><span>오늘 시연</span><strong>SKILL.md 자가점검</strong></div>
+                <b aria-hidden="true">→</b>
+                <div><span>오늘 시연</span><strong>로컬 · URL 점검</strong></div>
+                <b aria-hidden="true">→</b>
+                <div class="next-step"><span>다음 단계 · 🔗</span><strong>검증 가능한 인증마크</strong></div>
               </div>
-              <p class="closing-statement">인증마크는 막연한 약속이 아니라,<br /><strong>다시 계산할 수 있는 서명된 snapshot</strong>입니다.</p>
             </div>
-            <footer class="slide-footer"><span>구현 범위 · 배포 제외</span><span>11</span></footer>
+
+            <footer class="slide-footer">
+              <span>딸깍으로 만들었다면, 배포 전에 한 번 더 딸깍 👆</span>
+              <span>10 / 10</span>
+            </footer>
           </div>
           <aside class="notes">
-            블록체인에 기록되지 않으며 가용성과 취소 상태는 운영 DB에 의존합니다. EduSafety가 보증하지 않는 범위를 함께 말해야 인증 자체를 신뢰할 수 있습니다.
+            블록체인 인증마크까지 연결하지 못한 한계는 솔직히 말씀드리고자 합니다. 그래도 스킬, 로컬 프로젝트, 공개 URL로 이어지는 점검 흐름은 보여 드릴 수 있습니다. 다음 단계에서는 점검 결과를 위변조하기 어려운 공개 검증 기록으로 연결하려 합니다. 이 프로젝트가 학교 현장에 필요한 법과 기준을 더 널리 알리는 출발점이 되길 바랍니다.
 
             [Sources]
-            - README.md:153-162
-            - public/index.html:62-66
+            - EduSafe_활동기록_README.md:131-143
+            - src/certification/attestation.ts
           </aside>
         </section>
+      </div>
+      <div id="talk-timer" class="talk-timer" role="timer" aria-label="5분 발표 타이머" aria-live="off" hidden>
+        <span class="timer-icon" aria-hidden="true">⏱</span>
+        <time datetime="PT5M">05:00</time>
       </div>
     </main>
 
     <script src="./vendor/reveal/6.0.1/reveal.js"></script>
-    <script src="./presentation.js"></script>
+    <script src="./presentation.js?v=20260829-cover"></script>
   </body>
 </html>
