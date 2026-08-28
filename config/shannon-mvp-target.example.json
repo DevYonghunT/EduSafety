@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "owasp-juice-shop-v20-2-0-local",
+  "canonicalRepositoryUrl": "https://github.com/juice-shop/juice-shop",
+  "cloneUrl": "https://github.com/juice-shop/juice-shop.git",
+  "commitSha": "5658473cf8814459bf89000ce373b20ed0b4eb37",
+  "targetUrl": "http://edusafety-juice-shop-target:3000",
+  "targetHealthPath": "/rest/admin/application-version",
+  "controllerHealthBaseUrl": "http://127.0.0.1:43110",
+  "expectedHealth": {
+    "statusCode": 200,
+    "jsonPath": "version",
+    "value": "20.2.0"
+  },
+  "targetContainer": {
+    "name": "edusafety-juice-shop-target",
+    "image": "bkimminich/juice-shop@sha256:8739101ade29358abb5469ee66ae78e582c97ed0a5543a4ad102e5fa5193526b",
+    "ociIndexDigest": "sha256:8739101ade29358abb5469ee66ae78e582c97ed0a5543a4ad102e5fa5193526b",
+    "linuxAmd64ManifestDigest": "sha256:7f7539921b046863f2fc48b84061f957e50b3aa4652ae0a62014a2fc25654d0b",
+    "linuxArm64ManifestDigest": "sha256:f2b4f8284af700c0e8a31d5c2b7f0cc84a027ec410f99d26fb763fba7a7f469b",
+    "dockerNetwork": "shannon-net",
+    "hostPortBinding": "127.0.0.1:43110:3000",
+    "removeOnStop": true,
+    "persistentVolumes": false
+  },
+  "sourceEvidence": {
+    "releaseTag": "v20.2.0",
+    "annotatedTagObjectSha": "c4e9b29ed0f9e4bbae3787aa2ca84267d57e5016",
+    "linuxAmd64ProvenanceBlobDigest": "sha256:11b628b367e9de218cc9d3964a745086442803a0dfa44da29fd9b0d4d8f8a16b",
+    "linuxArm64ProvenanceBlobDigest": "sha256:1eca696dda942d04d5a90482713da220d11814f13521d05a77e238ad9253a72f"
+  },
+  "shannon": {
+    "cliPackage": "@keygraph/shannon@2.5.3",
+    "workerImageTag": "keygraph/shannon:2.5.3",
+    "workerOciIndexDigest": "sha256:8fa1bae8c64e003d8bb05dedcbfd31fafb1f183b662f57cbce2b3e86c7956429",
+    "workerLinuxAmd64ManifestDigest": "sha256:bd9f3695d752ca1e011ccec69a0173f926d60b3cf790a3a98ebf74eeae655018",
+    "workerLinuxArm64ManifestDigest": "sha256:5444e91d1ae562c50ff0ea173e84ccb09c7959bba5b8d376c83e482aa08f7bcd",
+    "configPath": "config/shannon-v2.5.3-injection.example.yaml",
+    "vulnerabilityClass": "injection",
+    "exploit": "false",
+    "timeoutSeconds": 7200,
+    "maxConcurrentScans": 1,
+    "environment": {
+      "SHANNON_FORWARD_HOSTS": "false"
+    },
+    "reportFormat": "markdown",
+    "reportPath": "Security-Assessment-Report.md",
+    "requireNonEmptyReport": true
+  },
+  "allowUserSuppliedTarget": false,
+  "allowUserSuppliedCommit": false
+}
