@@ -5,22 +5,29 @@ import { mergeJudgments } from '../src/lib/reviewAi.js'
 const f = (path, text) => ({ path, name: path.split('/').pop(), text })
 
 describe('분할 분석 — 원칙 8 개정 (호출 한도 초과 시 나눠서 전부 검토)', () => {
-  it('호출 한도를 넘으면 여러 묶음으로 나눠 전부 포함한다', () => {
+  it('호출 한도(추정 토큰)를 넘으면 여러 묶음으로 나눠 전부 포함한다', () => {
     const files = [
       f('index.html', 'a'.repeat(500)),
       f('src/app.js', 'b'.repeat(500)),
       f('src/big.js', 'c'.repeat(500)),
     ]
-    const { chunks, includedFiles, excludedFiles, coveragePercent } = buildAiPayloadChunks(files, 800, 3)
+    const { chunks, includedFiles, excludedFiles, coveragePercent } = buildAiPayloadChunks(files, 160, 3)
     expect(chunks.length).toBeGreaterThan(1)
     expect(includedFiles).toHaveLength(3)
     expect(excludedFiles).toHaveLength(0)
     expect(coveragePercent).toBe(100)
   })
 
+  it('한글 위주 파일은 글자당 1토큰에 가깝게 추정한다 (컨텍스트 초과 방지)', () => {
+    const ko = f('읽어줘.md', '가'.repeat(300))
+    const en = f('read.md', 'a'.repeat(300))
+    const { chunks } = buildAiPayloadChunks([ko, en], 320, 3)
+    expect(chunks).toHaveLength(2)
+  })
+
   it('분할 한도(최대 묶음 수)를 넘는 파일만 제외 + 사유 고지', () => {
     const files = [f('a.js', 'x'.repeat(700)), f('b.js', 'y'.repeat(700)), f('c.js', 'z'.repeat(700))]
-    const { chunks, excludedFiles } = buildAiPayloadChunks(files, 800, 2)
+    const { chunks, excludedFiles } = buildAiPayloadChunks(files, 250, 2)
     expect(chunks).toHaveLength(2)
     expect(excludedFiles).toHaveLength(1)
     expect(excludedFiles[0].reason).toContain('분할 한도')
@@ -28,7 +35,7 @@ describe('분할 분석 — 원칙 8 개정 (호출 한도 초과 시 나눠서 
 
   it('데이터 파일 고지는 모든 묶음에 붙는다', () => {
     const files = [f('a.js', 'x'.repeat(700)), f('b.js', 'y'.repeat(700)), f('data/명단.csv', '김민준,010')]
-    const { chunks } = buildAiPayloadChunks(files, 800, 3)
+    const { chunks } = buildAiPayloadChunks(files, 250, 3)
     for (const c of chunks) {
       expect(c).toContain('data/명단.csv')
       expect(c).not.toContain('010')

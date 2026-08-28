@@ -5,8 +5,18 @@ import rules from '../data/securityRules.js'
 import { maskSecret } from './scanner.js'
 
 export const MAX_PAYLOAD_CHARS = 150_000
-export const CHUNK_CHARS = 350_000
+export const CHUNK_TOKENS = 100_000
 export const MAX_CHUNKS = 3
+
+// 문자 수가 아니라 추정 토큰으로 묶음 예산을 잡는다 — 한글 위주 파일은 글자당 1토큰에
+// 가까워서, 문자 수 기준이면 컨텍스트 한도(400 오류)를 넘길 수 있다.
+export function estimateTokens(s) {
+  let ascii = 0
+  for (let i = 0; i < s.length; i++) {
+    if (s.charCodeAt(i) < 128) ascii++
+  }
+  return Math.ceil(ascii / 3.5) + (s.length - ascii)
+}
 
 const DATA_FILE = /\.(csv|tsv|sql)$/i
 const LOW_PRIORITY = /(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.min\.(js|css)|bundle\.js)$/i
@@ -71,7 +81,7 @@ export function buildAiPayload(files, maxChars = MAX_PAYLOAD_CHARS) {
  * 분할 분석용 (원칙 8 개정): 호출 1회 한도를 넘는 저장소는 여러 묶음으로 나눠 전부 검토한다.
  * returns { chunks: [payloadText], includedFiles, excludedFiles, dataFiles, coveragePercent }
  */
-export function buildAiPayloadChunks(files, perChunk = CHUNK_CHARS, maxChunks = MAX_CHUNKS) {
+export function buildAiPayloadChunks(files, perChunk = CHUNK_TOKENS, maxChunks = MAX_CHUNKS) {
   const dataFiles = files.filter((f) => DATA_FILE.test(f.path))
   const candidates = files
     .filter((f) => !DATA_FILE.test(f.path))
@@ -86,11 +96,12 @@ export function buildAiPayloadChunks(files, perChunk = CHUNK_CHARS, maxChunks = 
   for (const f of candidates) {
     const safe = redactSecrets(f.text)
     const block = `\n===== 파일: ${f.path} =====\n${safe}\n`
-    if (block.length > perChunk) {
-      excludedFiles.push({ path: f.path, reason: '단일 파일이 호출 한도(35만 자)를 초과 — 제외' })
+    const cost = estimateTokens(block)
+    if (cost > perChunk) {
+      excludedFiles.push({ path: f.path, reason: '단일 파일이 호출 1회 한도를 초과 — 제외' })
       continue
     }
-    if (used + block.length > perChunk) {
+    if (used + cost > perChunk) {
       if (chunkParts.length >= maxChunks) {
         excludedFiles.push({ path: f.path, reason: `분할 한도(${maxChunks}회 호출) 초과 — 제외` })
         continue
@@ -100,7 +111,7 @@ export function buildAiPayloadChunks(files, perChunk = CHUNK_CHARS, maxChunks = 
     }
     chunkParts[chunkParts.length - 1].push(block)
     includedFiles.push(f.path)
-    used += block.length
+    used += cost
   }
 
   const dataNote = dataFiles.length > 0

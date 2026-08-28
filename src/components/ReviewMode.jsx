@@ -100,7 +100,7 @@ export default function ReviewMode() {
       setBusy('저장소 불러오는 중…')
       const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
-      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha }
+      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount }
       setRepoMeta(meta)
       setFiles(result.files)
       setScan(scanFiles(result.files))
@@ -230,8 +230,8 @@ export default function ReviewMode() {
             <div className="loaded">
               <div className="repo-line">
                 {repoMeta.commitSha
-                  ? <>📦 {repoMeta.owner}/{repoMeta.repo} ({repoMeta.branch}) · 커밋 <code>{repoMeta.commitSha.slice(0, 12)}</code> · 파일 {files.length}개</>
-                  : <>📁 {repoMeta.name} (폴더 제출) · 지문 <code>{repoMeta.fingerprint.slice(0, 12)}</code> · 파일 {files.length}개{repoMeta.skippedCount > 0 ? ` (스캔 불가 ${repoMeta.skippedCount}개 제외)` : ''}</>}
+                  ? <>📦 {repoMeta.owner}/{repoMeta.repo} ({repoMeta.branch}) · 커밋 <code>{repoMeta.commitSha.slice(0, 12)}</code> · 파일 {files.length}개{repoMeta.skippedCount > 0 ? ` (코드 아님·상한 초과 ${repoMeta.skippedCount}개 수집 제외)` : ''}</>
+                  : <>📁 {repoMeta.name} (폴더 제출) · 지문 <code>{repoMeta.fingerprint.slice(0, 12)}</code> · 파일 {files.length}개{repoMeta.skippedCount > 0 ? ` (코드 아님·상한 초과 ${repoMeta.skippedCount}개 수집 제외)` : ''}</>}
               </div>
 
               <div className="scan-box">
