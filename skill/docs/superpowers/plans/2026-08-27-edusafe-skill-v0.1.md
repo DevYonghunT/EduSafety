@@ -2103,7 +2103,7 @@ git -C $REPO commit -m "feat: 절차서 SKILL.md 와 README + 단계표 동기�
 **Spec 전사** (요약·의역 금지 — 문서 린터가 spec 원문과의 문자열 일치를 확인한다):
 
 > `[REQ-13.1]` `npm run build:zip` 은 `dist/edusafe-v<버전>.zip` · `dist/edusafe-v<버전>.sha256` · `dist/manifest.json` 을 만든다.
-> `[REQ-13.2]` `manifest.json` 은 정규화 규칙(경로 구분자 `/`, LF 줄바꿈, 경로 오름차순, symlink 제외)과 파일별 `{path, sha256}`, 그리고 그 목록에서 계산한 `skill_digest` 를 담는다. 신뢰 증거가 아니라 **구성 대조 자료**다(§11).
+> `[REQ-13.2]` `manifest.json` 은 정규화 규칙(경로 구분자 `/`, LF 줄바꿈, 경로 오름차순, symlink 제외)과 zip 에 담긴 파일별 `{path, sha256}`, 지문 대상 목록 `digest_targets`(§11 의 `SKILL.md`·`rules/`·`scripts/`·`templates/`), 그리고 그 대상에서 계산한 `skill_digest` 를 담는다. `README.md` 는 zip 과 `files` 에 들어가지만 지문 대상이 아니다 — 설치 안내문이 바뀌어도 스킬의 동작은 바뀌지 않기 때문이다. 신뢰 증거가 아니라 **구성 대조 자료**다(§11).
 **Files:**
 - Create: `scripts/build-zip.mjs`
 - Test: `tests/build.test.mjs`
@@ -2112,7 +2112,7 @@ git -C $REPO commit -m "feat: 절차서 SKILL.md 와 README + 단계표 동기�
 - Consumes: `edusafe/` 폴더 전체, `rules/version.json`, Task 5 의 `skillDigest()`
 - Produces: `dist/edusafe-v<버전>.zip` · `dist/edusafe-v<버전>.sha256` · `dist/manifest.json`
 
-- [ ] **Step 1: zip 라이터를 만든다**
+- [x] **Step 1: zip 라이터를 만든다**
 
 Node 내장 모듈에는 zip 생성 API 가 없다. 압축은 하지 않고 **store(무압축) 방식**으로 직접 쓴다 — 스킬 폴더는 텍스트 파일 수십 개라 압축률보다 의존성 0이 중요하다.
 
@@ -2212,15 +2212,15 @@ function buildZip(entries) {
 
 `buildZip(entries)` 는 `[{ name, data }]` 를 받아 zip 전체를 `Buffer` 로 돌려준다. `name` 은 zip 안에서의 경로이고 항상 `/` 구분자를 쓴다. UTF-8 파일명 플래그(general purpose bit 11 = `0x0800`)를 세우므로 한글 파일명도 깨지지 않는다.
 
-- [ ] **Step 2: build-zip.mjs 를 완성한다**
+- [x] **Step 2: build-zip.mjs 를 완성한다**
 
 `npm --prefix $REPO run build:zip` 으로 실행한다.
 
 1. `edusafe/` 아래를 재귀 순회해 파일 목록을 만든다. symlink 는 제외한다.
 2. 정규화(REQ-13.2): 경로 구분자 `/`, 줄바꿈 LF, 경로 오름차순 정렬.
 3. zip 안의 경로는 `edusafe/` 를 벗긴 상대 경로로 한다(압축을 풀면 스킬 폴더 내용이 바로 나오게).
-4. 파일별 sha256 을 계산해 `manifest.json` 의 `files[]` 에 담는다.
-5. `skill_digest` 는 Task 5 의 `skillDigest()` 를 **그대로 불러** 계산한다.
+4. 파일별 sha256 을 계산해 `manifest.json` 의 `files[]` 에 담는다. `files[]` 는 zip 에 담긴 파일 **전부**이므로 `README.md` 도 들어간다.
+5. `skill_digest` 는 Task 5 의 `skillDigest()` 를 **그대로 불러** 계산한다. 지문 대상은 §11 의 `SKILL.md`·`rules/`·`scripts/`·`templates/` 뿐이라 `files[]` 보다 좁다(`README.md` 제외). 그 목록을 `digest_targets` 로 manifest 에 같이 적어, 어느 파일에서 지문이 나왔는지 대조할 수 있게 한다.
 6. `dist/edusafe-v<버전>.zip` · `.sha256` · `manifest.json` 을 쓴다.
 
 `manifest.json`:
@@ -2229,14 +2229,15 @@ function buildZip(entries) {
   "edusafe_version": "0.1.0",
   "rubric_version": "1.2-skill",
   "normalization": { "separator": "/", "eol": "LF", "order": "path-asc", "symlinks": "excluded" },
-  "files": [ { "path": "SKILL.md", "sha256": "…" } ],
+  "digest_targets": ["SKILL.md", "rules", "scripts", "templates"],
+  "files": [ { "path": "README.md", "sha256": "…" }, { "path": "SKILL.md", "sha256": "…" } ],
   "skill_digest": "sha256:…"
 }
 ```
 
 `skill_digest` 를 두 곳에서 다르게 계산하면 보고서의 지문과 배포본의 지문이 달라져 대조가 무의미해진다. 계산 함수는 `render.mjs` 한 곳에 두고 양쪽이 부른다.
 
-- [ ] **Step 3: 빌드 테스트를 쓴다**
+- [x] **Step 3: 빌드 테스트를 쓴다**
 
 `tests/build.test.mjs`:
 
@@ -2247,14 +2248,15 @@ function buildZip(entries) {
 5. `skill_digest` 가 `render.mjs` 의 `skillDigest()` 결과와 같다.
 6. 같은 입력으로 두 번 빌드하면 `manifest.json` 의 `skill_digest` 가 같다(재현성).
 7. 한글 파일명이 있어도 UTF-8 플래그가 세워져 있다.
+8. 압축을 푼 폴더의 `skillDigest()` 가 원본 `edusafe/` 와 같다 — 내려받아 설치한 스킬이 게시된 지문과 대조된다.
 
 6번은 정규화가 실제로 작동하는지 확인한다. 파일 순서나 줄바꿈이 섞이면 지문이 흔들린다. (zip 자체는 빌드 시각을 담으므로 zip 의 sha256 은 실행마다 달라질 수 있다. 재현성을 요구하는 대상은 `skill_digest` 다.)
 
-- [ ] **Step 4: 공통 완료 조건(DoD) 확인**
+- [x] **Step 4: 공통 완료 조건(DoD) 확인**
 
 Run: `npm --prefix $REPO test`
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git -C $REPO add -A

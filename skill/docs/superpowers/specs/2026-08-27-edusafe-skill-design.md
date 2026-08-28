@@ -1636,7 +1636,7 @@ HTML 의 시각적 구성(레이아웃·색·타이포그래피)은 구현자 �
 
 `[REQ-13.1]` `npm run build:zip` 은 `dist/edusafe-v<버전>.zip` · `dist/edusafe-v<버전>.sha256` · `dist/manifest.json` 을 만든다.
 
-`[REQ-13.2]` `manifest.json` 은 정규화 규칙(경로 구분자 `/`, LF 줄바꿈, 경로 오름차순, symlink 제외)과 파일별 `{path, sha256}`, 그리고 그 목록에서 계산한 `skill_digest` 를 담는다. 신뢰 증거가 아니라 **구성 대조 자료**다(§11).
+`[REQ-13.2]` `manifest.json` 은 정규화 규칙(경로 구분자 `/`, LF 줄바꿈, 경로 오름차순, symlink 제외)과 zip 에 담긴 파일별 `{path, sha256}`, 지문 대상 목록 `digest_targets`(§11 의 `SKILL.md`·`rules/`·`scripts/`·`templates/`), 그리고 그 대상에서 계산한 `skill_digest` 를 담는다. `README.md` 는 zip 과 `files` 에 들어가지만 지문 대상이 아니다 — 설치 안내문이 바뀌어도 스킬의 동작은 바뀌지 않기 때문이다. 신뢰 증거가 아니라 **구성 대조 자료**다(§11).
 
 `[REQ-13.3]` 버전 정본은 `rules/version.json` 이다. README·보고서·zip 이름이 이를 참조한다.
 
