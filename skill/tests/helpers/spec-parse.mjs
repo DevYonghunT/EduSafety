@@ -93,3 +93,37 @@ export function specRuleIds(spec) {
     ...idColumn(section(spec, '### 9.1 프로젝트 규칙', '### 9.2 규칙 실행 규범'), 6),
   ]
 }
+
+// spec §6 항목 블록 파서 — 항목 정본(REQ-0.4)과 items.json 을 양방향 대조하기 위한 것.
+// 항목 블록은 `#### <id> — <question>` 으로 시작하고, 2열 속성표와 4열 하위 점검표를 갖는다.
+export function specItems(spec) {
+  const lines = spec.split('\n')
+  const out = new Map()
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^#### (\S+) — (.+)$/)
+    if (!h) continue
+    const it = { id: h[1], question: h[2], attrs: {}, subchecks: [] }
+    let j = i + 1
+    for (; j < lines.length && !/^###/.test(lines[j]); j++) {
+      if (lines[j].startsWith('|')) {
+        const c = cells(lines[j])
+        if (c.length === 2 && c[0] !== '속성' && !/^-+$/.test(c[0])) it.attrs[c[0]] = c[1]
+        if (c.length === 4 && c[0].startsWith('`')) {
+          it.subchecks.push({
+            id: c[0].replace(/`/g, ''),
+            text: c[1],
+            required_coverage: c[2].split(', '),
+            stacks: c[3] === 'all' ? 'all' : c[3].split(', '),
+          })
+        }
+      }
+      const w = lines[j].match(/^\*\*왜 위험한가\*\* — (.+)$/)
+      if (w) it.why_risky = w[1]
+      const f = lines[j].match(/^\*\*수정 방법\*\* — (.+)$/)
+      if (f) it.fix_hint = f[1]
+    }
+    out.set(it.id, it)
+    i = j - 1
+  }
+  return out
+}
