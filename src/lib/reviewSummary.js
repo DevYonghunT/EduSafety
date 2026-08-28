@@ -26,11 +26,15 @@ export function finalVerdict(item, judgments, overrides, humanInputs) {
   return humanInputs[item.id]?.verdict || 'needs_human'
 }
 
-export function computeSummary(track, judgments, overrides, humanInputs) {
-  const items = rubricItems.filter((it) => it.tracks.includes(track))
-  // 항목이 없는 트랙(비정상 값)은 절대 합격 후보가 되면 안 된다
-  if (items.length === 0) {
-    return { items, requiredFails: [], needsHuman: [], categoryStates: {}, status: 'hold', actions: { mustFix: 0, shouldFix: 0, confirm: 0 } }
+// hackathon-2: 트랙 대신 기능 플래그가 적용 항목을 정한다. 조건이 꺼진 항목은 자동
+// '해당없음'(inapplicable)으로 분리하되, 심사자 오버라이드가 있으면 다시 심사에 포함된다.
+export function computeSummary(features, judgments, overrides, humanInputs) {
+  const feats = features || {}
+  const items = []
+  const inapplicable = []
+  for (const it of rubricItems) {
+    if (!it.when || feats[it.when] || overrides[it.id]?.verdict) items.push(it)
+    else inapplicable.push(it)
   }
 
   const requiredFails = []
@@ -65,6 +69,7 @@ export function computeSummary(track, judgments, overrides, humanInputs) {
 
   return {
     items,
+    inapplicable,
     requiredFails,
     needsHuman,
     categoryStates,

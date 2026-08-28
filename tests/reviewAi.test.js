@@ -77,6 +77,7 @@ describe('보호 수준 도출 + JSON 추출 (T6)', () => {
   it('보호 수준은 기능에서 결정적으로 도출된다', () => {
     expect(deriveProtectionLevel({})).toBe('L0')
     expect(deriveProtectionLevel({ collectsPersonalInfo: true })).toBe('L1')
+    expect(deriveProtectionLevel({ handlesRealData: true })).toBe('L1')
     expect(deriveProtectionLevel({ collectsPersonalInfo: true, hasAssessmentOrCompetition: true })).toBe('L2')
     expect(deriveProtectionLevel({ collectsSensitiveInfo: true })).toBe('L2')
   })

@@ -2,24 +2,17 @@ import { useMemo, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
 import { scanFiles, countBySeverity, suspectDataFiles, isVendorPath } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
-import { TRACKS, rubricItems, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
+import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayloadChunks } from '../lib/redact.js'
-import { classifyApp, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
+import { suggestFeatures, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
 import { saveRecord, targetKey } from '../lib/ledger.js'
 import { buildTeacherNotice } from '../lib/dataNotice.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
 
-const STEPS = ['① 불러오기', '② 분류 확정', '③ 판정 확인', '④ 보고서']
-
-const FEATURE_LABELS = {
-  collectsPersonalInfo: '학생·학부모 개인정보를 수집한다',
-  collectsSensitiveInfo: '민감정보(건강·상담·성적 상세)를 다룬다',
-  hasAssessmentOrCompetition: '평가·점수·랭킹·경쟁 기능이 있다',
-  studentFacing: '학생이 직접 사용하는 화면이 있다',
-}
+const STEPS = ['① 불러오기', '② 앱 확인', '③ 판정 확인', '④ 보고서']
 
 export default function ReviewMode() {
   const [step, setStep] = useState(1)
@@ -36,9 +29,8 @@ export default function ReviewMode() {
   // 2단계
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('edusafe_api_key') || '')
   const [model, setModel] = useState(() => localStorage.getItem('edusafe_model') || DEFAULT_MODEL)
-  const [track, setTrack] = useState('')
   const [features, setFeatures] = useState({})
-  const [aiClassify, setAiClassify] = useState(null)
+  const [aiSuggest, setAiSuggest] = useState(null)
 
   // 3단계
   const [judgments, setJudgments] = useState({})
@@ -61,10 +53,9 @@ export default function ReviewMode() {
   }
 
   const protectionLevel = deriveProtectionLevel(features)
-  const trackItems = useMemo(() => (track ? rubricItems.filter((it) => it.tracks.includes(track)) : []), [track])
   const summary = useMemo(
-    () => (track ? computeSummary(track, judgments, overrides, humanInputs) : null),
-    [track, judgments, overrides, humanInputs],
+    () => computeSummary(features, judgments, overrides, humanInputs),
+    [features, judgments, overrides, humanInputs],
   )
 
   const saveKey = (v) => { setApiKey(v); localStorage.setItem('edusafe_api_key', v) }
@@ -112,17 +103,16 @@ export default function ReviewMode() {
     }
   }
 
-  const runClassify = async () => {
+  const runSuggest = async () => {
     setError('')
     try {
-      setBusy('AI가 앱을 분류하는 중…')
+      setBusy('AI가 앱 기능을 확인하는 중…')
       const { chunks } = buildAiPayloadChunks(files)
-      const result = await classifyApp({ payloadText: chunks[0], apiKey, model })
-      setAiClassify(result)
-      if (result.track) setTrack(result.track)
+      const result = await suggestFeatures({ payloadText: chunks[0], apiKey, model })
+      setAiSuggest(result)
       setFeatures(result.features || {})
     } catch (err) {
-      setError(`AI 분류 실패: ${err.message} — 아래에서 직접 선택할 수 있어요.`)
+      setError(`AI 제안 실패: ${err.message} — 체크박스로 직접 확인할 수 있어요.`)
     } finally {
       setBusy('')
     }
@@ -134,7 +124,7 @@ export default function ReviewMode() {
       const payload = buildAiPayloadChunks(files)
       const many = payload.chunks.length > 1
       setBusy(many ? `AI가 판정 초안을 작성하는 중… 코드가 커서 ${payload.chunks.length}개 묶음으로 나눠 분석합니다 (수 분)` : 'AI가 항목별 판정 초안을 작성하는 중… (1~2분)')
-      const aiItems = trackItems.filter((it) => it.aiVerifiable)
+      const aiItems = summary.items.filter((it) => it.aiVerifiable)
       const result = await judgeItems({
         payloadChunks: payload.chunks, items: aiItems, scanFindings: scan.findings, apiKey, model, files,
         onProgress: (d, t) => { if (t > 1) setBusy(`AI 분할 분석 중… ${d}/${t} 묶음 완료`) },
@@ -162,18 +152,18 @@ export default function ReviewMode() {
 
   const resetAll = () => {
     setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
-    setTrack(''); setFeatures({}); setAiClassify(null)
+    setFeatures({}); setAiSuggest(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
     setSavedRound(null); setError('')
   }
 
   const counts = useMemo(() => {
     const c = { ok: 0, fail: 0, needs_human: 0, na: 0 }
-    for (const it of trackItems) c[finalVerdict(it, judgments, overrides, humanInputs)]++
+    for (const it of summary.items) c[finalVerdict(it, judgments, overrides, humanInputs)]++
     return c
-  }, [trackItems, judgments, overrides, humanInputs])
+  }, [summary, judgments, overrides, humanInputs])
 
-  const visibleItems = filter ? trackItems.filter((it) => finalVerdict(it, judgments, overrides, humanInputs) === filter) : trackItems
+  const visibleItems = filter ? summary.items.filter((it) => finalVerdict(it, judgments, overrides, humanInputs) === filter) : summary.items
 
   return (
     <section className="panel">
@@ -306,7 +296,7 @@ export default function ReviewMode() {
 
               <div className="btn-row">
                 <button className="btn-primary" onClick={() => setStep(2)}>
-                  {gate.pass ? '② 분류로 계속' : '반려 권고를 확인했지만 계속 (심사자 재량)'}
+                  {gate.pass ? '② 앱 확인으로 계속' : '반려 권고를 확인했지만 계속 (심사자 재량)'}
                 </button>
                 <button className="btn-secondary" onClick={resetAll}>새 심사 시작</button>
               </div>
@@ -315,44 +305,27 @@ export default function ReviewMode() {
         </div>
       )}
 
-      {/* ── ② 분류 확정 ── */}
+      {/* ── ② 앱 확인 ── */}
       {step === 2 && (
         <div>
-          <h1>분류 확정</h1>
-          <p className="intro">트랙에 따라 심사 항목이 달라집니다. 앱이 무엇인지는 심사자가 가장 잘 압니다 — 직접 확정하세요.</p>
+          <h1>앱 확인</h1>
+          <p className="intro">
+            앱의 기능이 심사 항목과 보호 수준을 정합니다 — 해당하는 것을 모두 확인하세요.
+            조건이 꺼진 항목은 자동 '해당없음'으로 접혀 표시되며, 판정 화면에서 되살릴 수 있습니다.
+          </p>
 
           <div className="scan-box">
-            <strong>트랙 확정 (심사자) — 트랙이 심사 체크리스트를 정합니다</strong>
-            <div className="track-grid">
-              {Object.entries(TRACKS).map(([key, t]) => {
-                const items = rubricItems.filter((it) => it.tracks.includes(key))
-                const required = items.filter((it) => it.type === 'required').length
-                return (
-                  <label key={key} className={`track-card ${track === key ? 'selected' : ''}`}>
-                    <input type="radio" name="track" checked={track === key} onChange={() => setTrack(key)} />
-                    {t.icon} {t.label}
-                    <span className="track-count">{items.length}항목 · 필수 {required}</span>
-                  </label>
-                )
-              })}
-            </div>
-            {features.studentFacing && track && !['learning_content', 'class_ops'].includes(track) && (
-              <p className="gate-warn">
-                ⚠️ "학생이 직접 사용한다"고 확인하셨어요 — 그렇다면 <strong>학습 콘텐츠·활동</strong> 또는 <strong>학급 운영·소통</strong> 트랙이
-                맞을 수 있습니다. 학생 대면 보호 항목(만 14세 동의·위기 안내·사칭 방지 등)은 그 두 트랙에만 포함됩니다.
-              </p>
-            )}
-          </div>
-
-          <div className="scan-box">
-            <strong>앱 기능 확인 → 보호 수준 자동 도출</strong>
-            {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+            <strong>앱 기능 확인 (심사자)</strong>
+            {Object.entries(FEATURES).map(([key, f]) => (
               <label key={key} className="check-line">
                 <input type="checkbox" checked={!!features[key]} onChange={(e) => setFeatures((p) => ({ ...p, [key]: e.target.checked }))} />
-                {label}
+                <span>{f.label} <span className="hint">→ {f.gates}</span></span>
               </label>
             ))}
-            <div className="level-line">이 앱의 보호 수준: <strong>{PROTECTION_LEVELS[protectionLevel].label}</strong> — {PROTECTION_LEVELS[protectionLevel].plain}</div>
+            <div className="level-line">
+              적용 심사 항목: <strong>{summary.items.length} / 30</strong> (조건 미해당 {summary.inapplicable.length}) ·
+              보호 수준: <strong>{PROTECTION_LEVELS[protectionLevel].label}</strong> — {PROTECTION_LEVELS[protectionLevel].plain}
+            </div>
           </div>
 
           <div className="scan-box">
@@ -366,20 +339,20 @@ export default function ReviewMode() {
               </select>
             </label>
             <div>
-              <button className="btn-secondary" onClick={runClassify} disabled={!!busy || !apiKey.trim()}>🤖 분류·기능을 AI에게 제안받기 (선택)</button>
+              <button className="btn-secondary" onClick={runSuggest} disabled={!!busy || !apiKey.trim()}>🤖 기능 확인을 AI에게 제안받기 (선택)</button>
             </div>
-            <p className="hint">{apiKey.trim() ? '분류가 애매할 때만 쓰는 보조 기능입니다 — 제안을 받아도 확정은 심사자가 합니다.' : 'API 키가 없어도 분류·심사 전 과정을 수동으로 진행할 수 있습니다.'}</p>
+            <p className="hint">{apiKey.trim() ? '애매할 때만 쓰는 보조 기능입니다 — 제안을 받아도 확정은 심사자가 합니다.' : 'API 키가 없어도 확인·심사 전 과정을 수동으로 진행할 수 있습니다.'}</p>
           </div>
 
-          {aiClassify && (
+          {aiSuggest && (
             <div className="ai-suggest">
-              <strong>AI 제안</strong>: {aiClassify.track ? `${TRACKS[aiClassify.track].icon} ${TRACKS[aiClassify.track].label}` : '분류 불확실'} — {aiClassify.trackReason}
-              {aiClassify.appSummary && <div className="hint">{aiClassify.appSummary}</div>}
+              <strong>AI 제안</strong>: {featureProfile(aiSuggest.features)} — {aiSuggest.featureReason}
+              {aiSuggest.appSummary && <div className="hint">{aiSuggest.appSummary}</div>}
             </div>
           )}
 
           <div className="btn-row">
-            <button className="btn-primary" onClick={() => setStep(3)} disabled={!track}>③ 판정으로 계속</button>
+            <button className="btn-primary" onClick={() => setStep(3)}>③ 판정으로 계속 ({summary.items.length}항목)</button>
             <button className="btn-secondary" onClick={() => setStep(1)}>← 뒤로</button>
           </div>
         </div>
@@ -388,12 +361,12 @@ export default function ReviewMode() {
       {/* ── ③ 판정 확인 ── */}
       {step === 3 && summary && (
         <div>
-          <h1>판정 확인 — {TRACKS[track].icon} {TRACKS[track].label} · {trackItems.length}항목</h1>
+          <h1>판정 확인 — 적용 {summary.items.length}항목 <span className="hint">({featureProfile(features)})</span></h1>
           <p className="intro">AI 출력은 판정 초안입니다. 최종 판정은 심사자가 하며, 번복은 사유와 함께 기록됩니다.</p>
 
           {!aiRan && (
             <div className="scan-box">
-              <button className="btn-primary" onClick={runJudge} disabled={!!busy || !apiKey.trim()}>🤖 AI 판정 초안 실행 ({trackItems.filter((i) => i.aiVerifiable).length}개 항목)</button>
+              <button className="btn-primary" onClick={runJudge} disabled={!!busy || !apiKey.trim()}>🤖 AI 판정 초안 실행 ({summary.items.filter((i) => i.aiVerifiable).length}개 항목)</button>
               <p className="hint">{apiKey.trim() ? '전송 전 비밀키 마스킹·데이터 파일 제외가 적용됩니다.' : 'API 키가 없어 수동 심사 모드입니다 — 모든 항목을 심사자가 직접 판정합니다.'}</p>
             </div>
           )}
@@ -472,6 +445,28 @@ export default function ReviewMode() {
             })}
           </div>
 
+          {summary.inapplicable.length > 0 && (
+            <details className="skipped-list inapplicable-box">
+              <summary>조건 미해당으로 자동 '해당없음' 처리된 항목 {summary.inapplicable.length}개 — 펼쳐서 확인·되살리기</summary>
+              <div className="item-list" style={{ marginTop: 10 }}>
+                {summary.inapplicable.map((it) => (
+                  <div key={it.id} className="item-card item-card-muted">
+                    <div className="item-head"><strong>{it.question}</strong></div>
+                    <div className="item-sub">{it.id} · 적용 조건: "{FEATURES[it.when].label}" (미확인 상태)</div>
+                    <div className="override-row">
+                      <label>이 항목을 심사에 포함:{' '}
+                        <select value={overrides[it.id]?.verdict || ''} onChange={(e) => setOverride(it.id, e.target.value)}>
+                          <option value="">해당없음 유지</option>
+                          {Object.entries(VERDICT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}(으)로 판정</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           <div className="btn-row">
             <button className="btn-primary" onClick={() => setStep(4)}>④ 보고서 생성</button>
             <button className="btn-secondary" onClick={() => setStep(2)}>← 뒤로</button>
@@ -483,8 +478,8 @@ export default function ReviewMode() {
       {step === 4 && summary && (
         <div>
           <ReviewReport
-            repoMeta={repoMeta} track={track} protectionLevel={protectionLevel}
-            appSummary={aiClassify?.appSummary} summary={summary}
+            repoMeta={repoMeta} features={features} protectionLevel={protectionLevel}
+            appSummary={aiSuggest?.appSummary} summary={summary}
             judgments={judgments} overrides={overrides} humanInputs={humanInputs}
             coverage={aiMeta?.coverage} gate={gate} model={model} aiUsed={aiRan}
           />
@@ -494,7 +489,7 @@ export default function ReviewMode() {
                 target: targetKey(repoMeta),
                 owner: repoMeta.owner, repo: repoMeta.repo, commitSha: repoMeta.commitSha,
                 name: repoMeta.name, fingerprint: repoMeta.fingerprint,
-                track, protectionLevel, status: summary.status, actions: summary.actions,
+                profile: featureProfile(features), protectionLevel, status: summary.status, actions: summary.actions,
                 rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
               })
               setSavedRound(entry.round)

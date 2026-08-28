@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { listRecords, deleteRecord, exportJson } from '../lib/ledger.js'
-import { TRACKS } from '../data/rubric.js'
 import { STATUS_LABELS } from '../lib/reviewSummary.js'
 
 const STATUS_CLASS = { pass_candidate: 'ok', hold: 'warn', fail_candidate: 'danger' }
@@ -41,7 +40,7 @@ export default function ReviewLedger() {
                   <strong>{r.target}</strong>
                   {r.round > 1 && <span className="round-badge">🔁 {r.round}회차</span>}
                   <div className="hint">
-                    {r.commitSha ? `커밋 ${r.commitSha.slice(0, 12)}` : '폴더 제출'} · {TRACKS[r.track]?.label || r.track} · {r.protectionLevel} · {new Date(r.savedAt).toLocaleString('ko-KR')}
+                    {r.commitSha ? `커밋 ${r.commitSha.slice(0, 12)}` : '폴더 제출'} · {r.profile || r.track} · {r.protectionLevel} · {new Date(r.savedAt).toLocaleString('ko-KR')}
                   </div>
                 </div>
                 <div className={`ledger-status ledger-${STATUS_CLASS[r.status] || 'warn'}`}>{STATUS_LABELS[r.status] || r.status}</div>

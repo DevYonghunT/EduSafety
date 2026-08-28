@@ -1,7 +1,7 @@
 // 심사 보고서 — 점수 없음: 종합판정 3값 + 카테고리별 상태 프로필 + 행동 중심 요약.
 // 모든 인용은 텍스트 노드로만 렌더한다 (원칙 6 — HTML 실행 금지).
 import { useState } from 'react'
-import { RUBRIC_VERSION, TRACKS, CATEGORIES, AUTHORITY_LABELS } from '../data/rubric.js'
+import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS } from '../data/rubric.js'
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest } from '../lib/supplementRequest.js'
@@ -23,7 +23,7 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, track, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
+export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const [supplement, setSupplement] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -64,7 +64,7 @@ export default function ReviewReport({ repoMeta, track, protectionLevel, appSumm
             <tr><th>심사 대상</th><td>{repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`}</td></tr>
             <tr><th>고정 지점</th><td><code>{repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`}</code> — 이 심사는 이 제출물에 대한 것이며, 이후 수정하면 지문이 달라져 효력이 없습니다.</td></tr>
             <tr><th>루브릭 버전</th><td>{RUBRIC_VERSION}</td></tr>
-            <tr><th>분류</th><td>{TRACKS[track].icon} {TRACKS[track].label}</td></tr>
+            <tr><th>기능 프로파일</th><td>{featureProfile(features)} — 적용 심사 항목 {summary.items.length} / 30</td></tr>
             <tr><th>보호 수준</th><td>{PROTECTION_LEVELS[protectionLevel].label} — {PROTECTION_LEVELS[protectionLevel].plain}</td></tr>
             {appSummary && <tr><th>앱 요약</th><td>{appSummary}</td></tr>}
             <tr><th>AI 분석 고지</th><td>
@@ -145,6 +145,17 @@ export default function ReviewReport({ repoMeta, track, protectionLevel, appSumm
           </tbody>
         </table>
       </section>
+
+      {summary.inapplicable?.length > 0 && (
+        <section>
+          <h3>조건 미해당 항목 (자동 '해당없음' 처리 — 투명성 고지)</h3>
+          <ul className="law-list">
+            {summary.inapplicable.map((it) => (
+              <li key={it.id}><strong>{it.question}</strong> — 적용 조건 "{FEATURES[it.when].label}"이 이 앱에 해당하지 않아 심사에서 제외됨</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="report-sign">
         <h3>심사 확인</h3>

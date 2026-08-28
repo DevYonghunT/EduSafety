@@ -18,7 +18,7 @@ describe('보완 요청서 — 원인별 3분류 (여유)', () => {
   })
 
   it('판단불가 항목만 모아 요청문을 생성한다', () => {
-    const summary = computeSummary('admin', {}, {}, {})
+    const summary = computeSummary({ handlesRealData: true }, {}, {}, {})
     const { text, count, buckets } = buildSupplementRequest({
       repoMeta, summary, judgments: {}, overrides: {}, humanInputs: {}, gate: gateFail,
     })
@@ -30,7 +30,7 @@ describe('보완 요청서 — 원인별 3분류 (여유)', () => {
   })
 
   it('판단불가가 없으면 요청 0건', () => {
-    const summary = computeSummary('admin', {}, {}, {})
+    const summary = computeSummary({ handlesRealData: true }, {}, {}, {})
     const overrides = Object.fromEntries(summary.items.map((it) => [it.id, { verdict: 'ok' }]))
     const { count } = buildSupplementRequest({ repoMeta, summary, judgments: {}, overrides, humanInputs: {}, gate: gateOk })
     expect(count).toBe(0)

@@ -865,3 +865,12 @@ button {
   font-weight: 600;
   margin-top: 3px;
 }
+
+.item-card-muted {
+  opacity: 0.75;
+  background: var(--bg);
+}
+
+.inapplicable-box {
+  margin-top: 18px;
+}

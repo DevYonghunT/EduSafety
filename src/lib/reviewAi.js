@@ -2,7 +2,7 @@
 // AI 출력은 판정이 아니라 판정 초안 + 근거 인용 — 근거 없는 충족/미충족은
 // validateJudgments가 사후에 '판단불가'로 강등하고, 누락 항목은 '판단불가'로 채운다.
 import Anthropic from '@anthropic-ai/sdk'
-import { TRACKS } from '../data/rubric.js'
+import { FEATURES } from '../data/rubric.js'
 
 export const DEFAULT_MODEL = 'claude-opus-5'
 export const MODEL_OPTIONS = [
@@ -119,7 +119,7 @@ export function mergeJudgments(chunkResults, items) {
 // 보호 수준은 AI가 아니라 코드가 결정한다 — 기능 플래그에서 결정적으로 도출.
 export function deriveProtectionLevel(features = {}) {
   if (features.collectsSensitiveInfo || features.hasAssessmentOrCompetition) return 'L2'
-  if (features.collectsPersonalInfo) return 'L1'
+  if (features.collectsPersonalInfo || features.handlesRealData) return 'L1'
   return 'L0'
 }
 
@@ -164,36 +164,32 @@ async function requestJson(client, { model, maxTokens, prompt }) {
   throw new Error(`AI 응답을 JSON으로 읽지 못했어요 (2회 시도). 응답 시작: "${lastText.slice(0, 80)}…"`)
 }
 
-export async function classifyApp({ payloadText, apiKey, model = DEFAULT_MODEL }) {
+export async function suggestFeatures({ payloadText, apiKey, model = DEFAULT_MODEL }) {
   const client = makeClient(apiKey)
-  const trackList = Object.entries(TRACKS).map(([k, v]) => `- ${k}: ${v.label}`).join('\n')
+  const flagKeys = Object.keys(FEATURES)
+  const flagList = Object.entries(FEATURES).map(([k, v]) => `- ${k}: ${v.label}`).join('\n')
   const parsed = await requestJson(client, {
     model,
     maxTokens: 6000,
     prompt: `${UNTRUSTED_PREFIX}
 
-너는 교사 제작 앱 심사 시스템의 분류 단계다. 아래 코드를 읽고 다음을 판단하라.
+너는 교사 제작 앱 심사 시스템의 앱 확인 단계다. 아래 코드를 읽고 기능 플래그를 판단하라.
+플래그는 심사 항목의 적용 범위와 보호 수준을 정하므로, 코드에서 실제 확인된 것만 true로 하라.
+확신이 없으면 true로 하라(과소 적용보다 과잉 적용이 안전하다) — 최종 확정은 심사자가 한다.
 
-4트랙 중 하나:
-${trackList}
+기능 플래그:
+${flagList}
 
-기능 플래그 (보호 수준 도출용 — 코드에서 실제 확인된 것만 true):
-- collectsPersonalInfo: 학생·학부모의 개인정보(이름, 연락처, 이메일 등)를 수집·저장하는가
-- collectsSensitiveInfo: 민감정보(건강, 성적 상세, 상담 기록 등)를 다루는가
-- hasAssessmentOrCompetition: 평가·점수·랭킹·경쟁 기능이 있는가
-- studentFacing: 학생이 직접 사용하는 화면이 있는가
-
-JSON만 출력: {"track": "...", "trackReason": "한 문장 근거", "appSummary": "이 앱이 무엇인지 두 문장", "features": {"collectsPersonalInfo": bool, "collectsSensitiveInfo": bool, "hasAssessmentOrCompetition": bool, "studentFacing": bool}}
+JSON만 출력: {"appSummary": "이 앱이 무엇인지 두 문장", "featureReason": "플래그 판단의 근거 한 문장", "features": {${flagKeys.map((k) => `"${k}": bool`).join(', ')}}}
 
 ===== 심사 대상 코드 =====
 ${payloadText}`,
   })
-  const track = TRACKS[parsed.track] ? parsed.track : null
-  const features = parsed.features || {}
+  const features = {}
+  for (const k of flagKeys) features[k] = Boolean(parsed.features?.[k])
   return {
-    track,
-    trackReason: String(parsed.trackReason || ''),
     appSummary: String(parsed.appSummary || ''),
+    featureReason: String(parsed.featureReason || ''),
     features,
     protectionLevel: deriveProtectionLevel(features),
   }
