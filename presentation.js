@@ -28,7 +28,7 @@ const deck = new globalThis.Reveal({
   autoAnimate: false,
   transition: "none",
   backgroundTransition: "none",
-  slideNumber: "c/t",
+  slideNumber: false,
   pdfSeparateFragments: false,
   pdfMaxPagesPerSlide: 1,
   plugins: [],
@@ -38,6 +38,10 @@ const editableSelector = "input, textarea, select, [contenteditable='true']";
 
 async function initializeDeck() {
   await deck.initialize();
+
+  deck.on("slidechanged", ({ previousSlide }) => {
+    previousSlide?.querySelectorAll("video").forEach((video) => video.pause());
+  });
 
   document.addEventListener(
     "keydown",
