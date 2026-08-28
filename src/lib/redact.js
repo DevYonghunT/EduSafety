@@ -5,6 +5,8 @@ import rules from '../data/securityRules.js'
 import { maskSecret } from './scanner.js'
 
 export const MAX_PAYLOAD_CHARS = 150_000
+export const CHUNK_CHARS = 350_000
+export const MAX_CHUNKS = 3
 
 const DATA_FILE = /\.(csv|tsv|sql)$/i
 const LOW_PRIORITY = /(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|\.min\.(js|css)|bundle\.js)$/i
@@ -63,4 +65,50 @@ export function buildAiPayload(files, maxChars = MAX_PAYLOAD_CHARS) {
   const scannableTotal = files.length
   const coveragePercent = scannableTotal === 0 ? 0 : Math.round((includedFiles.length / scannableTotal) * 100)
   return { payloadText: parts.join(''), includedFiles, excludedFiles, dataFiles: dataFiles.map((f) => f.path), coveragePercent }
+}
+
+/**
+ * 분할 분석용 (원칙 8 개정): 호출 1회 한도를 넘는 저장소는 여러 묶음으로 나눠 전부 검토한다.
+ * returns { chunks: [payloadText], includedFiles, excludedFiles, dataFiles, coveragePercent }
+ */
+export function buildAiPayloadChunks(files, perChunk = CHUNK_CHARS, maxChunks = MAX_CHUNKS) {
+  const dataFiles = files.filter((f) => DATA_FILE.test(f.path))
+  const candidates = files
+    .filter((f) => !DATA_FILE.test(f.path))
+    .map((f) => ({ ...f, priority: priorityOf(f) }))
+    .sort((a, b) => a.priority - b.priority || a.path.localeCompare(b.path))
+
+  const includedFiles = []
+  const excludedFiles = dataFiles.map((f) => ({ path: f.path, reason: '데이터 파일 — 내용 미전송(존재만 고지)' }))
+  const chunkParts = [[]]
+  let used = 0
+
+  for (const f of candidates) {
+    const safe = redactSecrets(f.text)
+    const block = `\n===== 파일: ${f.path} =====\n${safe}\n`
+    if (block.length > perChunk) {
+      excludedFiles.push({ path: f.path, reason: '단일 파일이 호출 한도(35만 자)를 초과 — 제외' })
+      continue
+    }
+    if (used + block.length > perChunk) {
+      if (chunkParts.length >= maxChunks) {
+        excludedFiles.push({ path: f.path, reason: `분할 한도(${maxChunks}회 호출) 초과 — 제외` })
+        continue
+      }
+      chunkParts.push([])
+      used = 0
+    }
+    chunkParts[chunkParts.length - 1].push(block)
+    includedFiles.push(f.path)
+    used += block.length
+  }
+
+  const dataNote = dataFiles.length > 0
+    ? `\n===== 데이터 파일 고지 =====\n다음 데이터 파일이 저장소에 존재하지만 개인정보 보호를 위해 내용은 전송하지 않았다: ${dataFiles.map((f) => f.path).join(', ')}\n`
+    : ''
+  const chunks = chunkParts.filter((p) => p.length > 0).map((p) => p.join('') + dataNote)
+
+  const scannableTotal = files.length
+  const coveragePercent = scannableTotal === 0 ? 0 : Math.round((includedFiles.length / scannableTotal) * 100)
+  return { chunks: chunks.length > 0 ? chunks : [dataNote || '(전송할 파일 없음)'], includedFiles, excludedFiles, dataFiles: dataFiles.map((f) => f.path), coveragePercent }
 }

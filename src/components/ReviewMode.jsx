@@ -5,7 +5,7 @@ import { SEVERITIES } from '../data/securityRules.js'
 import { TRACKS, rubricItems, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
-import { buildAiPayload } from '../lib/redact.js'
+import { buildAiPayloadChunks } from '../lib/redact.js'
 import { classifyApp, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
 import { saveRecord, targetKey } from '../lib/ledger.js'
@@ -116,8 +116,8 @@ export default function ReviewMode() {
     setError('')
     try {
       setBusy('AI가 앱을 분류하는 중…')
-      const { payloadText } = buildAiPayload(files)
-      const result = await classifyApp({ payloadText, apiKey, model })
+      const { chunks } = buildAiPayloadChunks(files)
+      const result = await classifyApp({ payloadText: chunks[0], apiKey, model })
       setAiClassify(result)
       if (result.track) setTrack(result.track)
       setFeatures(result.features || {})
@@ -131,11 +131,13 @@ export default function ReviewMode() {
   const runJudge = async () => {
     setError('')
     try {
-      setBusy('AI가 항목별 판정 초안을 작성하는 중… (1~2분)')
-      const payload = buildAiPayload(files)
+      const payload = buildAiPayloadChunks(files)
+      const many = payload.chunks.length > 1
+      setBusy(many ? `AI가 판정 초안을 작성하는 중… 코드가 커서 ${payload.chunks.length}개 묶음으로 나눠 분석합니다 (수 분)` : 'AI가 항목별 판정 초안을 작성하는 중… (1~2분)')
       const aiItems = trackItems.filter((it) => it.aiVerifiable)
       const result = await judgeItems({
-        payloadText: payload.payloadText, items: aiItems, scanFindings: scan.findings, apiKey, model, files,
+        payloadChunks: payload.chunks, items: aiItems, scanFindings: scan.findings, apiKey, model, files,
+        onProgress: (d, t) => { if (t > 1) setBusy(`AI 분할 분석 중… ${d}/${t} 묶음 완료`) },
       })
       setJudgments(result.judgments)
       setAiMeta({ demoted: result.demoted, filled: result.filled, coverage: payload })
