@@ -1505,6 +1505,9 @@ git -C $REPO commit -m "test: 취약 픽스처 앱과 골든 판정표 + 부재 
       allowed: string[] | null,     // enum. 없으면 null
       keys: string[] | null,        // 객체 행: 그 객체가 가질 수 있는 키의 전부
       element_required: string[] | null,  // 배열 행: 원소의 필수 키
+      spec_constraint: string,      // 표의 "허용값·원소 필수 키" 칸 원문. 이것이 있어야 ⑥ 이
+                                    // 손실 없이 대조하고, 검증기가 "0 이상 정수"·"비어 있지 않음"·
+                                    // "1~8" 처럼 열거가 아닌 제약을 읽어 검사할 수 있다
       validated_by: string[],       // "contract" | "recompute" | "spec-items" | "spec-session" | "moe-mapping"
       rendered_in: string[]         // "html:종합판정" 등. 빈 배열이면 렌더되지 않는 필드
     }
@@ -1514,7 +1517,9 @@ git -C $REPO commit -m "test: 취약 픽스처 앱과 골든 판정표 + 부재 
   render.mjs:  node render.mjs <stagingDir>
     export function loadContract(): Contract
     export function allowedPaths(contract): Set<string>                 // 계약이 허용하는 경로 집합
-    export function validateReport(report, items, contract): string[]   // 빈 배열이면 통과
+    export function validateReport(report, items, contract, scan = null): string[]   // 빈 배열이면 통과
+      // scan 은 선택이다. 주면 summary.documentation_hits 를 scan.json 에서 다시 세어 대조한다
+      // (§8.3.1 의 "계약 + scan.json 재계산 대조"). 없으면 그 검사만 건너뛴다.
     export function renderMarkdown(report, items): string
     export function escapeHtml(s: string): string
   ```

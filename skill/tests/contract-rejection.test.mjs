@@ -39,22 +39,31 @@ const del = (r, p) => {
 const addKey = (r, p, k) => { const o = at(r, p); if (o && typeof o === 'object') o[k] = '검증되지 않는 값' }
 const delInFirstElement = (r, p, k) => { const a = at(r, p); if (Array.isArray(a) && a[0]) delete a[0][k] }
 
+// 훼손마다 "어떤 오류가 나야 하는지"를 함께 적는다.
+// 오류가 하나라도 났는지만 보면, 타입 검사가 고장 나 있어도 엉뚱한 다른 검사가
+// 오류를 내주는 바람에 초록불이 된다(리뷰 지적). 의도한 검사가 실제로 동작했는지 본다.
+const TYPE_ERROR = /타입이 .+ 이어야 합니다|원소는 .+ 이어야 합니다/
+const MISSING = /필수 필드 누락/
+const NOT_ALLOWED = /허용값이 아닙니다|타입이 .+ 이어야 합니다/
+const UNKNOWN_KEY = /허용되지 않은 필드/
+const ELEMENT_KEY = /원소 필수 키 누락|필수 필드 누락|하위 점검/
+
 function strategies(f) {
   const out = []
   // 원소 행(`X[]`)에 "필드 삭제"를 쓰면 배열의 유일한 원소를 지우는 셈인데, 빈 배열은
   // 계약 위반이 아니다(DB 경로가 없는 프로젝트는 정상). 대신 원소를 객체가 아닌 값으로 바꾼다.
   if (f.required) {
-    if (f.path.endsWith('[]')) out.push(['원소를 스칼라로', (r) => set(r, f.path, '__not-an-object__')])
-    else out.push(['필드 삭제', (r) => del(r, f.path)])
+    if (f.path.endsWith('[]')) out.push(['원소를 스칼라로', (r) => set(r, f.path, '__not-an-object__'), TYPE_ERROR])
+    else out.push(['필드 삭제', (r) => del(r, f.path), MISSING])
   }
-  if (f.type.startsWith('string')) out.push(['문자열 자리에 숫자', (r) => set(r, f.path, 123)])
-  if (f.type.startsWith('array<')) out.push(['배열을 객체로', (r) => set(r, f.path, {})])
-  if (f.type.startsWith('object')) out.push(['객체를 배열로', (r) => set(r, f.path, [])])
-  if (f.type === 'number') out.push(['숫자 자리에 문자열', (r) => set(r, f.path, '1')])
-  if (f.type === 'boolean') out.push(['불리언 자리에 문자열', (r) => set(r, f.path, 'true')])
-  if (f.allowed) out.push(['허용값 밖의 값', (r) => set(r, f.path, '__invalid__')])
-  if (f.element_required) out.push([`원소 필수 키 ${f.element_required[0]} 삭제`, (r) => delInFirstElement(r, f.path, f.element_required[0])])
-  if (f.keys) out.push(['키 목록 밖의 키 추가', (r) => addKey(r, f.path, '__unknown__')])
+  if (f.type.startsWith('string')) out.push(['문자열 자리에 숫자', (r) => set(r, f.path, 123), TYPE_ERROR])
+  if (f.type.startsWith('array<')) out.push(['배열을 객체로', (r) => set(r, f.path, {}), TYPE_ERROR])
+  if (f.type.startsWith('object')) out.push(['객체를 배열로', (r) => set(r, f.path, []), TYPE_ERROR])
+  if (f.type === 'number') out.push(['숫자 자리에 문자열', (r) => set(r, f.path, '1'), TYPE_ERROR])
+  if (f.type === 'boolean') out.push(['불리언 자리에 문자열', (r) => set(r, f.path, 'true'), TYPE_ERROR])
+  if (f.allowed) out.push(['허용값 밖의 값', (r) => set(r, f.path, '__invalid__'), NOT_ALLOWED])
+  if (f.element_required) out.push([`원소 필수 키 ${f.element_required[0]} 삭제`, (r) => delInFirstElement(r, f.path, f.element_required[0]), ELEMENT_KEY])
+  if (f.keys) out.push(['키 목록 밖의 키 추가', (r) => addKey(r, f.path, '__unknown__'), UNKNOWN_KEY])
   return out
 }
 
@@ -68,11 +77,13 @@ describe('계약 위반은 렌더 전에 거부된다', () => {
   })
 
   for (const f of rendered) {
-    for (const [label, damage] of strategies(f)) {
+    for (const [label, damage, expected] of strategies(f)) {
       it(`${f.path} — ${label}`, () => {
         const r = validReport()
         damage(r)
-        expect(validateReport(r, items, contract), `${f.path} 훼손이 통과됨`).not.toEqual([])
+        const errs = validateReport(r, items, contract)
+        expect(errs, `${f.path} 훼손이 통과됨`).not.toEqual([])
+        expect(errs.join('\n'), `${f.path} — ${label}: 의도한 검사가 아니라 다른 오류만 났습니다`).toMatch(expected)
       })
     }
   }
@@ -175,5 +186,100 @@ describe('계약 위반은 렌더 전에 거부된다', () => {
     const r = validReport()
     r.edusafe_version = '9.9.9'
     expect(validateReport(r, items, contract).join(' ')).toMatch(/edusafe_version/)
+  })
+})
+
+// ── Codex 리뷰(Task 4) 반영 회귀 ──────────────────────────────────────────
+// 전부 리뷰에서 실측으로 재현된 결함이다. 다시 생기면 여기서 빨간불이 된다.
+describe('리뷰 반영 회귀 — 검증기', () => {
+  const errs = (r) => validateReport(r, items, contract)
+
+  it('발견 1 — evidence 의 값 타입을 검사한다 (키 집합만 보지 않는다)', () => {
+    const r = validReport()
+    r.items[0].evidence = [{ type: 'negative_scan', source: 'scanner', rules: 'rrn-data', files_scanned: 5 }]
+    expect(errs(r).join('\n')).toMatch(/rules: 타입이 array<string>/)
+  })
+
+  it('발견 1 — evidence 의 source 허용값을 검사한다', () => {
+    const r = validReport()
+    r.items[0].evidence = [{ ...QUOTE, source: 'made-up' }]
+    expect(errs(r).join('\n')).toMatch(/source: 허용값이 아닙니다/)
+  })
+
+  it('발견 2 — 하위 점검의 fail 이 항목 판정으로 올라간다 (REQ-7.5)', () => {
+    const r = validReport()
+    const sub = r.items[0].subchecks[0]
+    Object.assign(sub, { verdict: 'fail', verification_level: 'verified', sources: ['code'], evidence: [QUOTE] })
+    expect(errs(r).join('\n')).toMatch(/항목 판정이 하위 점검 중 최악\(fail\)과 다릅니다/)
+  })
+
+  it('발견 2 — 하위 점검도 pass·fail 이면 근거가 필요하다 (REQ-7.7)', () => {
+    const r = validReport()
+    const sub = r.items[0].subchecks[0]
+    Object.assign(sub, { verdict: 'pass', verification_level: 'verified', sources: ['code'], evidence: [] })
+    expect(errs(r).join('\n')).toMatch(/근거가 없습니다/)
+  })
+
+  it('발견 3 — 항목 id 가 중복되면 거부한다', () => {
+    const r = validReport()
+    r.items.push(structuredClone(r.items[0]))
+    const out = errs(r).join('\n')
+    expect(out).toMatch(/중복된 항목/)
+    expect(out).toMatch(/정확히 37개/)
+  })
+
+  it('발견 3 — 하위 점검 id 가 중복되면 거부한다', () => {
+    const r = validReport()
+    r.items[0].subchecks.push(structuredClone(r.items[0].subchecks[0]))
+    expect(errs(r).join('\n')).toMatch(/중복된 하위 점검/)
+  })
+
+  it('발견 4 — moe_checklist 의 mapped_items 가 비면 거부한다', () => {
+    const r = validReport()
+    r.moe_checklist = [{ criterion: '1-1', text: '임의 문구', mapped_items: [], status: '확인필요' }]
+    expect(errs(r).join('\n')).toMatch(/mapped_items 가 비어 있습니다/)
+  })
+
+  it('발견 4 — moe_checklist 의 기준이 중복되면 거부한다', () => {
+    const r = validReport()
+    r.moe_checklist.push(structuredClone(r.moe_checklist[0]))
+    expect(errs(r).join('\n')).toMatch(/중복된 기준/)
+  })
+
+  it('발견 5 — array<string> 의 스칼라 원소 타입을 검사한다', () => {
+    const r = validReport()
+    r.project.git.refs_scanned = [123]
+    expect(errs(r).join('\n')).toMatch(/refs_scanned\[0\]: 원소는 string/)
+  })
+
+  it('발견 6 — documentation_hits 를 scan.json 에서 재계산해 대조한다', () => {
+    const r = validReport()
+    r.summary.documentation_hits = 999
+    const scan = {
+      hits: [
+        { rule: 'eval-usage', documentation: true },   // 판정에서 뺀 문서 hit → 각주 집계 대상
+        { rule: 'rrn-field', documentation: true },    // secretValue → 근거로 쓰므로 제외 (REQ-7.15)
+        { rule: 'eval-usage', documentation: false },
+      ],
+    }
+    expect(validateReport(r, items, contract).join('\n')).not.toMatch(/documentation_hits/)
+    expect(validateReport(r, items, contract, scan).join('\n')).toMatch(/documentation_hits: scan.json 재계산 값과 다릅니다 \(보고서 999 · 재계산 1\)/)
+  })
+
+  it('훼손된 보고서에 검증기가 크래시하지 않는다', () => {
+    for (const damage of [
+      (r) => { r.items = 'x' },
+      (r) => { r.items[0].subchecks = {} },
+      (r) => { r.items[0].evidence = [null] },
+      (r) => { r.summary = [] },
+      (r) => { r.coverage = null },
+      (r) => { r.moe_checklist = [null] },
+      (r) => { r.db_paths = [{ evidence: 'x' }] },
+    ]) {
+      const r = validReport()
+      damage(r)
+      expect(() => validateReport(r, items, contract)).not.toThrow()
+      expect(validateReport(r, items, contract).length).toBeGreaterThan(0)
+    }
   })
 })

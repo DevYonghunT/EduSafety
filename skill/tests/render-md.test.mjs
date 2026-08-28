@@ -12,7 +12,19 @@ const MASKED = 'AIzaSy****'
 // 판정이 섞인 보고서 — 전부 na 인 보고서만 렌더하면 표기 분기를 하나도 못 본다.
 function mixedReport() {
   const r = validReport()
-  const set = (id, patch) => Object.assign(r.items.find((i) => i.item_id === id), patch)
+  // REQ-7.5 — 항목 판정은 하위 점검 중 최악이어야 하므로, 첫 하위 점검을 항목과 맞춘다.
+  const set = (id, patch) => {
+    const it = r.items.find((i) => i.item_id === id)
+    Object.assign(it, patch)
+    it.subchecks.forEach((s, i) => {
+      const lead = i === 0
+      s.verdict = lead ? patch.verdict : 'na'
+      s.verification_level = lead ? patch.verification_level : 'none'
+      s.sources = lead ? [...(patch.sources || [])] : []
+      s.evidence = lead && (patch.verdict === 'pass' || patch.verdict === 'fail') ? [QUOTE] : []
+      s.reason = lead && patch.verdict === 'needs_human' ? (patch.demotion_reason || null) : null
+    })
+  }
 
   set('R-secrets', {
     verdict: 'fail', verification_level: 'verified', sources: ['scanner'],
@@ -155,5 +167,48 @@ describe('renderMarkdown (REQ-8.20)', () => {
     const out = renderMarkdown(r, items)
     const row = out.split('\n').find((l) => l.includes('a'))
     expect(out).not.toContain('| a|b |')
+  })
+})
+
+// ── Codex 리뷰(Task 4) 반영 회귀 — 렌더 ───────────────────────────────────
+describe('리뷰 반영 회귀 — MD 렌더', () => {
+  it('발견 7 — 하위 점검의 근거가 MD 에 나온다', () => {
+    const r = validReport()
+    r.items[0].subchecks[0].evidence = [{ ...QUOTE, quote: 'SUBCHECK-EVIDENCE-MARKER' }]
+    const md = renderMarkdown(r, items)
+    expect(md).toContain('하위 점검 근거')
+    expect(md).toContain('SUBCHECK-EVIDENCE-MARKER')
+  })
+
+  it('발견 7 — DB 도달 경로의 근거가 MD 에 나온다', () => {
+    const r = validReport()
+    r.db_paths[0].evidence = [{ ...QUOTE, quote: 'DBPATH-EVIDENCE-MARKER' }]
+    const md = renderMarkdown(r, items)
+    expect(md).toContain('경로별 근거')
+    expect(md).toContain('DBPATH-EVIDENCE-MARKER')
+  })
+
+  it('발견 7 — 계약이 렌더 대상이라 표시한 evidence 가 전부 렌더된다', () => {
+    const r = validReport()
+    r.items[0].evidence = [{ ...QUOTE, quote: 'ITEM-EV' }]
+    r.items[0].subchecks[0].evidence = [{ ...QUOTE, quote: 'SUB-EV' }]
+    r.db_paths[0].evidence = [{ ...QUOTE, quote: 'DB-EV' }]
+    const md = renderMarkdown(r, items)
+    for (const marker of ['ITEM-EV', 'SUB-EV', 'DB-EV']) expect(md, `${marker} 가 렌더되지 않음`).toContain(marker)
+  })
+
+  it('발견 8 — 인용 안의 백틱이 코드 스팬을 깨뜨리지 않는다', () => {
+    const r = validReport()
+    r.items[0].evidence = [{ ...QUOTE, quote: 'const x = `secret`' }]
+    const line = renderMarkdown(r, items).split('\n').find((l) => l.includes('const x ='))
+    // 내용의 백틱(1개)보다 긴 울타리(2개)로 감싸고 양옆에 공백을 둔다
+    expect(line).toContain('`` const x = `secret` ``')
+  })
+
+  it('발견 8 — 백틱이 없는 인용은 그대로 한 겹 코드 스팬이다', () => {
+    const r = validReport()
+    r.items[0].evidence = [{ ...QUOTE, quote: 'const a = 1' }]
+    const line = renderMarkdown(r, items).split('\n').find((l) => l.includes('const a = 1'))
+    expect(line).toContain('`const a = 1`')
   })
 })

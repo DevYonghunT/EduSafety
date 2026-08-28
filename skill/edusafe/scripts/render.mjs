@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { rules as scanRules } from '../rules/scan-rules.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const RULES = join(HERE, '..', 'rules')
@@ -105,6 +106,32 @@ function constraintErrors(field, value, where) {
 // 훼손된 보고서가 들어와도 검증기가 죽지 않게 한다 — 죽으면 "거부"가 아니라 크래시다
 const asArray = (v) => (Array.isArray(v) ? v : [])
 
+// spec §8.3.5 — evidence 키의 타입. 키 집합만 보고 값 타입을 안 보면
+// rules 가 문자열이어도 통과해 렌더에서 크래시한다(리뷰에서 실측).
+const EVIDENCE_KEY_TYPES = {
+  type: 'string',
+  source: 'string',
+  file: 'string',
+  line: 'number',
+  quote: 'string',
+  rules: 'array<string>',
+  files_scanned: 'number',
+}
+const EVIDENCE_SOURCES = ['scanner', 'code', 'evidence', 'teacher']
+
+// REQ-7.3 우선순위 — 검증된 fail > needs_human > 교사확인 pass > 검증된 pass > na
+const VERDICT_RANK = { fail: 0, needs_human: 1, pass: 2, na: 3 }
+
+// REQ-7.5 — 하위 점검이 있는 항목의 판정은 하위 점검 중 최악이다.
+// na 인 하위 점검은 집계에서 제외하되, 전부 na 면 항목도 na 다.
+export function rollupVerdict(subchecks) {
+  const verdicts = asArray(subchecks).map((s) => s && s.verdict).filter((v) => typeof v === 'string')
+  if (verdicts.length === 0) return null // 하위 점검이 없는 항목은 이 규칙의 대상이 아니다
+  if (verdicts.every((v) => v === 'na')) return 'na'
+  const ranked = verdicts.filter((v) => v !== 'na').sort((a, b) => (VERDICT_RANK[a] ?? 9) - (VERDICT_RANK[b] ?? 9))
+  return ranked[0]
+}
+
 const SEVERITY_BUCKET = { high: 'must_fix', medium: 'recommended', low: 'info' }
 
 // REQ-7.26 — needs_human 항목의 사유를 정해진 우선순위로 하나만 센다.
@@ -152,7 +179,7 @@ export function recomputeSummary(reportItems) {
   return summary
 }
 
-export function validateReport(report, items, contract) {
+export function validateReport(report, items, contract, scan = null) {
   const errors = []
   if (report === null || typeof report !== 'object' || Array.isArray(report)) {
     return ['보고서가 객체가 아닙니다']
@@ -185,6 +212,17 @@ export function validateReport(report, items, contract) {
         }
       }
       errors.push(...constraintErrors(field, found.value, found.where))
+      // array<T> 는 배열 여부만이 아니라 원소 타입까지 본다.
+      // 이게 없으면 array<string> 에 숫자를 넣어도 통과해 렌더에 그대로 나온다(리뷰에서 실측).
+      const elementType = field.type.match(/^array<(\w+)>/)
+      if (elementType && Array.isArray(found.value)) {
+        found.value.forEach((el, i) => {
+          const ok = elementType[1] === 'string'
+            ? typeof el === 'string'
+            : el !== null && typeof el === 'object' && !Array.isArray(el)
+          if (!ok) errors.push(`${found.where}[${i}]: 원소는 ${elementType[1]} 이어야 합니다`)
+        })
+      }
       if (field.element_required && Array.isArray(found.value)) {
         found.value.forEach((el, i) => {
           if (el === null || typeof el !== 'object' || Array.isArray(el)) {
@@ -214,6 +252,22 @@ export function validateReport(report, items, contract) {
         const got = Object.keys(el).sort()
         if (JSON.stringify(expected) !== JSON.stringify(got)) {
           errors.push(`${at}: evidence(${el.type}) 의 키는 정확히 ${expected.join('·')} 여야 합니다 — 받은 키 ${got.join('·') || '(없음)'}`)
+          return
+        }
+        // 키 집합이 맞아도 값 타입이 틀리면 렌더가 크래시한다 (spec §8.3.5)
+        for (const k of expected) {
+          const want = EVIDENCE_KEY_TYPES[k]
+          if (!want) continue
+          if (!typeOk(want, el[k])) { errors.push(`${at}.${k}: 타입이 ${want} 이어야 합니다`); continue }
+          if (want === 'array<string>' && el[k].some((x) => typeof x !== 'string')) {
+            errors.push(`${at}.${k}: 원소는 string 이어야 합니다`)
+          }
+          if (want === 'number' && (!Number.isInteger(el[k]) || el[k] < 0)) {
+            errors.push(`${at}.${k}: 0 이상 정수여야 합니다`)
+          }
+        }
+        if (typeof el.source === 'string' && !EVIDENCE_SOURCES.includes(el.source)) {
+          errors.push(`${at}.source: 허용값이 아닙니다 — ${JSON.stringify(el.source)}`)
         }
       })
     }
@@ -222,22 +276,36 @@ export function validateReport(report, items, contract) {
   const reportItems = asArray(report.items).filter((i) => i !== null && typeof i === 'object' && !Array.isArray(i))
 
   // 5. 항목 전수와 하위 점검 전수 (REQ-7.8 · REQ-8.14)
+  // 집합만 비교하면 중복 id 를 놓친다(리뷰에서 실측). 개수와 중복도 함께 본다.
   const specIds = items.map((i) => i.id).sort()
   const gotIds = reportItems.map((i) => i.item_id).filter((v) => typeof v === 'string').sort()
-  if (JSON.stringify(specIds) !== JSON.stringify(gotIds)) {
-    const missing = specIds.filter((id) => !gotIds.includes(id))
-    const extra = gotIds.filter((id) => !specIds.includes(id))
-    if (missing.length) errors.push(`items 에 빠진 항목: ${missing.join(', ')}`)
-    if (extra.length) errors.push(`items 에 없는 항목이 있습니다: ${extra.join(', ')}`)
+  const missing = specIds.filter((id) => !gotIds.includes(id))
+  const extra = gotIds.filter((id) => !specIds.includes(id))
+  const dupes = [...new Set(gotIds.filter((id, i) => gotIds.indexOf(id) !== i))]
+  if (missing.length) errors.push(`items 에 빠진 항목: ${missing.join(', ')}`)
+  if (extra.length) errors.push(`items 에 없는 항목이 있습니다: ${extra.join(', ')}`)
+  if (dupes.length) errors.push(`items 에 중복된 항목: ${dupes.join(', ')}`)
+  if (reportItems.length !== specIds.length) {
+    errors.push(`items 는 정확히 ${specIds.length}개여야 합니다 (받은 개수 ${reportItems.length})`)
   }
   for (const it of reportItems) {
     const def = items.find((i) => i.id === it.item_id)
     if (!def) continue
     const want = def.subchecks.map((s) => s.id).sort()
-    const got = (Array.isArray(it.subchecks) ? it.subchecks : []).map((s) => s && s.id).filter((v) => typeof v === 'string').sort()
-    if (JSON.stringify(want) !== JSON.stringify(got)) {
-      for (const id of want.filter((x) => !got.includes(x))) errors.push(`${it.item_id}: 하위 점검 ${id} 누락`)
-      for (const id of got.filter((x) => !want.includes(x))) errors.push(`${it.item_id}: 정의에 없는 하위 점검 ${id}`)
+    const got = asArray(it.subchecks).map((s) => s && s.id).filter((v) => typeof v === 'string').sort()
+    for (const id of want.filter((x) => !got.includes(x))) errors.push(`${it.item_id}: 하위 점검 ${id} 누락`)
+    for (const id of got.filter((x) => !want.includes(x))) errors.push(`${it.item_id}: 정의에 없는 하위 점검 ${id}`)
+    const subDupes = [...new Set(got.filter((id, i) => got.indexOf(id) !== i))]
+    if (subDupes.length) errors.push(`${it.item_id}: 중복된 하위 점검 ${subDupes.join(', ')}`)
+    if (asArray(it.subchecks).length !== want.length) {
+      errors.push(`${it.item_id}: 하위 점검은 ${want.length}개여야 합니다 (받은 개수 ${asArray(it.subchecks).length})`)
+    }
+
+    // REQ-7.5 — 항목 판정은 하위 점검 중 최악이어야 한다.
+    // 이 검사가 없으면 하위 점검의 fail 이 항목에서 na 로 조용히 사라진다(리뷰에서 실측).
+    const rolled = rollupVerdict(it.subchecks)
+    if (rolled !== null && it.verdict !== rolled) {
+      errors.push(`${it.item_id}: 항목 판정이 하위 점검 중 최악(${rolled})과 다릅니다 — 보고서 ${it.verdict}`)
     }
     // §6 과 일치해야 하는 문안
     for (const key of ['why_risky', 'fix_hint', 'basis']) {
@@ -263,6 +331,13 @@ export function validateReport(report, items, contract) {
     }
     if (it.verdict === 'na' && (it.applicability_reason === null || it.applicability_reason === undefined)) {
       errors.push(`${it.item_id}: verdict 가 na 인데 applicability_reason 이 없습니다`)
+    }
+    // REQ-7.7 은 판정 일반에 대한 규범이다. 하위 점검도 판정이므로 같이 적용한다.
+    for (const sub of asArray(it.subchecks)) {
+      if (!sub || (sub.verdict !== 'pass' && sub.verdict !== 'fail')) continue
+      if (!Array.isArray(sub.evidence) || sub.evidence.length === 0) {
+        errors.push(`${it.item_id}.${sub.id}: verdict 가 ${sub.verdict} 인데 근거가 없습니다`)
+      }
     }
     // 11. 인용 길이·개수 (REQ-7.12)
     if (Array.isArray(it.evidence) && it.evidence.length > 4) {
@@ -300,13 +375,31 @@ export function validateReport(report, items, contract) {
 
   // 10. 서식1 상태 재계산 대조 (REQ-8.22)
   if (Array.isArray(report.moe_checklist)) {
+    const criteria = report.moe_checklist.map((m) => m && m.criterion)
+    const criterionDupes = [...new Set(criteria.filter((c, i) => criteria.indexOf(c) !== i))]
+    if (criterionDupes.length) errors.push(`moe_checklist 에 중복된 기준: ${criterionDupes.join(', ')}`)
     for (const row of report.moe_checklist) {
       if (!row || !Array.isArray(row.mapped_items)) continue
+      // 매핑이 비면 status 가 무조건 "확인필요" 가 되어 어떤 값이든 통과한다(리뷰에서 실측)
+      if (row.mapped_items.length === 0) {
+        errors.push(`moe_checklist[${row.criterion}]: mapped_items 가 비어 있습니다`)
+        continue
+      }
       const want = moeStatusFor(row.mapped_items, reportItems)
       if (row.status !== want) errors.push(`moe_checklist[${row.criterion}].status: 재계산 값과 다릅니다 (보고서 ${row.status} · 재계산 ${want})`)
       for (const id of row.mapped_items) {
         if (!items.some((i) => i.id === id)) errors.push(`moe_checklist[${row.criterion}]: items.json 에 없는 항목 ${id}`)
       }
+    }
+  }
+
+  // documentation_hits 는 scan.json 에서 다시 센다 (§8.3.1 "계약 + scan.json 재계산 대조").
+  // secretValue 규칙의 문서 hit 은 판정 근거로 그대로 쓰므로(REQ-7.15) 각주 집계에서 뺀다.
+  if (scan && Array.isArray(scan.hits) && report.summary && typeof report.summary === 'object') {
+    const secretRules = new Set(scanRules.filter((r) => r.secretValue).map((r) => r.id))
+    const want = scan.hits.filter((h) => h.documentation && !secretRules.has(h.rule)).length
+    if (report.summary.documentation_hits !== want) {
+      errors.push(`summary.documentation_hits: scan.json 재계산 값과 다릅니다 (보고서 ${report.summary.documentation_hits} · 재계산 ${want})`)
     }
   }
 
@@ -330,6 +423,31 @@ const esc = (v) => String(v === null || v === undefined ? '' : v)
   .split('\r').join('')
 
 const yesNo = (v) => (v === true ? '예' : v === false ? '아니오' : esc(v))
+
+// CommonMark 규칙 — 내용에 백틱이 있으면 그보다 긴 울타리를 쓴다.
+// 고정 길이 백틱으로 감싸면 인용 안의 백틱이 코드 스팬을 깨뜨린다.
+const BACKTICK = String.fromCharCode(96)
+function codeSpan(text) {
+  const s = String(text === null || text === undefined ? '' : text).split('\n').join(' ').split('\r').join('')
+  const runs = s.match(new RegExp(BACKTICK + '+', 'g')) || []
+  const fence = BACKTICK.repeat(Math.max(0, ...runs.map((r) => r.length)) + 1)
+  const pad = s.startsWith(BACKTICK) || s.endsWith(BACKTICK) ? ' ' : ''
+  return fence + pad + s + pad + fence
+}
+
+// 계약이 렌더 대상으로 표시한 근거는 항목·하위 점검·DB 경로 세 곳 모두에서 나와야 한다(REQ-8.11).
+function evidenceLines(list, indent = '') {
+  const out = []
+  for (const e of asArray(list)) {
+    if (!e || typeof e !== 'object') continue
+    if (e.type === 'quote') {
+      out.push(`${indent}- ${codeSpan(`${e.file}:${e.line}`)} (${esc(e.source)}) — ${codeSpan(e.quote)}`)
+    } else {
+      out.push(`${indent}- 부재 증명: 규칙 ${esc(asArray(e.rules).join(', '))} 로 파일 ${e.files_scanned}개 검사 (${esc(e.source)})`)
+    }
+  }
+  return out
+}
 
 // spec §7.1 — 출처에 따라 표기가 갈린다. 교사 확인은 검증된 충족과 섞지 않는다.
 export function verdictLabel(verdict, level) {
@@ -435,6 +553,15 @@ export function renderMarkdown(report, items) {
       esc(p.controls.authentication), esc(p.controls.ownership), esc(p.controls.role),
       esc(p.controls.validation), esc(p.controls.rate_limit),
     ]))
+    const pathEvidence = report.db_paths.filter((p) => asArray(p.evidence).length > 0)
+    if (pathEvidence.length > 0) {
+      L.push('경로별 근거')
+      L.push('')
+      for (const p of pathEvidence) {
+        L.push(`- ${esc(p.table)} (${esc(p.op)}) ${esc(p.file)}:${p.line}`)
+        L.push(...evidenceLines(p.evidence, '  '))
+      }
+    }
   }
   L.push('')
 
@@ -473,13 +600,20 @@ export function renderMarkdown(report, items) {
         esc(sub.id), verdictLabel(sub.verdict, sub.verification_level), esc(sub.coverage_status),
         sub.sources.length ? esc(sub.sources.join(', ')) : '—', esc(sub.reason) || '—',
       ]))
-      if (it.evidence.length > 0) {
+      const subEvidence = asArray(it.subchecks).filter((sub) => asArray(sub.evidence).length > 0)
+      if (subEvidence.length > 0) {
+        L.push('하위 점검 근거')
+        L.push('')
+        for (const sub of subEvidence) {
+          L.push(`- ${esc(sub.id)}`)
+          L.push(...evidenceLines(sub.evidence, '  '))
+        }
+        L.push('')
+      }
+      if (asArray(it.evidence).length > 0) {
         L.push('근거')
         L.push('')
-        for (const e of it.evidence) {
-          if (e.type === 'quote') L.push(`- \`${esc(e.file)}:${e.line}\` (${esc(e.source)}) — \`${esc(e.quote)}\``)
-          else L.push(`- 부재 증명: 규칙 ${esc(e.rules.join(', '))} 로 파일 ${e.files_scanned}개 검사 (${esc(e.source)})`)
-        }
+        L.push(...evidenceLines(it.evidence))
         L.push('')
       }
       L.push(`**왜 위험한가** — ${it.why_risky}`)
