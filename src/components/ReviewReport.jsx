@@ -5,6 +5,7 @@ import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS,
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest, CAUSES } from '../lib/supplementRequest.js'
+import CertificationMark from './CertificationMark.jsx'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -97,7 +98,6 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
       </div>
     )
   }
-
   return (
     <div className="report">
       <div className="report-actions no-print">
@@ -106,7 +106,9 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             📄 보완 요청서 ({summary.actions.confirm}건) — 보기·인쇄
           </button>
         )}
-        <button className="btn-primary" onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
+        <button className="btn-primary" onClick={() => window.print()}>
+          🖨️ 인쇄 / PDF 저장
+        </button>
       </div>
 
       <header className="report-head">
@@ -208,6 +210,11 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           </ul>
         </section>
       )}
+
+      <CertificationMark
+        repoMeta={repoMeta}
+        summary={summary}
+      />
 
       <section className="report-sign">
         <h3>심사 확인</h3>
