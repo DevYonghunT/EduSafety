@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSyn
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { createHash } from 'node:crypto'
+import { crc32 as zlibCrc32 } from 'node:zlib'
 import { describe, it, expect, afterAll } from 'vitest'
 import { buildRelease, releaseFiles, NORMALIZATION, DIGEST_TARGETS } from '../scripts/build-zip.mjs'
 import { skillDigest } from '../edusafe/scripts/render.mjs'
@@ -42,10 +43,21 @@ function readZip(buf) {
     const dataAt = localOffset + 30 + localNameLen + localExtraLen
     const data = buf.subarray(dataAt, dataAt + size)
 
-    entries.push({ name, flags, method, crc, size, data })
+    // 로컬 헤더의 값도 따로 읽어 둔다. 중앙 디렉터리만 믿으면, 로컬 헤더가 틀린 zip 을
+    // 우리 리더는 통과시키고 다른 unzip 도구는 거부하는 상황을 못 잡는다.
+    const local = {
+      flags: buf.readUInt16LE(localOffset + 6),
+      method: buf.readUInt16LE(localOffset + 8),
+      crc: buf.readUInt32LE(localOffset + 14),
+      compressedSize: buf.readUInt32LE(localOffset + 18),
+      size: buf.readUInt32LE(localOffset + 22),
+      name: buf.subarray(localOffset + 30, localOffset + 30 + localNameLen).toString('utf8'),
+    }
+
+    entries.push({ name, flags, method, crc, size, data, local })
     p += 46 + nameLen + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32)
   }
-  return { total, centralSize, centralStart, entries }
+  return { total, centralSize, centralStart, centralEnd: p, eocdAt, entries }
 }
 
 // edusafe/ 아래 실제 파일 목록 (정규화된 상대 경로)
@@ -75,6 +87,27 @@ describe('배포 zip (REQ-13.1)', () => {
     const bad = zip.entries.filter((e) => e.size !== e.data.length)
     expect(bad.map((e) => e.name), '기록된 크기와 실제 데이터 길이가 다릅니다').toEqual([])
     expect(zip.entries.every((e) => e.method === 0), '무압축(store)이어야 합니다').toBe(true)
+
+    // CRC 는 zlib 의 독립 구현으로 검증한다. 우리 crc32() 를 불러 대조하면
+    // 라이터가 틀렸을 때 테스트도 같이 틀려 아무것도 잡지 못한다.
+    const wrongCrc = zip.entries.filter((e) => (zlibCrc32(e.data) >>> 0) !== e.crc)
+    expect(wrongCrc.map((e) => e.name), 'CRC32 가 실제 데이터와 다릅니다').toEqual([])
+  })
+
+  it('1. 로컬 헤더와 중앙 디렉터리가 서로 맞고 중앙 디렉터리가 EOCD 에서 끝난다', () => {
+    const mismatched = zip.entries.filter(
+      (e) =>
+        e.local.name !== e.name ||
+        e.local.crc !== e.crc ||
+        e.local.size !== e.size ||
+        e.local.compressedSize !== e.size ||
+        e.local.method !== e.method ||
+        e.local.flags !== e.flags,
+    )
+    expect(mismatched.map((e) => e.name), '로컬 헤더가 중앙 디렉터리와 다릅니다').toEqual([])
+
+    expect(zip.centralEnd, '중앙 디렉터리가 EOCD 에서 정확히 끝나지 않습니다').toBe(zip.eocdAt)
+    expect(zip.centralSize, 'EOCD 의 중앙 디렉터리 크기가 실제와 다릅니다').toBe(zip.eocdAt - zip.centralStart)
   })
 
   it('2. zip 에 개발 전용 파일이 들어가지 않는다', () => {
@@ -193,6 +226,52 @@ describe('배포 zip (REQ-13.1)', () => {
       return text.slice(a, b + ('  return Buffer.concat([...localParts, centralBuf, end])' + NL + '}').length + 1)
     }
     expect(block(impl)).toBe(block(plan))
+  })
+
+  it('outDir 가 스킬 폴더를 삼키면 지우기 전에 거부한다', () => {
+    const dir = tmp('guard')
+    mkdirSync(join(dir, 'rules'), { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), '절차서\n')
+    writeFileSync(join(dir, 'rules', 'version.json'), JSON.stringify({ edusafe_version: '9.9.9', rubric_version: 'x' }))
+
+    // outDir === skillDir, 그리고 outDir 가 skillDir 의 조상인 경우 둘 다
+    expect(() => buildRelease({ skillDir: dir, outDir: dir })).toThrow(/배포 대상이 사라집니다/)
+    expect(() => buildRelease({ skillDir: dir, outDir: join(dir, '..') })).toThrow(/배포 대상이 사라집니다/)
+
+    // 막았으니 스킬 폴더가 그대로 있어야 한다
+    expect(readdirSync(dir).sort()).toEqual(['SKILL.md', 'rules'])
+  })
+
+  it('바이너리 파일이 바이트 그대로 zip 에 들어간다', () => {
+    const dir = tmp('binary')
+    mkdirSync(join(dir, 'templates'), { recursive: true })
+    mkdirSync(join(dir, 'rules'), { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), '절차서\n')
+    writeFileSync(join(dir, 'rules', 'version.json'), JSON.stringify({ edusafe_version: '9.9.9', rubric_version: 'x' }))
+    // PNG 시그니처는 0x0D 0x0A 를 품고 있다 — utf8 로 왕복시키면 손상된다
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xd8, 0x00, 0x80])
+    writeFileSync(join(dir, 'templates', 'logo.png'), png)
+
+    const r = buildRelease({ skillDir: dir, outDir: tmp('dist-bin') })
+    const z = readZip(readFileSync(r.zipPath))
+    const entry = z.entries.find((e) => e.name === 'templates/logo.png')
+    expect(entry, 'zip 에 바이너리가 들어가지 않았습니다').toBeTruthy()
+    expect(Buffer.compare(entry.data, png), '바이너리 바이트가 바뀌었습니다').toBe(0)
+  })
+
+  it('텍스트의 CRLF 는 LF 로 바뀌고 그 결과가 manifest 해시와 맞는다', () => {
+    const dir = tmp('crlf')
+    mkdirSync(join(dir, 'rules'), { recursive: true })
+    writeFileSync(join(dir, 'SKILL.md'), '한 줄\r\n두 줄\r\n')
+    writeFileSync(join(dir, 'rules', 'version.json'), JSON.stringify({ edusafe_version: '9.9.9', rubric_version: 'x' }))
+
+    const r = buildRelease({ skillDir: dir, outDir: tmp('dist-crlf') })
+    const z = readZip(readFileSync(r.zipPath))
+    const entry = z.entries.find((e) => e.name === 'SKILL.md')
+    expect(entry.data.toString('utf8')).toBe('한 줄\n두 줄\n')
+    // 교사가 내려받아 푼 파일이 manifest 의 해시와 맞아야 대조가 성립한다
+    const listed = r.manifest.files.find((f) => f.path === 'SKILL.md')
+    expect(createHash('sha256').update(entry.data).digest('hex')).toBe(listed.sha256)
   })
 
   it('빌드 산출물은 저장소에 커밋되지 않는다 (dist/ 는 무시 대상)', () => {

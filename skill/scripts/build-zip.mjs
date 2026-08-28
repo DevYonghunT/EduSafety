@@ -5,7 +5,7 @@
 //
 // manifest 는 신뢰 증거가 아니라 **구성 대조 자료**다 (spec §11 · REQ-13.2).
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, extname, resolve, sep } from 'node:path'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { skillDigest, manifestFiles } from '../edusafe/scripts/render.mjs'
@@ -115,7 +115,16 @@ export const NORMALIZATION = { separator: '/', eol: 'LF', order: 'path-asc', sym
 // 절차·데이터·스크립트·템플릿이 바뀌면 동작이 바뀌지만, 설치 안내문은 그렇지 않다.
 export const DIGEST_TARGETS = ['SKILL.md', 'rules', 'scripts', 'templates']
 
-const normalizeText = (text) => text.split('\r\n').join('\n')
+// 줄바꿈 정규화는 **텍스트 확장자에만** 적용한다. 바이너리를 utf8 로 왕복시키면
+// 바이트가 손상된다(실측: PNG 12바이트 → 19바이트). latin1 은 바이트를 1:1 로
+// 왕복시키므로 어떤 입력에도 손실이 없다.
+const NORMALIZE_EXT = new Set(['.md', '.json', '.mjs', '.js', '.html', '.css', '.txt'])
+
+function entryData(abs) {
+  const buf = readFileSync(abs)
+  if (!NORMALIZE_EXT.has(extname(abs).toLowerCase())) return buf
+  return Buffer.from(buf.toString('latin1').split('\r\n').join('\n'), 'latin1')
+}
 
 // zip 에 넣을 파일 목록. manifestFiles 는 지문 대상만 돌려주므로 README 를 더한다.
 export function releaseFiles(skillDir = SKILL_DIR) {
@@ -131,7 +140,7 @@ export function buildRelease({ skillDir = SKILL_DIR, outDir = DIST } = {}) {
 
   const entries = files.map((f) => ({
     name: f.path, // 이미 '/' 구분자·오름차순
-    data: Buffer.from(normalizeText(readFileSync(f.abs, 'utf8')), 'utf8'),
+    data: entryData(f.abs),
   }))
 
   const zip = buildZip(entries)
@@ -147,6 +156,14 @@ export function buildRelease({ skillDir = SKILL_DIR, outDir = DIST } = {}) {
     digest_targets: DIGEST_TARGETS,
     files: entries.map((e) => ({ path: e.name, sha256: createHash('sha256').update(e.data).digest('hex') })),
     skill_digest: skillDigest(skillDir),
+  }
+
+  // outDir 는 통째로 지운다. 그것이 스킬 폴더이거나 그 조상이면 배포 대상 자체가
+  // 사라진다 — 실측으로 edusafe/ 가 산출물 3개로 대체되는 것을 확인했다. 지우기 전에 막는다.
+  const skillAbs = resolve(skillDir)
+  const outAbs = resolve(outDir)
+  if (skillAbs === outAbs || skillAbs.startsWith(outAbs + sep)) {
+    throw new Error('outDir 가 스킬 폴더를 포함합니다 — 지우면 배포 대상이 사라집니다: ' + outAbs)
   }
 
   rmSync(outDir, { recursive: true, force: true })
