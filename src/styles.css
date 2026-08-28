@@ -1144,3 +1144,146 @@ a:focus-visible {
 @keyframes edusafe-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── 스킬 탭 (트랙 1 배포 안내) ────────────────────────────────────── */
+
+.skill-get {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: var(--primary-soft);
+  border: 1px solid rgba(14, 122, 106, 0.22);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-top: 18px;
+}
+
+.skill-get .btn-primary {
+  font-size: 1.05rem;
+  padding: 12px 22px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.skill-get-meta {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.skill-get-meta strong {
+  color: var(--primary-deep);
+}
+
+.skill-hashes {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.skill-hashes dl {
+  margin: 0;
+}
+
+.skill-hashes div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.skill-hashes div:first-child {
+  border-top: 0;
+}
+
+.skill-hashes dt {
+  flex: 0 0 132px;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.skill-hashes dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  color: var(--ink);
+}
+
+.skill-install {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.92rem;
+}
+
+.skill-install th,
+.skill-install td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.skill-install th {
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.skill-install code {
+  font-size: 0.84rem;
+  background: var(--bg);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+.skill-limits {
+  background: var(--warn-soft);
+  border: 1px solid rgba(224, 138, 31, 0.3);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+}
+
+.skill-limits h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.skill-limits li {
+  margin: 8px 0 0 18px;
+}
+
+.skill-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.skill-cat {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--paper);
+}
+
+.skill-cat b {
+  display: block;
+  font-size: 0.93rem;
+}
+
+.skill-cat span {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.skill-note {
+  margin-top: 14px;
+}
+
+.skill-note-muted {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
