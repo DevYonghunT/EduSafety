@@ -1,7 +1,7 @@
 // 심사 보고서 — 점수 없음: 종합판정 3값 + 카테고리별 상태 프로필 + 행동 중심 요약.
 // 모든 인용은 텍스트 노드로만 렌더한다 (원칙 6 — HTML 실행 금지).
 import { useState } from 'react'
-import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS } from '../data/rubric.js'
+import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS, rubricItems } from '../data/rubric.js'
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest } from '../lib/supplementRequest.js'
@@ -64,7 +64,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             <tr><th>심사 대상</th><td>{repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo} (${repoMeta.branch})` : `${repoMeta.name} (폴더 제출)`}</td></tr>
             <tr><th>고정 지점</th><td><code>{repoMeta.commitSha ? `커밋 ${repoMeta.commitSha}` : `SHA-256 지문 ${repoMeta.fingerprint}`}</code> — 이 심사는 이 제출물에 대한 것이며, 이후 수정하면 지문이 달라져 효력이 없습니다.</td></tr>
             <tr><th>루브릭 버전</th><td>{RUBRIC_VERSION}</td></tr>
-            <tr><th>기능 프로파일</th><td>{featureProfile(features)} — 적용 심사 항목 {summary.items.length} / 30</td></tr>
+            <tr><th>기능 프로파일</th><td>{featureProfile(features)} — 적용 심사 항목 {summary.items.length} / {rubricItems.length}</td></tr>
             <tr><th>보호 수준</th><td>{PROTECTION_LEVELS[protectionLevel].label} — {PROTECTION_LEVELS[protectionLevel].plain}</td></tr>
             {appSummary && <tr><th>앱 요약</th><td>{appSummary}</td></tr>}
             <tr><th>AI 분석 고지</th><td>
@@ -124,7 +124,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
                 <tr key={it.id}>
                   <td>
                     <div className="vt-q">{it.question}</div>
-                    <div className="vt-id">{it.id}{it.type === 'required' ? ' · 필수' : ''}</div>
+                    <div className="vt-id">{it.id}{it.type === 'required' ? ' · 필수' : ''}{it.level ? ` · ${it.level}` : ''}</div>
                   </td>
                   <td className="vt-auth">{AUTHORITY_LABELS[it.authority]}</td>
                   <td>

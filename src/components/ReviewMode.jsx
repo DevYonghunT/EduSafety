@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
 import { scanFiles, countBySeverity, suspectDataFiles, isVendorPath } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
-import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
+import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION, rubricItems } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayloadChunks } from '../lib/redact.js'
@@ -323,7 +323,7 @@ export default function ReviewMode() {
               </label>
             ))}
             <div className="level-line">
-              적용 심사 항목: <strong>{summary.items.length} / 30</strong> (조건 미해당 {summary.inapplicable.length}) ·
+              적용 심사 항목: <strong>{summary.items.length} / {rubricItems.length}</strong> (조건 미해당 {summary.inapplicable.length}) ·
               보호 수준: <strong>{PROTECTION_LEVELS[protectionLevel].label}</strong> — {PROTECTION_LEVELS[protectionLevel].plain}
             </div>
           </div>
@@ -401,7 +401,7 @@ export default function ReviewMode() {
                     <strong>{it.question}</strong>
                   </div>
                   <div className="item-sub">
-                    {it.id} · {it.type === 'required' ? '필수' : '점수'} · {AUTHORITY_LABELS[it.authority]} {it.aiVerifiable ? '' : '· 수동 판정 항목'}
+                    {it.id} · {it.type === 'required' ? '필수' : '점수'} · {AUTHORITY_LABELS[it.authority]}{it.level ? ` · 기준선 ${it.level}` : ''} {it.aiVerifiable ? '' : '· 수동 판정 항목'}
                   </div>
                   <p className="item-plain">{it.plain}</p>
 
