@@ -1,0 +1,19 @@
+name: edusafety-shannon-mvp-target
+
+services:
+  juice-shop:
+    image: bkimminich/juice-shop@sha256:8739101ade29358abb5469ee66ae78e582c97ed0a5543a4ad102e5fa5193526b
+    container_name: edusafety-juice-shop-target
+    init: true
+    restart: "no"
+    networks:
+      shannon:
+        aliases:
+          - edusafety-juice-shop-target
+    ports:
+      - "127.0.0.1:43110:3000"
+
+networks:
+  shannon:
+    name: shannon-net
+    external: true

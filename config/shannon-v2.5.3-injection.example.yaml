@@ -1,0 +1,11 @@
+description: "EduSafety internal MVP; disposable local OWASP Juice Shop v20.2.0 only."
+vuln_classes:
+  - injection
+exploit: "false"
+rules_of_engagement: |
+  Test only the controller-managed disposable local target.
+  Do not access production systems, third-party systems, real accounts, or personal data.
+  Stop if the repository, commit, image digest, health response, or target URL differs from the approved mapping.
+report:
+  min_confidence: high
+  sarif: "false"
