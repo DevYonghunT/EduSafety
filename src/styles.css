@@ -661,3 +661,43 @@ button {
   padding: 10px;
   background: var(--bg);
 }
+
+/* ── 심사 기록 대장 ── */
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ledger-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.ledger-main {
+  flex: 1;
+}
+
+.round-badge {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  background: var(--primary-soft);
+  color: var(--primary-deep);
+  border-radius: 99px;
+  padding: 2px 9px;
+  font-weight: 700;
+}
+
+.ledger-status {
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ledger-ok { color: var(--ok); }
+.ledger-warn { color: var(--warn); }
+.ledger-danger { color: var(--danger); }

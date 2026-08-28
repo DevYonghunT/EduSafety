@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ReviewMode from './components/ReviewMode.jsx'
+import ReviewLedger from './components/ReviewLedger.jsx'
 
 const TABS = [
   { key: 'about', label: '🏠 소개' },
@@ -38,12 +39,7 @@ export default function App() {
           </section>
         )}
         {view === 'review' && <ReviewMode />}
-        {view === 'ledger' && (
-          <section className="panel">
-            <h1>심사 기록</h1>
-            <p className="intro">브라우저 로컬 대장 구현 예정 (여유 기능)</p>
-          </section>
-        )}
+        {view === 'ledger' && <ReviewLedger />}
       </main>
 
       <footer className="footer">

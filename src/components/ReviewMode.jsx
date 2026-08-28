@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
 import { scanFiles, countBySeverity } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
-import { TRACKS, rubricItems, AUTHORITY_LABELS } from '../data/rubric.js'
+import { TRACKS, rubricItems, AUTHORITY_LABELS, RUBRIC_VERSION } from '../data/rubric.js'
 import { checkGate } from '../lib/submissionGate.js'
 import { buildAiPayload } from '../lib/redact.js'
 import { classifyApp, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
+import { saveRecord, targetKey } from '../lib/ledger.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
 
 const STEPS = ['① 불러오기', '② 분류 확정', '③ 판정 확인', '④ 보고서']
@@ -44,6 +45,7 @@ export default function ReviewMode() {
   const [overrides, setOverrides] = useState({})
   const [humanInputs, setHumanInputs] = useState({})
   const [filter, setFilter] = useState('')
+  const [savedRound, setSavedRound] = useState(null)
 
   const protectionLevel = deriveProtectionLevel(features)
   const trackItems = useMemo(() => (track ? rubricItems.filter((it) => it.tracks.includes(track)) : []), [track])
@@ -125,7 +127,7 @@ export default function ReviewMode() {
     setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
     setTrack(''); setFeatures({}); setAiClassify(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
-    setError('')
+    setSavedRound(null); setError('')
   }
 
   const counts = useMemo(() => {
@@ -376,6 +378,17 @@ export default function ReviewMode() {
             coverage={aiMeta?.coverage} gate={gate}
           />
           <div className="btn-row no-print">
+            <button className="btn-primary" disabled={!!savedRound} onClick={() => {
+              const entry = saveRecord({
+                target: targetKey(repoMeta),
+                owner: repoMeta.owner, repo: repoMeta.repo, commitSha: repoMeta.commitSha,
+                track, protectionLevel, status: summary.status, actions: summary.actions,
+                rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
+              })
+              setSavedRound(entry.round)
+            }}>
+              {savedRound ? `✅ 저장됨 (${savedRound}회차)` : '📚 심사 기록에 저장'}
+            </button>
             <button className="btn-secondary" onClick={() => setStep(3)}>← 판정으로 돌아가기</button>
             <button className="btn-secondary" onClick={resetAll}>새 심사 시작</button>
           </div>
