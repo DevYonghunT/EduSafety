@@ -874,3 +874,59 @@ button {
 .inapplicable-box {
   margin-top: 18px;
 }
+
+/* ── 업로드 존 (첨부 영역 강조) ── */
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px dashed var(--primary);
+  border-radius: 12px;
+  padding: 22px 14px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--primary-soft);
+  transition: background 0.15s;
+}
+
+.upload-zone:hover {
+  background: #d3ece5;
+}
+
+.upload-zone input {
+  display: none;
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+}
+
+.upload-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 검사 진행 중 표시 ── */
+.busy-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1.5px solid var(--primary);
+  font-size: 0.95rem;
+}
+
+.busy-live::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 3px solid #c5e3db;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: edusafe-spin 0.9s linear infinite;
+}
+
+@keyframes edusafe-spin {
+  to { transform: rotate(360deg); }
+}

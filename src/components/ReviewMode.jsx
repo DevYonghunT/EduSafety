@@ -183,7 +183,14 @@ export default function ReviewMode() {
       </div>
 
       {error && <div className="error">⚠️ {error}</div>}
-      {busy && <div className="busy">⏳ {busy}</div>}
+      {busy && (
+        <div className="busy busy-live">
+          <div>
+            <strong>검사 진행 중</strong> — {busy}
+            <div className="hint">진행 중에는 이 화면을 닫거나 새로고침하지 마세요.</div>
+          </div>
+        </div>
+      )}
 
       {/* ── ① 불러오기 ── */}
       {step === 1 && (
@@ -204,11 +211,13 @@ export default function ReviewMode() {
               <div className="source-card">
                 <strong>📁 폴더 업로드</strong>
                 <p className="hint">GitHub이 없는 제출물은 폴더째 올립니다. 파일 전체의 SHA-256 콘텐츠 지문에 심사가 고정됩니다.</p>
-                <label className="field">앱 폴더 선택
+                <label className={`upload-zone ${busy ? 'upload-disabled' : ''}`}>
                   <input type="file" webkitdirectory="" directory="" multiple disabled={!!busy}
                     onChange={(e) => loadFolder(e.target.files)} />
+                  <span className="upload-icon">📂</span>
+                  <strong>여기를 눌러 앱 폴더 선택</strong>
+                  <span className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음</span>
                 </label>
-                <p className="hint">파일은 이 브라우저 안에서만 읽힙니다 — 서버 업로드 없음.</p>
               </div>
               <p className="hint source-note">
                 이 단계는 API 키 없이 실행됩니다. 심사자 API 키는 다음 단계(AI 분석)부터 사용되며, 이때 코드가 Anthropic API로 전송됩니다
