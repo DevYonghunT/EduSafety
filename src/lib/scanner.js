@@ -1,0 +1,63 @@
+// 결정적 규칙 스캔 엔진 — AI가 아니라 정규식이 판단하므로 같은 입력에 항상 같은 결과.
+// 발견 스니펫의 비밀값은 저장 전에 마스킹한다 (신뢰성 원칙 7).
+import rules from '../data/securityRules.js'
+
+const TEXT_EXTENSIONS = /\.(html?|css|jsx?|tsx?|mjs|cjs|json|txt|md|vue|svelte|rules|env|yml|yaml|xml|py|csv|tsv|sql)$/i
+const SKIP_PATH = /(^|\/)(node_modules|\.git|dist|build|\.next|coverage|vendor)(\/|$)/
+export const MAX_FILE_SIZE = 2 * 1024 * 1024
+
+export function isScannablePath(path) {
+  if (SKIP_PATH.test(path)) return false
+  const name = path.split('/').pop()
+  return TEXT_EXTENSIONS.test(name) || /^\.env/.test(name)
+}
+
+export function maskSecret(snippet, match) {
+  if (match.length <= 10) return snippet.replace(match, '****')
+  return snippet.replace(match, `${match.slice(0, 6)}****${match.slice(-2)}`)
+}
+
+function makeSnippet(line, match, shouldMask) {
+  let snippet = line.trim()
+  if (snippet.length > 160) {
+    const idx = Math.max(0, snippet.indexOf(match) - 40)
+    snippet = (idx > 0 ? '…' : '') + snippet.slice(idx, idx + 140) + '…'
+  }
+  return shouldMask ? maskSecret(snippet, match) : snippet
+}
+
+/**
+ * files: [{ path, name, text }]
+ * returns { findings: [{ rule, occurrences: [{ file, line, snippet }] }], scannedCount }
+ */
+export function scanFiles(files) {
+  const byRule = new Map()
+  let scannedCount = 0
+
+  for (const f of files) {
+    scannedCount++
+    const lines = f.text.split('\n')
+    for (const rule of rules) {
+      for (let i = 0; i < lines.length; i++) {
+        rule.pattern.lastIndex = 0
+        const m = rule.pattern.exec(lines[i])
+        if (!m) continue
+        if (!byRule.has(rule.id)) byRule.set(rule.id, { rule, occurrences: [] })
+        const bucket = byRule.get(rule.id)
+        if (bucket.occurrences.length < 50) {
+          bucket.occurrences.push({ file: f.path, line: i + 1, snippet: makeSnippet(lines[i], m[0], rule.maskSecret) })
+        }
+      }
+    }
+  }
+
+  const order = { critical: 0, warning: 1, info: 2 }
+  const findings = [...byRule.values()].sort((a, b) => order[a.rule.severity] - order[b.rule.severity])
+  return { findings, scannedCount }
+}
+
+export function countBySeverity(findings) {
+  const counts = { critical: 0, warning: 0, info: 0 }
+  for (const f of findings) counts[f.rule.severity]++
+  return counts
+}
