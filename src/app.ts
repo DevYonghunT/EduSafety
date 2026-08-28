@@ -1,5 +1,5 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { createHmac } from "node:crypto";
 import express, { type ErrorRequestHandler, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import { z, ZodError } from "zod";
@@ -25,6 +25,22 @@ import { GitHubCollectionError, type RepositorySourceProvider } from "./github/c
 import { ConcurrencyGate, FixedWindowRateLimiter } from "./http/admission-control.js";
 import { accountRateLimitKey, isTrustedProxyAddress, requestClientKey } from "./http/client-address.js";
 import { renderShowcaseSvg } from "./http/svg.js";
+import {
+  ANTHROPIC_MODELS,
+  ANTHROPIC_MODEL_IDS,
+  DEFAULT_ANTHROPIC_MODEL,
+  createAnthropicSecuritySummarizer,
+  type AnthropicModelId,
+} from "./security-scan/anthropic-summary.js";
+import {
+  PassiveSecurityScanService,
+  SecurityScanError,
+  applySecurityScanSummary,
+  normalizeSecurityScanTarget,
+  type SecurityScanResult,
+  type SecurityScanRunner,
+  type SecurityScanSummarizer,
+} from "./security-scan/service.js";
 
 const issueSchema = z.strictObject({
   repositoryUrl: z.string().min(1).max(300),
@@ -48,6 +64,31 @@ const revokeSchema = z.strictObject({
   ]),
 });
 const uidSchema = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
+const securityScanSchema = z
+  .strictObject({
+    targetUrl: z.string().trim().min(1).max(2_048),
+    authorizationConfirmed: z.literal(true),
+    anthropicApiKey: z
+      .string()
+      .trim()
+      .min(1)
+      .max(512)
+      .refine((value) => [...value].every((character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint >= 0x20 && codePoint !== 0x7f;
+      }))
+      .optional(),
+    anthropicModel: z.enum(ANTHROPIC_MODEL_IDS).optional(),
+  })
+  .superRefine((body, context) => {
+    if (body.anthropicModel !== undefined && body.anthropicApiKey === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["anthropicApiKey"],
+        message: "anthropicModel requires anthropicApiKey",
+      });
+    }
+  });
 
 export interface AppDependencies {
   readonly config: AppConfig;
@@ -57,6 +98,11 @@ export interface AppDependencies {
   readonly signer?: CertificationSigner;
   readonly securityLimits?: Partial<AppSecurityLimits>;
   readonly authenticateAdmin?: (username: string, password: string) => Promise<boolean>;
+  readonly securityScanner?: SecurityScanRunner;
+  readonly createSecurityScanSummarizer?: (credentials: {
+    readonly apiKey: string;
+    readonly model: AnthropicModelId;
+  }) => SecurityScanSummarizer;
 }
 
 export interface AppSecurityLimits {
@@ -67,6 +113,10 @@ export interface AppSecurityLimits {
   readonly loginMaxAttemptsPerIp: number;
   readonly loginMaxAttemptsPerAccount: number;
   readonly loginWindowMs: number;
+  readonly securityScanMaxConcurrent: number;
+  readonly securityScanAiMaxConcurrent: number;
+  readonly securityScanMaxRequestsPerIp: number;
+  readonly securityScanWindowMs: number;
   readonly maxTrackedKeys: number;
 }
 
@@ -78,6 +128,10 @@ const DEFAULT_SECURITY_LIMITS: AppSecurityLimits = {
   loginMaxAttemptsPerIp: 10,
   loginMaxAttemptsPerAccount: 5,
   loginWindowMs: 15 * 60_000,
+  securityScanMaxConcurrent: 1,
+  securityScanAiMaxConcurrent: 1,
+  securityScanMaxRequestsPerIp: 3,
+  securityScanWindowMs: 60_000,
   maxTrackedKeys: 4_096,
 };
 
@@ -226,7 +280,12 @@ function allowPublicBadgeCors(applicationOrigin: string, allowedOrigins: Readonl
 function rateLimited(
   response: Response,
   retryAfterSeconds: number,
-  code: "ADMIN_LOGIN_RATE_LIMITED" | "ISSUE_RATE_LIMITED" | "ISSUE_CAPACITY_EXCEEDED",
+  code:
+    | "ADMIN_LOGIN_RATE_LIMITED"
+    | "ISSUE_RATE_LIMITED"
+    | "ISSUE_CAPACITY_EXCEEDED"
+    | "SECURITY_SCAN_RATE_LIMITED"
+    | "SECURITY_SCAN_CAPACITY_EXCEEDED",
   message: string,
 ): void {
   response.setHeader("Retry-After", String(Math.max(1, Math.ceil(retryAfterSeconds))));
@@ -243,9 +302,22 @@ export function createApp(dependencies: AppDependencies): express.Express {
   const issueService = new BadgeIssueService(repository, analysis, signer);
   const verificationService = new BadgeVerificationService(repository, sourceProvider, config, now);
   const policyService = new PolicyService(repository, now);
+  const securityScanConfig = config.securityScan;
+  const securityScanner =
+    dependencies.securityScanner ??
+    (securityScanConfig
+      ? new PassiveSecurityScanService({
+          allowedOrigins: securityScanConfig.allowedOrigins,
+          dynamicTargetsEnabled: securityScanConfig.dynamicTargetsEnabled,
+          timeoutMs: securityScanConfig.timeoutMs,
+          now,
+        })
+      : null);
+  const createSecurityScanSummarizer =
+    dependencies.createSecurityScanSummarizer ?? createAnthropicSecuritySummarizer;
   const app = express();
-  const publicDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public");
-  const clientDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../client-dist");
+  const publicDirectory = path.resolve(process.cwd(), "public");
+  const clientDirectory = path.resolve(process.cwd(), "client-dist");
   const applicationOrigin = new URL(config.publicBaseUrl).origin;
   const securityLimits = { ...DEFAULT_SECURITY_LIMITS, ...dependencies.securityLimits };
   const rateLimitNow = () => now().getTime();
@@ -267,8 +339,139 @@ export function createApp(dependencies: AppDependencies): express.Express {
     maxKeys: securityLimits.maxTrackedKeys,
     now: rateLimitNow,
   });
+  const securityScanRateLimiter = new FixedWindowRateLimiter({
+    limit: securityLimits.securityScanMaxRequestsPerIp,
+    windowMs: securityLimits.securityScanWindowMs,
+    maxKeys: securityLimits.maxTrackedKeys,
+    now: rateLimitNow,
+  });
   const loginConcurrency = new ConcurrencyGate(securityLimits.loginMaxConcurrent);
   const issueConcurrency = new ConcurrencyGate(securityLimits.issueMaxConcurrent);
+  const securityScanConcurrency = new ConcurrencyGate(securityLimits.securityScanMaxConcurrent);
+  const securityScanAiConcurrency = new ConcurrencyGate(securityLimits.securityScanAiMaxConcurrent);
+
+  const sendSecurityScanConfig = (_request: Request, response: Response): void => {
+    const enabled = securityScanner !== null && securityScanConfig !== undefined;
+    response.json({
+      enabled,
+      dynamicTargetInput: securityScanConfig !== undefined,
+      aiEnabled: enabled,
+      aiProvider: "anthropic",
+      aiCredentialMode: "request",
+      defaultAiModel: DEFAULT_ANTHROPIC_MODEL,
+      aiModels: ANTHROPIC_MODELS,
+      mode: "passive",
+    });
+  };
+
+  const runSecurityScan = async (
+    request: Request,
+    response: Response,
+    next: NextFunction,
+    rateKey: string,
+  ): Promise<void> => {
+    try {
+      if (!securityScanner || !securityScanConfig) {
+        response.status(503).json({
+          error: {
+            code: "SECURITY_SCAN_DISABLED",
+            message: "서버에서 보안 점검 기능이 활성화되지 않았습니다.",
+          },
+        });
+        return;
+      }
+      const body = parseBody(securityScanSchema, request);
+      const target = normalizeSecurityScanTarget(body.targetUrl);
+      if (!securityScanConfig.dynamicTargetsEnabled && !securityScanConfig.allowedOrigins.has(target.origin)) {
+        response.status(403).json({
+          error: {
+            code: "SECURITY_SCAN_TARGET_NOT_ALLOWED",
+            message: "서버에서 승인한 origin만 점검할 수 있습니다.",
+          },
+        });
+        return;
+      }
+      const admission = securityScanRateLimiter.consume(rateKey);
+      if (!admission.allowed) {
+        rateLimited(
+          response,
+          admission.retryAfterSeconds,
+          "SECURITY_SCAN_RATE_LIMITED",
+          "보안 점검 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
+      }
+      const release = securityScanConcurrency.tryAcquire();
+      if (!release) {
+        rateLimited(
+          response,
+          1,
+          "SECURITY_SCAN_CAPACITY_EXCEEDED",
+          "다른 보안 점검이 실행 중입니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
+      }
+      const abortController = new AbortController();
+      const abortWork = (): void => abortController.abort();
+      const abortOnClosedResponse = (): void => {
+        if (!response.writableEnded) abortWork();
+      };
+      request.once("aborted", abortWork);
+      response.once("close", abortOnClosedResponse);
+      if (request.aborted || response.destroyed) abortWork();
+      try {
+        const safetyIdentifier = `scan_${createHmac("sha256", config.admin.sessionSecret)
+          .update(`security-scan:${rateKey}`)
+          .digest("base64url")}`;
+        let scan: SecurityScanResult;
+        try {
+          scan = await securityScanner.scan(target.href, safetyIdentifier);
+        } finally {
+          release();
+        }
+        if (body.anthropicApiKey !== undefined && !abortController.signal.aborted) {
+          const releaseAi = securityScanAiConcurrency.tryAcquire();
+          if (releaseAi) {
+            try {
+              const summarize = createSecurityScanSummarizer({
+                apiKey: body.anthropicApiKey,
+                model: body.anthropicModel ?? DEFAULT_ANTHROPIC_MODEL,
+              });
+              scan = await applySecurityScanSummary(
+                scan,
+                safetyIdentifier,
+                summarize,
+                abortController.signal,
+              );
+            } catch {
+              // Client setup failures must not discard the deterministic scan.
+              scan = { ...scan, ai: { ...scan.ai, used: false, status: "failed" } };
+            } finally {
+              releaseAi();
+            }
+          } else {
+            scan = { ...scan, ai: { ...scan.ai, used: false, status: "busy" } };
+          }
+        }
+        if (!response.destroyed && !response.writableEnded) response.json({ scan });
+      } finally {
+        request.off("aborted", abortWork);
+        response.off("close", abortOnClosedResponse);
+        release();
+      }
+    } catch (error) {
+      if (error instanceof SecurityScanError) {
+        const status = error.code === "SECURITY_SCAN_TARGET_NOT_ALLOWED"
+          ? 403
+          : error.code === "SECURITY_SCAN_TARGET_BLOCKED"
+            ? 422
+            : 502;
+        response.status(status).json({ error: { code: error.code, message: error.message } });
+        return;
+      }
+      next(error);
+    }
+  };
 
   app.disable("x-powered-by");
   app.set("trust proxy", isTrustedProxyAddress);
@@ -295,10 +498,19 @@ export function createApp(dependencies: AppDependencies): express.Express {
     next();
   });
   app.use("/api/admin", requireAdminSameOrigin(applicationOrigin));
+  app.use("/api/security-scan", (_request, response, next) => {
+    response.setHeader("Cache-Control", "no-store");
+    next();
+  });
+  app.use("/api/security-scan", requireAdminSameOrigin(applicationOrigin));
   app.use("/api/badges", allowPublicBadgeCors(applicationOrigin, config.allowedOrigins));
   app.use("/api", express.json({ limit: "16kb", strict: true }));
 
   app.get("/health", (_request, response) => response.json({ status: "ok" }));
+  app.get("/api/security-scan/config", sendSecurityScanConfig);
+  app.post("/api/security-scan", async (request, response, next) => {
+    await runSecurityScan(request, response, next, `public:${requestClientKey(request)}`);
+  });
   app.post("/api/admin/session", async (request, response) => {
     const credentials = parseBody(loginSchema, request);
     const ipKey = requestClientKey(request);
@@ -345,6 +557,15 @@ export function createApp(dependencies: AppDependencies): express.Express {
       csrfToken: csrfCookieToken(_request),
     });
   });
+  app.get("/api/admin/security-scan/config", auth.requireAdmin, sendSecurityScanConfig);
+  app.post(
+    "/api/admin/security-scan",
+    auth.requireAdmin,
+    auth.requireCsrf,
+    async (request, response, next) => {
+      await runSecurityScan(request, response, next, `admin:${response.locals.adminId as string}`);
+    },
+  );
   app.delete("/api/admin/session", auth.requireAdmin, auth.requireCsrf, (_request, response) => {
     auth.endSession(response);
     response.sendStatus(204);

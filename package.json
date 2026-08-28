@@ -26,7 +26,7 @@
     "admin:hash-password": "tsx src/auth/hash-password.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.65.0",
+    "@anthropic-ai/sdk": "^0.122.0",
     "cookie": "^1.0.2",
     "dotenv": "^17.4.2",
     "ethers": "^6.15.0",
