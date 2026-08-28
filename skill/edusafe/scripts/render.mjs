@@ -16,6 +16,8 @@ const RULES = join(HERE, '..', 'rules')
 export const loadContract = () => JSON.parse(readFileSync(join(RULES, 'report.contract.json'), 'utf8'))
 export const loadItems = () => JSON.parse(readFileSync(join(RULES, 'items.json'), 'utf8')).items
 export const loadCategories = () => JSON.parse(readFileSync(join(RULES, 'items.json'), 'utf8')).categories || []
+export const loadMoeChecklist = () => JSON.parse(readFileSync(join(RULES, 'moe-checklist.json'), 'utf8'))
+export const loadSessionCanon = () => JSON.parse(readFileSync(join(RULES, 'session.json'), 'utf8')).sessions
 export const loadVersion = () => JSON.parse(readFileSync(join(RULES, 'version.json'), 'utf8'))
 
 export const joinPath = (path, key) => `${path}.${key}`
@@ -380,6 +382,21 @@ export function validateReport(report, items, contract, scan = null) {
     const criteria = report.moe_checklist.map((m) => m && m.criterion)
     const criterionDupes = [...new Set(criteria.filter((c, i) => criteria.indexOf(c) !== i))]
     if (criterionDupes.length) errors.push(`moe_checklist 에 중복된 기준: ${criterionDupes.join(', ')}`)
+
+    // §8.6 정본과 대조한다 — 기준 9개 전수, 문안과 매핑이 정본 그대로여야 한다.
+    // 이게 없으면 한 줄짜리 임의 표를 넣어도 통과한다(리뷰에서 실측).
+    const canon = loadMoeChecklist().criteria
+    const missingCriteria = canon.filter((c) => !criteria.includes(c.criterion)).map((c) => c.criterion)
+    if (missingCriteria.length) errors.push(`moe_checklist 에 빠진 기준: ${missingCriteria.join(', ')}`)
+    for (const row of report.moe_checklist) {
+      if (!row || typeof row !== 'object') continue
+      const def = canon.find((c) => c.criterion === row.criterion)
+      if (!def) { errors.push(`moe_checklist: §8.6 에 없는 기준 ${row.criterion}`); continue }
+      if (row.text !== def.text) errors.push(`moe_checklist[${row.criterion}].text: §8.6 문안과 다릅니다`)
+      if (JSON.stringify(row.mapped_items) !== JSON.stringify(def.mapped_items)) {
+        errors.push(`moe_checklist[${row.criterion}].mapped_items: §8.6 매핑과 다릅니다`)
+      }
+    }
     for (const row of report.moe_checklist) {
       if (!row || !Array.isArray(row.mapped_items)) continue
       // 매핑이 비면 status 가 무조건 "확인필요" 가 되어 어떤 값이든 통과한다(리뷰에서 실측)
@@ -402,6 +419,18 @@ export function validateReport(report, items, contract, scan = null) {
     const want = scan.hits.filter((h) => h.documentation && !secretRules.has(h.rule)).length
     if (report.summary.documentation_hits !== want) {
       errors.push(`summary.documentation_hits: scan.json 재계산 값과 다릅니다 (보고서 ${report.summary.documentation_hits} · 재계산 ${want})`)
+    }
+  }
+
+  // 확인 세션 질문은 §7.5 정본 그대로여야 한다 (REQ-7.24 — 질문 문구를 지어내지 않는다).
+  // 교사가 보는 질문과 문서의 질문이 갈리면 답변이 어떤 하위 점검을 갱신하는지도 흔들린다.
+  if (Array.isArray(report.session)) {
+    const canon = loadSessionCanon()
+    for (const q of report.session) {
+      if (!q || typeof q !== 'object') continue
+      const def = canon.find((s) => s.item_id === q.item_id && s.kind === q.kind)
+      if (!def) { errors.push(`session: §7.5 에 없는 조합 ${q.item_id}/${q.kind}`); continue }
+      if (q.question !== def.question) errors.push(`session[${q.item_id}/${q.kind}].question: §7.5 질문과 다릅니다`)
     }
   }
 

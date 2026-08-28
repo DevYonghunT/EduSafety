@@ -1,0 +1,80 @@
+{
+  "schema_version": "1",
+  "source": "교육부 학습지원 소프트웨어 선정 기준 및 가이드라인(2025.12) [서식 1]",
+  "disclaimer": "이 표는 교육부 [서식 1] 작성에 참고하는 자료이며, 학교운영위원회 심의나 서식 제출을 대체하지 않습니다. 최종 확인·작성은 학교가 합니다.",
+  "criteria": [
+    {
+      "criterion": "1-1",
+      "text": "개인정보가 최소한으로 수집되는가",
+      "note": "S-minimal",
+      "mapped_items": [
+        "S-minimal"
+      ]
+    },
+    {
+      "criterion": "1-2",
+      "text": "수집·이용 목적이 기재되어 있는가",
+      "note": "S-privacy-notice ①",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    },
+    {
+      "criterion": "1-3",
+      "text": "수집항목·보유기간이 기재되어 있는가",
+      "note": "S-privacy-notice ①",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    },
+    {
+      "criterion": "2-1",
+      "text": "안전성 확보에 필요한 조치 사항이 기재되어 있는가",
+      "note": "S-privacy-notice ⑦",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    },
+    {
+      "criterion": "3-1",
+      "text": "열람·정정·삭제·처리정지 요구 절차가 안내되어 있는가",
+      "note": "S-privacy-notice ⑨ + H-delete",
+      "mapped_items": [
+        "S-privacy-notice",
+        "H-delete"
+      ]
+    },
+    {
+      "criterion": "4-1",
+      "text": "만 14세 미만 법정대리인 동의 등 절차가 마련되어 있는가",
+      "note": "R-under14",
+      "mapped_items": [
+        "R-under14"
+      ]
+    },
+    {
+      "criterion": "5-1",
+      "text": "개인정보 보호책임자 정보가 안내되어 있는가",
+      "note": "S-privacy-notice ⑩",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    },
+    {
+      "criterion": "5-2",
+      "text": "제3자 제공에 관한 정보가 기재되어 있는가(필요시)",
+      "note": "S-privacy-notice ④",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    },
+    {
+      "criterion": "5-3",
+      "text": "위·수탁 정보가 기재되어 있는가(필요시)",
+      "note": "S-privacy-notice ⑤",
+      "mapped_items": [
+        "S-privacy-notice"
+      ]
+    }
+  ]
+}

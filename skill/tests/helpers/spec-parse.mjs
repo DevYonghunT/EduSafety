@@ -256,3 +256,68 @@ export function specCategories(spec) {
   }
   return out
 }
+
+// ── spec §8.6 교육부 [서식 1] 필수기준 ─────────────────────────────────────
+// 첫 열은 "1-1 개인정보가 최소한으로 수집되는가" 처럼 기준 번호와 문안이 붙어 있다.
+// 둘째 열은 매핑 칸으로, `S-privacy-notice ⑨ + H-delete` 처럼 원문자와 + 가 섞인다.
+export function specMoe(spec) {
+  const from = spec.indexOf('### 8.6 교육부')
+  const to = spec.indexOf('## 9. 스캔 규칙')
+  if (from < 0 || to < 0) throw new Error('spec §8.6 구간을 찾지 못했습니다')
+  const out = []
+  for (const line of spec.slice(from, to).split('\n')) {
+    if (!line.startsWith('|')) continue
+    const c = cells(line)
+    if (c.length !== 2 || c[0] === '교육부 필수기준' || /^-+$/.test(c[0])) continue
+    const m = c[0].match(/^(\d-\d)\s+(.+)$/)
+    if (!m) throw new Error('§8.6 기준 번호를 읽지 못했습니다: ' + c[0])
+    out.push({
+      criterion: m[1],
+      text: m[2].trim(),
+      note: c[1].trim(),
+      mapped_items: mappedItemsFrom(c[1]),
+    })
+  }
+  return out
+}
+
+// 매핑 칸에서 항목 id 만 뽑는다. 원문자(①②…)는 하위 항목 표시라 id 가 아니다.
+export function mappedItemsFrom(cell) {
+  return cell.split('+')
+    .map((part) => part.trim().replace(/[①-⑳]/g, '').trim())
+    .filter(Boolean)
+}
+
+// REQ-8.23 이 요구하는 고정 문구를 spec 에서 그대로 뽑는다
+export function specMoeDisclaimer(spec) {
+  const line = spec.split('\n').find((l) => l.startsWith('`[REQ-8.23]`'))
+  if (!line) throw new Error('spec 에서 REQ-8.23 을 찾지 못했습니다')
+  const m = line.match(/\*\*"(.+)"\*\*/)
+  if (!m) throw new Error('REQ-8.23 의 고정 문구를 읽지 못했습니다')
+  return m[1]
+}
+
+// ── spec §7.5 확인 세션 ────────────────────────────────────────────────────
+// 5열(항목·kind·질문·답변 형식·갱신 대상 하위 점검).
+// 고유 키는 item_id 하나가 아니라 (item_id, kind) 조합이다 — S-auth-hardening 이 두 행을 갖는다.
+export function specSession(spec) {
+  const from = spec.indexOf('### 7.5 확인 세션 정책')
+  const to = spec.indexOf('### 7.6 effective_severity')
+  if (from < 0 || to < 0) throw new Error('spec §7.5 구간을 찾지 못했습니다')
+  const out = []
+  for (const line of spec.slice(from, to).split('\n')) {
+    if (!line.startsWith('|')) continue
+    const c = cells(line)
+    if (c.length !== 5 || c[0] === '항목' || /^-+$/.test(c[0])) continue
+    out.push({
+      item_id: c[0],
+      kind: c[1],
+      question: c[2],
+      answer_type: c[3],
+      updates: c[4].includes('(항목 전체)')
+        ? 'all'
+        : c[4].split('·').map((s) => s.trim().replace(/`/g, '')).filter(Boolean),
+    })
+  }
+  return out
+}

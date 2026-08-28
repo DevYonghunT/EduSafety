@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 
 const items = JSON.parse(readFileSync('edusafe/rules/items.json', 'utf8')).items
 const version = JSON.parse(readFileSync('edusafe/rules/version.json', 'utf8'))
+const moeCanon = JSON.parse(readFileSync('edusafe/rules/moe-checklist.json', 'utf8')).criteria
+const sessionCanon = JSON.parse(readFileSync('edusafe/rules/session.json', 'utf8')).sessions
 export const QUOTE = { type: 'quote', source: 'code', file: 'src/app.js', line: 1, quote: 'const a = 1' }
 export const NEGATIVE = { type: 'negative_scan', source: 'scanner', rules: ['rrn-data'], files_scanned: 5 }
 
@@ -83,11 +85,14 @@ export function validReport() {
       needs_human: { total: 0, coverage: 0, unsupported: 0, unanswered: 0 },
       teacher_confirmed: 0, documentation_hits: 0,
     },
-    moe_checklist: [
-      { criterion: '1-1', text: '개인정보가 최소한으로 수집되는가', mapped_items: ['S-minimal'], status: '해당없음' },
-      { criterion: '4-1', text: '만 14세 미만 법정대리인 동의 등 절차가 마련되어 있는가', mapped_items: ['R-under14'], status: '해당없음' },
-    ],
+    // §8.6 기준 9개 전수. 모든 항목이 na 이므로 상태는 전부 해당없음이다.
+    moe_checklist: moeCanon.map((c) => ({
+      criterion: c.criterion, text: c.text, mapped_items: [...c.mapped_items], status: '해당없음',
+    })),
     items: reportItems,
-    session: [{ item_id: 'H-2fa', kind: 'teacher', question: '2단계 인증을 켜 두셨나요?', answer: null, evidence_sha256: null }],
-  }
+    session: [{
+      item_id: 'H-2fa', kind: 'teacher',
+      question: sessionCanon.find((s) => s.item_id === 'H-2fa' && s.kind === 'teacher').question,
+      answer: null, evidence_sha256: null,
+    }],  }
 }

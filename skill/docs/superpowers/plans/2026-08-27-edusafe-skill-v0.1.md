@@ -1889,7 +1889,14 @@ git -C $REPO commit -m "feat: HTML 렌더와 staging 세트 교체 + 스킬 지�
   ```
   { schema_version: "1", source: "교육부 학습지원 소프트웨어 선정 기준 및 가이드라인(2025.12) [서식 1]",
     disclaimer: "이 표는 …",
-    criteria: [ { criterion: "1-1", text: "…", mapped_items: ["S-minimal"], note?: "…" } ] }
+    criteria: [ { criterion: "1-1", text: "…", mapped_items: ["S-minimal"], note: "…" } ] }
+      // note 는 §8.6 매핑 칸의 원문이다(원문자 포함, 예: "S-privacy-notice ⑨ + H-delete").
+      // mapped_items 는 거기서 원문자를 떼고 + 로 나눈 항목 id 다 — 같은 정보를 두 번 적는
+      // 것이 아니라, 원문을 남겨 두어야 대조(⑦)가 손실 없이 이루어진다.
+
+  session.json 과 moe-checklist.json 은 render.mjs 의 loadSessionCanon()·loadMoeChecklist() 로
+  읽어 검증기가 보고서와 대조한다 — 서식1 은 기준 9개 전수·문안·매핑을, 세션은 (항목, kind)
+  조합과 질문 문구를 본다. 이 두 검사는 Task 4·5 에서 정본 파일이 없어 미뤄 둔 것이다.
   ```
 
 - [ ] **Step 1: moe-checklist.json 을 spec §8.6 에서 전사한다**

@@ -1,0 +1,146 @@
+{
+  "schema_version": "1",
+  "sessions": [
+    {
+      "item_id": "R-db-locked",
+      "kind": "evidence",
+      "question": "데이터베이스 보안 규칙을 그대로 붙여넣어 주세요. Firebase 는 콘솔의 Firestore·Realtime Database 규칙이고, Supabase 는 테이블의 RLS 정책입니다.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": "all"
+    },
+    {
+      "item_id": "S-access",
+      "kind": "evidence",
+      "question": "학생이 다른 학생의 데이터를 읽지 못하게 막는 규칙·정책을 붙여넣어 주세요.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": "all"
+    },
+    {
+      "item_id": "R-impersonate",
+      "kind": "evidence",
+      "question": "학생이 다른 학생의 데이터를 고치지 못하게 막는 규칙·정책을 붙여넣어 주세요.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": "all"
+    },
+    {
+      "item_id": "S-upload-exposure",
+      "kind": "evidence",
+      "question": "파일 저장소(Storage) 규칙과 버킷 공개 설정을 붙여넣어 주세요.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": [
+        "supabase-public-bucket",
+        "storage-rule-read-true",
+        "private-default-scope"
+      ]
+    },
+    {
+      "item_id": "S-write-guard",
+      "kind": "evidence",
+      "question": "쓰기 규칙에서 크기·형식을 검증하는 부분을 붙여넣어 주세요.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": "all"
+    },
+    {
+      "item_id": "R-under14",
+      "kind": "teacher",
+      "question": "만 14세 미만 학생이 있다면 법정대리인 동의를 실제로 받으셨나요? 받으셨다면 어떤 방법(종이 서면·문자·이메일·전화 등)이었는지 한 줄로 적어 주세요.",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": [
+        "consent-attested",
+        "consent-5day-purge"
+      ]
+    },
+    {
+      "item_id": "R-admin-data",
+      "kind": "teacher",
+      "question": "이 프로젝트의 저장소가 공개(public)인가요, 비공개(private)인가요?",
+      "answer_type": "공개/비공개/모름",
+      "updates": [
+        "repo-visibility"
+      ]
+    },
+    {
+      "item_id": "S-signup-scope",
+      "kind": "teacher",
+      "question": "교사·관리자 계정을 다른 선생님과 공유해서 쓰고 계신가요?",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": [
+        "teacher-admin-account-sharing"
+      ]
+    },
+    {
+      "item_id": "S-auth-hardening",
+      "kind": "evidence",
+      "question": "로그인 실패 횟수를 제한하는 설정을 붙여넣어 주세요. Firebase 는 Authentication 설정, Supabase 는 Auth 의 rate limit 설정입니다.",
+      "answer_type": "텍스트 최대 20KB",
+      "updates": [
+        "auth-failure-rate-limit"
+      ]
+    },
+    {
+      "item_id": "S-auth-hardening",
+      "kind": "teacher",
+      "question": "교사·관리자 계정이 일정 시간 쓰지 않으면 자동으로 로그아웃되나요?",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": [
+        "staff-session-auto-lock"
+      ]
+    },
+    {
+      "item_id": "S-data-region",
+      "kind": "teacher",
+      "question": "데이터가 저장되는 지역(리전)을 알고 계신가요? 아신다면 어디인지 적어 주세요.",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": [
+        "teacher-personal-region-awareness"
+      ]
+    },
+    {
+      "item_id": "S-privacy-notice",
+      "kind": "teacher",
+      "question": "학생·보호자가 자기 정보의 열람·삭제를 요청할 창구가 있나요? 개인정보 보호책임자로 안내되는 사람은 누구인가요?",
+      "answer_type": "한 줄 서술",
+      "updates": [
+        "data-subject-rights-procedure",
+        "controller-contact-info"
+      ]
+    },
+    {
+      "item_id": "H-delete",
+      "kind": "teacher",
+      "question": "학생 한 명의 데이터를 지워 달라는 요청이 오면 어떻게 처리하시나요? 지운 뒤에 복구가 불가능한가요?",
+      "answer_type": "한 줄 서술",
+      "updates": [
+        "purge-within-5-days"
+      ]
+    },
+    {
+      "item_id": "H-2fa",
+      "kind": "teacher",
+      "question": "GitHub·Firebase·Supabase 등 운영 계정에 2단계 인증을 켜 두셨나요?",
+      "answer_type": "예/아니오",
+      "updates": "all"
+    },
+    {
+      "item_id": "H-retention",
+      "kind": "teacher",
+      "question": "이 활동이 끝나면 학생 데이터를 언제, 어떻게 지우실 계획인가요?",
+      "answer_type": "한 줄 서술",
+      "updates": "all"
+    },
+    {
+      "item_id": "H-breach-ready",
+      "kind": "teacher",
+      "question": "학생 정보가 유출된 것을 알게 되면 누구에게 언제까지 알려야 하는지 알고 계신가요? 학교의 개인정보 담당자 연락처를 아시나요?",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": "all"
+    },
+    {
+      "item_id": "H-school-approval",
+      "kind": "teacher",
+      "question": "이 앱을 정규 교과 수업에 사용하시나요? 사용하신다면 학교운영위원회 심의를 거치셨나요?",
+      "answer_type": "예/아니오 + 한 줄",
+      "updates": "all"
+    }
+  ]
+}
