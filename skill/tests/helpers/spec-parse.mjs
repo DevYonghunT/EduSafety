@@ -300,6 +300,17 @@ export function specMoeDisclaimer(spec) {
 // ── spec §7.5 확인 세션 ────────────────────────────────────────────────────
 // 5열(항목·kind·질문·답변 형식·갱신 대상 하위 점검).
 // 고유 키는 item_id 하나가 아니라 (item_id, kind) 조합이다 — S-auth-hardening 이 두 행을 갖는다.
+// 갱신 대상 칸 읽기. "(항목 전체)" 와 개별 하위 점검이 섞인 행을 조용히 all 로 수렴시키면,
+// 문서가 잘못 바뀌어도 파서와 session.json 이 같은 값으로 만나 대조가 무력해진다.
+function updatesFrom(cell, where) {
+  const trimmed = cell.trim()
+  if (trimmed === '(항목 전체)') return 'all'
+  if (trimmed.includes('(항목 전체)')) {
+    throw new Error(`§7.5 ${where}: 갱신 대상에 "(항목 전체)" 와 다른 값이 섞였습니다 — ${trimmed}`)
+  }
+  return trimmed.split('·').map((s) => s.trim().replace(/`/g, '')).filter(Boolean)
+}
+
 export function specSession(spec) {
   const from = spec.indexOf('### 7.5 확인 세션 정책')
   const to = spec.indexOf('### 7.6 effective_severity')
@@ -314,9 +325,7 @@ export function specSession(spec) {
       kind: c[1],
       question: c[2],
       answer_type: c[3],
-      updates: c[4].includes('(항목 전체)')
-        ? 'all'
-        : c[4].split('·').map((s) => s.trim().replace(/`/g, '')).filter(Boolean),
+      updates: updatesFrom(c[4], `${c[0]}/${c[1]}`),
     })
   }
   return out

@@ -227,3 +227,35 @@ describe('이스케이프 함수 (REQ-8.18)', () => {
     expect(escapeHtml(undefined)).toBe('')
   })
 })
+
+// 발견 5 — 탭이 CSS 형제 선택자에 기대므로 DOM 순서가 깨지면 조용히 동작을 멈춘다
+describe('리뷰 반영 회귀 — 탭 구조와 접근성', () => {
+  const TABS = ['t-meta', 't-cov', 't-moe', 't-db', 't-dest']
+
+  it('라디오가 탭 막대와 패널보다 앞선 형제다', () => {
+    const barAt = TEMPLATE.indexOf('class="tabbar"')
+    const firstPanelAt = TEMPLATE.indexOf('class="panel p-meta"')
+    expect(barAt).toBeGreaterThan(0)
+    for (const id of TABS) {
+      const radioAt = TEMPLATE.indexOf(`type="radio" name="infotab" id="${id}"`)
+      expect(radioAt, `${id} 라디오를 찾지 못했습니다`).toBeGreaterThan(0)
+      expect(radioAt, `${id} 라디오가 탭 막대보다 뒤에 있습니다`).toBeLessThan(barAt)
+      expect(radioAt, `${id} 라디오가 패널보다 뒤에 있습니다`).toBeLessThan(firstPanelAt)
+    }
+    expect(barAt).toBeLessThan(firstPanelAt)
+  })
+
+  it('탭마다 checked 규칙과 포커스 표시 규칙이 있다', () => {
+    for (const id of TABS) {
+      expect(TEMPLATE, `${id} 의 checked 규칙 없음`).toContain(`#${id}:checked`)
+      expect(TEMPLATE, `${id} 의 포커스 표시 없음`).toContain(`#${id}:focus-visible ~ .tabbar label[for="${id}"]`)
+    }
+  })
+
+  it('인쇄 체크박스가 main 보다 앞선 형제다 (선택자가 걸리려면 필요)', () => {
+    const cb = TEMPLATE.indexOf('<input type="checkbox" id="print-all">')
+    const main = TEMPLATE.indexOf('<main>')
+    expect(cb).toBeGreaterThan(0)
+    expect(cb).toBeLessThan(main)
+  })
+})

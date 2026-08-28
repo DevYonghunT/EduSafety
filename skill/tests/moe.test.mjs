@@ -93,3 +93,26 @@ describe('검증기와의 연결', () => {
     expect(validateReport(r, items, loadContract())).toEqual([])
   })
 })
+
+describe('리뷰 반영 회귀 — 지문 형식', () => {
+  const bad = ['sha256:0000', 'not-a-digest', '', 'sha256:' + 'z'.repeat(64), 'SHA256:' + 'a'.repeat(64)]
+  for (const v of bad) {
+    it(`self_reported_skill_digest 가 ${JSON.stringify(v)} 이면 거부한다`, () => {
+      const r = validReport()
+      r.self_reported_skill_digest = v
+      expect(validateReport(r, items, loadContract()).join('\n')).toMatch(/sha256:<64자리 16진수>/)
+    })
+  }
+
+  it('null 은 허용한다 (string? · 렌더러가 채운다)', () => {
+    const r = validReport()
+    r.self_reported_skill_digest = null
+    expect(validateReport(r, items, loadContract())).toEqual([])
+  })
+
+  it('같은 제약을 쓰는 다른 지문 필드에도 적용된다', () => {
+    const r = validReport()
+    r.project.build_artifact_digest = 'sha256:짧음'
+    expect(validateReport(r, items, loadContract()).join('\n')).toMatch(/build_artifact_digest/)
+  })
+})

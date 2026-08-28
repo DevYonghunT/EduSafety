@@ -87,16 +87,30 @@
   .tabhint { color: var(--muted); font-size: 13.5px; padding: 14px 2px 0; }
 
   #t-meta:checked ~ .tabbar label[for="t-meta"],
-  #t-cov:checked  ~ .tabbar label[for="t-cov"],
-  #t-moe:checked  ~ .tabbar label[for="t-moe"],
-  #t-db:checked   ~ .tabbar label[for="t-db"],
+  #t-cov:checked ~ .tabbar label[for="t-cov"],
+  #t-moe:checked ~ .tabbar label[for="t-moe"],
+  #t-db:checked ~ .tabbar label[for="t-db"],
   #t-dest:checked ~ .tabbar label[for="t-dest"] {
     background: #fff; color: var(--ink); border-color: var(--line); border-bottom: 2px solid #fff;
   }
+  /* 키보드로 탭을 옮길 때 지금 어디에 있는지 보이게 한다 (라디오 자체는 화면 밖에 있다) */
+  #t-meta:focus-visible ~ .tabbar label[for="t-meta"],
+  #t-cov:focus-visible ~ .tabbar label[for="t-cov"],
+  #t-moe:focus-visible ~ .tabbar label[for="t-moe"],
+  #t-db:focus-visible ~ .tabbar label[for="t-db"],
+  #t-dest:focus-visible ~ .tabbar label[for="t-dest"],
+  #t-meta:focus ~ .tabbar label[for="t-meta"],
+  #t-cov:focus ~ .tabbar label[for="t-cov"],
+  #t-moe:focus ~ .tabbar label[for="t-moe"],
+  #t-db:focus ~ .tabbar label[for="t-db"],
+  #t-dest:focus ~ .tabbar label[for="t-dest"] {
+    outline: 2px solid var(--blue); outline-offset: 2px; color: var(--ink);
+  }
+
   #t-meta:checked ~ .p-meta,
-  #t-cov:checked  ~ .p-cov,
-  #t-moe:checked  ~ .p-moe,
-  #t-db:checked   ~ .p-db,
+  #t-cov:checked ~ .p-cov,
+  #t-moe:checked ~ .p-moe,
+  #t-db:checked ~ .p-db,
   #t-dest:checked ~ .p-dest { display: block; }
   .tabin:checked ~ .tabhint { display: none; }
 

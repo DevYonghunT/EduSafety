@@ -109,3 +109,17 @@ describe('검증기와의 연결', () => {
     expect(validateReport(validReport(), items, loadContract())).toEqual([])
   })
 })
+
+// 발견 4 — "(항목 전체)" 와 개별 하위 점검이 섞인 행을 조용히 all 로 수렴시키지 않는다
+describe('리뷰 반영 회귀 — 갱신 대상 파싱', () => {
+  it('정확히 "(항목 전체)" 일 때만 all 로 읽는다', () => {
+    const spec = readSpec()
+    const broken = spec.replace('| 예/아니오 | (항목 전체) |', '| 예/아니오 | (항목 전체) · not-a-real-subcheck |')
+    expect(broken, '대상 행을 찾지 못했습니다').not.toBe(spec)
+    expect(() => specSession(broken)).toThrow(/\(항목 전체\)" 와 다른 값이 섞였습니다/)
+  })
+
+  it('정상 문서는 그대로 파싱된다', () => {
+    expect(specSession(readSpec())).toHaveLength(17)
+  })
+})

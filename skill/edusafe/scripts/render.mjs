@@ -104,6 +104,12 @@ function constraintErrors(field, value, where) {
   if (c === '1~8') {
     if (!Number.isInteger(value) || value < 1 || value > 8) out.push(`${where}: 1~8 범위여야 합니다 (받은 값 ${JSON.stringify(value)})`)
   }
+  // 지문 자리에 아무 문자열이나 들어가면 "대조 자료"가 아니라 장식이 된다(리뷰에서 실측)
+  if (c === 'sha256:…') {
+    if (typeof value !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value)) {
+      out.push(`${where}: sha256:<64자리 16진수> 형식이어야 합니다 (받은 값 ${JSON.stringify(value)})`)
+    }
+  }
   return out
 }
 
@@ -1041,10 +1047,14 @@ export function cleanStaging(reportDir) {
   return removed
 }
 
+// history 스탬프 형식. 이 패턴에 맞는 디렉터리만 정리 대상이다 —
+// 교사가 history/ 아래에 따로 만들어 둔 폴더까지 지우면 그건 파일 손실이다(리뷰에서 실측).
+const STAMP_PATTERN = /^\d{8}-\d{6}-[0-9a-f]{4}$/
+
 function trimHistory(historyDir) {
   if (!existsSync(historyDir)) return
   const dirs = readdirSync(historyDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && STAMP_PATTERN.test(e.name))
     .map((e) => e.name)
     .sort()
   while (dirs.length > HISTORY_LIMIT) {
@@ -1087,12 +1097,26 @@ export function swapStaging(reportDir, stagingDir, { now = new Date(), rename = 
       placed.push([from, to])
     }
   } catch (err) {
-    // REQ-8.7 — 실패하면 최상위를 손대지 않은 상태로 되돌리고 staging 을 남긴다
-    for (const [from, to] of placed.reverse()) { try { renameSync(to, from) } catch { /* 되돌리기 최선 노력 */ } }
-    for (const [from, to] of archived.reverse()) { try { renameSync(to, from) } catch { /* 되돌리기 최선 노력 */ } }
+    // REQ-8.7 — 실패하면 최상위를 손대지 않은 상태로 되돌리고 staging 을 남긴다.
+    // 되돌리기 실패를 삼키면 최상위가 새 파일과 옛 파일이 섞인 채로 남는데 아무도 모른다.
+    // 실패한 것을 모아 오류에 담아 교사가 무엇을 손으로 되돌려야 하는지 알 수 있게 한다.
+    const undone = []
+    const undo = (to, from) => {
+      try { rename(to, from) } catch (e) { undone.push(`${to} → ${from} (${e.message})`) }
+    }
+    for (const [from, to] of placed.reverse()) undo(to, from)
+    for (const [from, to] of archived.reverse()) undo(to, from)
     // REQ-8.9 — 만들어 둔 history 디렉터리가 비었으면 함께 지운다
     if (archiveCreated && existsSync(archiveDir) && readdirSync(archiveDir).length === 0) {
       rmSync(archiveDir, { recursive: true, force: true })
+    }
+    if (undone.length > 0) {
+      throw new Error(
+        '교체에 실패했고 되돌리기도 일부 실패했습니다. 최상위가 섞인 상태일 수 있습니다.' +
+        `\n  원인: ${err.message}` +
+        `\n  되돌리지 못한 것:\n    ${undone.join('\n    ')}` +
+        (archiveCreated && existsSync(archiveDir) ? `\n  직전 결과 보관 위치: ${archiveDir}` : ''),
+      )
     }
     throw err
   }
@@ -1168,7 +1192,15 @@ function main(argv) {
     process.exit(2)
   }
   const staging = resolve(stagingArg)
-  const report = JSON.parse(readFileSync(join(staging, 'edusafe-report.json'), 'utf8'))
+  const reportPath = join(staging, 'edusafe-report.json')
+  const report = JSON.parse(readFileSync(reportPath, 'utf8'))
+
+  // 스킬 지문은 AI 가 적을 수 있는 값이 아니라 지금 도는 스킬 폴더의 해시다(spec §11).
+  // 여기서 계산해 채워 넣고 그 상태로 검증·렌더한다 — 보고서에 남는 값과 실제가 같아야
+  // 트랙 2 가 대조할 수 있다.
+  report.self_reported_skill_digest = skillDigest(join(HERE, '..'))
+  writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n')
+
   const scanPath = join(staging, 'scan.json')
   const scan = existsSync(scanPath) ? JSON.parse(readFileSync(scanPath, 'utf8')) : null
   const items = loadItems()

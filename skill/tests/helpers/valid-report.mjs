@@ -41,7 +41,7 @@ export function validReport() {
     schema_version: '1',
     edusafe_version: version.edusafe_version,
     rubric_version: version.rubric_version,
-    self_reported_skill_digest: 'sha256:0000',
+    self_reported_skill_digest: 'sha256:' + '0'.repeat(64),
     checked_at: '2026-08-28T12:00:00+09:00',
     project: {
       name: 'vulnerable-app',

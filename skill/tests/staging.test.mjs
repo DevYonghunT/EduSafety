@@ -243,3 +243,74 @@ describe('스킬 지문 (REQ-11.1 · REQ-13.2)', () => {
     expect(skillDigest(root)).toBe(before)
   })
 })
+
+// ── Codex 리뷰(Task 5·6) 반영 회귀 ────────────────────────────────────────
+describe('리뷰 반영 회귀 — 파일 손실·되돌리기', () => {
+  it('발견 3 — history 아래의 스탬프 아닌 폴더는 정리 대상이 아니다', () => {
+    const reportDir = makeReportDir()
+    const manual = join(reportDir, 'history', '000-교사보관')
+    mkdirSync(manual, { recursive: true })
+    writeFileSync(join(manual, '중요.txt'), '따로 보관한 자료')
+
+    for (let i = 0; i < 7; i++) {
+      swapStaging(reportDir, makeStaging(reportDir, `keep${i}`), { now: new Date(2026, 0, 1, 0, 0, i) })
+    }
+    const left = readdirSync(join(reportDir, 'history')).sort()
+    expect(left, '교사가 따로 만든 폴더가 지워졌습니다').toContain('000-교사보관')
+    expect(readFileSync(join(manual, '중요.txt'), 'utf8')).toBe('따로 보관한 자료')
+    // 스탬프 폴더만 5개로 유지된다
+    expect(left.filter((n) => /^\d{8}-\d{6}-[0-9a-f]{4}$/.test(n))).toHaveLength(5)
+  })
+
+  it('발견 2 — 되돌리기까지 실패하면 무엇을 되돌리지 못했는지 알린다', () => {
+    const reportDir = makeReportDir()
+    swapStaging(reportDir, makeStaging(reportDir, 'one'))
+    const staging = makeStaging(reportDir, 'two')
+
+    // 6번째(staging → 최상위 두 번째 이동)와 7번째(그 되돌리기)를 함께 실패시킨다
+    let calls = 0
+    const rename = (from, to) => {
+      calls += 1
+      if (calls === REPORT_FILES.length + 2 || calls === REPORT_FILES.length + 3) {
+        throw new Error(`주입한 실패 #${calls}`)
+      }
+      return renameSync(from, to)
+    }
+    let caught = null
+    try { swapStaging(reportDir, staging, { rename }) } catch (e) { caught = e }
+
+    expect(caught, '실패했는데 오류가 나지 않았습니다').toBeTruthy()
+    expect(caught.message).toMatch(/되돌리기도 일부 실패/)
+    expect(caught.message).toMatch(/되돌리지 못한 것/)
+    expect(caught.message).toMatch(/주입한 실패/)
+  })
+
+  it('발견 2 — 되돌리기가 모두 성공하면 원래 오류를 그대로 던진다', () => {
+    const reportDir = makeReportDir()
+    swapStaging(reportDir, makeStaging(reportDir, 'one'))
+    const staging = makeStaging(reportDir, 'two')
+    let calls = 0
+    const rename = (from, to) => {
+      calls += 1
+      if (calls === REPORT_FILES.length + 2) throw new Error('한 번만 실패')
+      return renameSync(from, to)
+    }
+    expect(() => swapStaging(reportDir, staging, { rename })).toThrow(/^한 번만 실패$/)
+    expect(readFileSync(join(reportDir, 'edusafe-report.json'), 'utf8')).toContain('one')
+  })
+
+  it('발견 1 — CLI 가 스킬 지문을 직접 계산해 보고서에 채운다', () => {
+    const reportDir = makeReportDir()
+    const staging = join(reportDir, '.staging-digest')
+    mkdirSync(staging, { recursive: true })
+    const r = validReport()
+    r.self_reported_skill_digest = null // AI 가 비워 두어도 렌더러가 채운다
+    writeFileSync(join(staging, 'edusafe-report.json'), JSON.stringify(r))
+    writeFileSync(join(staging, 'scan.json'), JSON.stringify({ hits: [] }))
+
+    execFileSync(process.execPath, ['edusafe/scripts/render.mjs', staging], { stdio: 'pipe' })
+    const written = JSON.parse(readFileSync(join(reportDir, 'edusafe-report.json'), 'utf8'))
+    expect(written.self_reported_skill_digest).toBe(skillDigest('edusafe'))
+    expect(readFileSync(join(reportDir, 'edusafe-report.html'), 'utf8')).toContain(skillDigest('edusafe'))
+  })
+})
