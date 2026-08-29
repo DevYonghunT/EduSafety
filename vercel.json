@@ -6,7 +6,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/index.ts": {
+    "api/server.ts": {
       "includeFiles": "public/**",
       "maxDuration": 300
     }
@@ -14,27 +14,27 @@
   "rewrites": [
     {
       "source": "/api",
-      "destination": "/api?__edusafety_path=/api"
+      "destination": "/api/server?__edusafety_path=/api"
     },
     {
       "source": "/api/:__edusafety_route*",
-      "destination": "/api?__edusafety_path=/api/:__edusafety_route*"
+      "destination": "/api/server?__edusafety_path=/api/:__edusafety_route*"
     },
     {
       "source": "/health",
-      "destination": "/api?__edusafety_path=/health"
+      "destination": "/api/server?__edusafety_path=/health"
     },
     {
       "source": "/admin/certification",
-      "destination": "/api?__edusafety_path=/admin/certification"
+      "destination": "/api/server?__edusafety_path=/admin/certification"
     },
     {
       "source": "/admin-certification",
-      "destination": "/api?__edusafety_path=/admin-certification"
+      "destination": "/api/server?__edusafety_path=/admin-certification"
     },
     {
       "source": "/admin-certification.html",
-      "destination": "/api?__edusafety_path=/admin-certification.html"
+      "destination": "/api/server?__edusafety_path=/admin-certification.html"
     },
     {
       "source": "/admin/login",

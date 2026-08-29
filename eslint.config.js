@@ -12,6 +12,7 @@ export default tseslint.config(
       "node_modules/**",
       "coverage/**",
       ".vercel/**",
+      "public/presentation/vendor/**",
     ],
   },
   eslint.configs.recommended,

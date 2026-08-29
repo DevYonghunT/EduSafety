@@ -12,7 +12,7 @@ const hasVercelBuildOutput = existsSync(".vercel/output/config.json");
 describe.runIf(hasVercelBuildOutput)("built Vercel production adapter", () => {
   it("contains one Express function, the React client, and static zero-call pages", async () => {
     const output = path.resolve(".vercel/output");
-    const functionDirectory = path.join(output, "functions/api/index.func");
+    const functionDirectory = path.join(output, "functions/api/server.func");
     await Promise.all([
       access(path.join(functionDirectory, ".vc-config.json"), constants.R_OK),
       access(path.join(output, "static/index.html"), constants.R_OK),

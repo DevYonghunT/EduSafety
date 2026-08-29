@@ -35,6 +35,7 @@
 주요 경로는 다음과 같습니다.
 
 - `/` — 앱 심사 및 최종 보고서
+- `/`의 `URL 검사` 메뉴 — 로그인 없이 입력한 HTTPS URL의 공개 HTML·보안 헤더 저영향 정적 점검
 - `/verify/:uid` — 공개 검증
 - `/admin/certification` — 심사 항목, 정책, 발급 내역 관리
 - `/demo` — `DEMO_PASS` 정적 showcase
@@ -88,7 +89,25 @@ unset EDUSAFETY_ADMIN_PASSWORD_INPUT
 | `ADMIN_PASSWORD_SCRYPT` | scrypt 비밀번호 hash |
 | `ADMIN_SESSION_SECRET` | 관리자 세션 HMAC 비밀값 |
 | `GITHUB_TOKEN` | 선택 사항인 서버 전용 GitHub token |
+| `SECURITY_SCAN_DYNAMIC_TARGETS_ENABLED` | 고정 허용목록 밖의 공개 HTTPS URL 검사 허용. 기본값 `false` |
+| `SECURITY_SCAN_ALLOWED_ORIGINS` | 점검을 허용한 exact HTTPS origin 목록(쉼표 구분) |
+| `SECURITY_SCAN_TIMEOUT_MS` | 대상 DNS·GET 요청 제한 시간(1,000~15,000ms) |
 | `NODE_ENV`, `PORT` | 서버 실행 환경과 포트 |
+
+`URL 검사`는 관리자 로그인 없이 동일 origin 웹 화면에서 바로 실행할 수 있습니다. 본인이 소유했거나 점검을 허가받은 대상인지 확인해야 하며, 서버는 클라이언트 IP별 요청 횟수와 전체 동시 실행 수를 제한합니다. 허용목록 밖의 공개 HTTPS URL도
+입력하려면 `SECURITY_SCAN_DYNAMIC_TARGETS_ENABLED=true`로 설정합니다. `false`이면
+`SECURITY_SCAN_ALLOWED_ORIGINS`에 등록한 origin만 입력할 수 있습니다. 입력한 HTTPS 경로에 `GET` 요청을 한 번만
+보내 TLS·보안 헤더와 첫 HTML 응답을 최대 256 KiB까지 정적으로 확인합니다. 리디렉션을 따라가지 않고,
+JavaScript 실행·로그인·사이트 크롤링·외부 스크립트 다운로드·익스플로잇은 수행하지 않습니다.
+Anthropic 보조 분석은 검사 화면에서 요청마다 `ANTHROPIC_API_KEY`를 입력하고 `ANTHROPIC_MODEL`을 선택할 때만
+실행합니다. 키는 저장하거나 API 응답에 포함하지 않습니다. 허용 모델은 `claude-sonnet-5`,
+`claude-haiku-4-5-20251001`, `claude-opus-5`이며, 모델을 생략하면 `claude-sonnet-5`를 사용합니다.
+HTML 원문, URL, 응답 헤더 값은 Anthropic에 보내지 않고 서버가 확정한 finding ID·심각도·고정 개선안만
+전달합니다. 키를 입력하지 않거나 Anthropic 호출이 실패해도 규칙 기반 결과는 그대로 제공합니다. 기존
+`SECURITY_SCAN_ALLOWED_ORIGINS`는 URL 직접 입력을 끈 고정 대상 모드에서만 사용합니다.
+검사가 끝나면 마지막 성공 결과의 `인쇄 / PDF 저장` 버튼으로 입력폼과 API 키 영역을 제외한 보고서를
+출력할 수 있습니다. 브라우저 인쇄 창에서 `PDF로 저장`을 선택하며, 닫힌 기술 상세와 검사 한계도 출력에 포함됩니다.
+Shannon의 능동 공격 검증 단계는 이 메뉴에 포함하지 않습니다.
 
 서버 시작 시 개인키에서 파생한 주소와 `EAS_ATTESTER_ADDRESS`를 비교하고, 해당 주소가 신뢰 목록에 없으면 시작을 중단합니다. 서버 전용 값은 `public/` 산출물이나 API 응답에 포함되지 않습니다.
 
@@ -113,7 +132,7 @@ unset EDUSAFETY_ADMIN_PASSWORD_INPUT
 
 추가 필드가 있으면 요청 전체를 거절합니다. 서버는 요청 시작 시 `ACTIVE` 정책 snapshot을 고정한 뒤 GitHub numeric repository ID, canonical URL과 exact commit을 확인합니다.
 
-④ 보고서를 생성하면 긴 판정표가 끝나는 지점의 `심사 확인` 바로 위에 심사 상태마크가 표시됩니다. `인쇄 / PDF 저장` 버튼은 서버 요청 없이 바로 인쇄 창을 열며 화면에 표시된 상태마크를 그대로 출력합니다. 상태마크에는 현재 판정, 조치 건수, 대상 저장소와 고정 commit 또는 폴더 콘텐츠 지문이 표시됩니다. 이 표시는 보고서의 판정 요약이며 별도로 발급되거나 검증되는 증명서가 아닙니다. 따라서 인증 API의 활성 정책 유무가 보고서 표시와 출력에 영향을 주지 않습니다.
+④ 보고서를 생성하면 긴 판정표가 끝나는 지점의 `심사 확인` 바로 위에 문서형 심사 기록마크가 표시됩니다. 마크에는 현재 판정, 조치 건수, 대상 저장소와 고정 commit 또는 폴더 콘텐츠 지문, EAS Offchain v2 연계 규격과 실제 서명 상태가 함께 표시됩니다. 현재처럼 EAS proof가 없는 출력본은 `EAS UID·서명 없음`으로 명시되고, 인쇄본의 모든 페이지 상단에는 작은 `EDUSAFETY REPORT · UNSIGNED` 마크와 commit 또는 콘텐츠 지문이 반복됩니다. 현재 보고서의 저장소·commit과 일치하는 검증된 EAS proof가 전달된 경우에만 상단 참조값이 상태가 포함된 EAS UID로 바뀝니다. 페이지별 UID는 같은 증명을 가리키는 참조값이며 각 페이지를 별도로 서명한 값은 아닙니다. EAS Offchain v2는 가스리스 전자서명 형식이며 온체인 거래나 정부·공공기관 인증을 의미하지 않습니다.
 
 동일 subject의 기존 인증은 repository ID와 정책 hash로 먼저 조회해 불필요한 재분석과 재서명을 피합니다. 공개 발급 요청은 IP별 분당 6회, 프로세스 전체 동시 분석 4건으로 제한하며 대기열을 무한히 만들지 않습니다. 관리자 로그인은 IP·정규화된 계정별 시도 횟수와 동시 scrypt 검증 수를 함께 제한합니다. 이 내장 제한은 프로세스 단위의 기본 방어이므로 여러 인스턴스를 운영할 때는 신뢰 가능한 reverse proxy나 API gateway의 공유 제한도 함께 구성해야 합니다.
 
@@ -150,6 +169,12 @@ Migration은 [001_eas_offchain_v2_certification.sql](./migrations/001_eas_offcha
 - `POST /api/badges/issue`
 - `GET /api/badges/:uid`
 - `GET /api/badges/:uid.svg?variant=showcase`
+- `GET /api/security-scan/config`
+- `POST /api/security-scan`
+
+`POST /api/security-scan`은 기본 필드인 `targetUrl`, `authorizationConfirmed` 외에 요청별 선택 필드
+`anthropicApiKey`, `anthropicModel`을 받습니다. 모델만 보내는 요청과 허용 목록 밖 모델은 거부합니다.
+키만 보내면 기본 모델을 사용하며, 둘 다 생략하면 결정론적 검사만 실행합니다.
 
 관리자 API는 서버에서 관리자 세션을 검증합니다. 변경 요청은 세션에 결합된 CSRF token도 확인합니다.
 
@@ -191,9 +216,7 @@ TEST_DATABASE_URL=postgresql://user:password@127.0.0.1:5432/edusafety_test npm r
 - 인증은 특정 exact commit과 서버에 고정된 전체 심사 항목의 정적 분석 결과만 나타냅니다.
 - 이후 commit, 실제 배포 환경, 런타임 동작, 운영 보안 전체를 보증하지 않습니다.
 
-현재 변경은 구현과 검증까지만 포함하며 배포 작업은 수행하지 않습니다.
-
 Vercel에서는 Vite 결과물 `client-dist`를 정적 화면으로 제공합니다. 동적 `/api`와 인증이 필요한 관리자
-화면만 `api/index.ts`의 Express 어댑터로 전달하고, 로그인·공개 검증·데모 HTML은 정적으로 제공합니다.
+화면만 `api/server.ts`의 Express 어댑터로 전달하고, 로그인·공개 검증·데모 HTML은 정적으로 제공합니다.
 로컬 listener와 serverless handler는 같은 singleton bootstrap을 사용해 프로세스마다 PostgreSQL pool과
 애플리케이션을 한 번만 초기화합니다.

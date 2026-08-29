@@ -119,7 +119,7 @@ describe("Vercel Express adapter", () => {
     expect(rewritesBySource.get("/admin/login")).toBe("/admin-login");
     expect(rewritesBySource.get("/verify/:uid")).toBe("/verify");
     for (const source of ["/api", "/api/:__edusafety_route*", "/health", "/admin/certification"]) {
-      expect(rewritesBySource.get(source)).toMatch(/^\/api\?/);
+      expect(rewritesBySource.get(source)).toMatch(/^\/api\/server\?/);
     }
   });
 
