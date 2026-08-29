@@ -893,17 +893,41 @@ body {
   align-items: center;
 }
 
-.local-copy .lead-copy {
-  margin-top: 24px !important;
-}
-
 .local-copy h2 {
   font-size: 48px;
   line-height: 1.04;
 }
 
+.clinic-analogy {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 3px 12px;
+  align-items: center;
+  margin-top: 24px !important;
+}
+
+.clinic-analogy > span {
+  grid-row: 1 / 3;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.clinic-analogy strong {
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 850;
+}
+
+.clinic-analogy small {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
 .local-flow {
-  margin-top: 32px;
+  margin-top: 24px;
   padding: 21px 22px;
   border-left: 4px solid var(--accent);
   background: var(--accent-soft);
