@@ -838,6 +838,11 @@ body {
   aspect-ratio: 8 / 5;
 }
 
+.report-video figcaption {
+  top: 14px;
+  bottom: auto;
+}
+
 /* 08 · URL 검사 */
 .url-layout {
   display: grid;
