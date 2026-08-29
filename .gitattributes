@@ -1,0 +1,6 @@
+# 배포용 게시 파일 — 바이트가 바뀌면 안 된다.
+# zip 은 교사가 내려받아 sha256 으로 대조하는 대상이고, .sha256 과 manifest.json 은
+# 그 대조에 쓰는 값이다. 줄바꿈이 변환되면 해시가 어긋나 대조가 깨진다.
+public/download/*.zip      binary
+public/download/*.sha256   text eol=lf
+public/download/*.json     text eol=lf

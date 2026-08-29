@@ -1,4 +1,5 @@
 import { getAddress, Wallet } from "ethers";
+import { isIP } from "node:net";
 import { z } from "zod";
 
 export const EAS_DOMAIN_NAME = "EAS Attestation";
@@ -36,6 +37,12 @@ const environmentSchema = z
       (value) => (value === "" ? undefined : value),
       z.string().min(1).optional(),
     ),
+    SECURITY_SCAN_ALLOWED_ORIGINS: z.string().default(""),
+    SECURITY_SCAN_DYNAMIC_TARGETS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    SECURITY_SCAN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(15_000).default(5_000),
   })
   .passthrough();
 
@@ -60,9 +67,14 @@ export interface AppConfig {
     readonly sessionSecret: string;
   };
   readonly githubToken?: string;
+  readonly securityScan?: {
+    readonly allowedOrigins: ReadonlySet<string>;
+    readonly dynamicTargetsEnabled: boolean;
+    readonly timeoutMs: number;
+  };
 }
 
-function parseOrigins(value: string): ReadonlySet<string> {
+function parseOrigins(value: string, variableName = "BADGE_ALLOWED_ORIGINS"): ReadonlySet<string> {
   const origins = value
     .split(",")
     .map((entry) => entry.trim())
@@ -70,11 +82,25 @@ function parseOrigins(value: string): ReadonlySet<string> {
     .map((entry) => {
       const url = new URL(entry);
       if (url.origin !== entry || !["http:", "https:"].includes(url.protocol)) {
-        throw new Error(`BADGE_ALLOWED_ORIGINS contains an invalid origin: ${entry}`);
+        throw new Error(`${variableName} contains an invalid origin: ${entry}`);
       }
       return url.origin;
     });
   return new Set(origins);
+}
+
+function parseSecurityScanOrigins(value: string): ReadonlySet<string> {
+  const origins = parseOrigins(value, "SECURITY_SCAN_ALLOWED_ORIGINS");
+  for (const origin of origins) {
+    const url = new URL(origin);
+    const hostname = url.hostname.startsWith("[") && url.hostname.endsWith("]")
+      ? url.hostname.slice(1, -1)
+      : url.hostname;
+    if (url.protocol !== "https:" || url.port !== "" || isIP(hostname) !== 0) {
+      throw new Error(`SECURITY_SCAN_ALLOWED_ORIGINS must contain HTTPS origins on port 443 using domain names: ${origin}`);
+    }
+  }
+  return origins;
 }
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -94,6 +120,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   if (!trusted.has(configuredAddress)) {
     throw new Error("EAS_ATTESTER_ADDRESS must be present in EAS_TRUSTED_ATTESTER_ADDRESSES");
   }
+  const securityScanOrigins = parseSecurityScanOrigins(parsed.SECURITY_SCAN_ALLOWED_ORIGINS);
 
   return {
     nodeEnv: parsed.NODE_ENV,
@@ -116,5 +143,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       sessionSecret: parsed.ADMIN_SESSION_SECRET,
     },
     ...(parsed.GITHUB_TOKEN === undefined ? {} : { githubToken: parsed.GITHUB_TOKEN }),
+    ...(securityScanOrigins.size === 0 && !parsed.SECURITY_SCAN_DYNAMIC_TARGETS_ENABLED
+      ? {}
+      : {
+          securityScan: {
+            allowedOrigins: securityScanOrigins,
+            dynamicTargetsEnabled: parsed.SECURITY_SCAN_DYNAMIC_TARGETS_ENABLED,
+            timeoutMs: parsed.SECURITY_SCAN_TIMEOUT_MS,
+          },
+        }),
   };
 }

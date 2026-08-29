@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">
+<title>에듀세이프 자가점검 보고서</title>
+<style>
+  :root {
+    --ink: #1a1d21;
+    --muted: #5b6470;
+    --line: #e3e6ea;
+    --bg: #ffffff;
+    --panel: #f7f8fa;
+    --red: #c0392b;
+    --amber: #b7791f;
+    --grey: #667085;
+    --blue: #2563eb;
+    --green: #1f7a4d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.65 "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 { font-size: 19px; margin: 44px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 24px 0 10px; }
+  p { margin: 8px 0; }
+  code { font-family: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 0.88em; background: var(--panel); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+
+  /* 인쇄 선택지 — JS 없이 체크박스 상태만으로 @media print 규칙을 바꾼다 */
+  .printopt {
+    display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+    border: 1px dashed var(--line); border-radius: 8px; padding: 10px 13px;
+    margin: 0 0 26px; font-size: 13.5px; color: var(--muted); background: var(--panel);
+  }
+  .printopt b { color: var(--ink); }
+  .printopt .box { position: relative; flex: none; width: 17px; height: 17px; margin-top: 2px;
+    border: 1.5px solid var(--muted); border-radius: 4px; background: #fff; }
+  #print-all { position: absolute; left: -9999px; }
+  #print-all:checked ~ main .printopt { border-color: var(--ink); border-style: solid; color: var(--ink); }
+  #print-all:checked ~ main .printopt .box { background: var(--ink); border-color: var(--ink); }
+  #print-all:checked ~ main .printopt .box::after {
+    content: "✓"; color: #fff; font-size: 12px; line-height: 1; position: absolute; left: 2.5px; top: 2px;
+  }
+  #print-all:focus ~ main .printopt { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* 종합 판정 카드 */
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--panel); }
+  .verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .verdict:last-child { border-bottom: 0; }
+  .verdict .label { flex: 1 1 auto; min-width: 8em; font-weight: 600; white-space: nowrap; }
+  .verdict .n { flex: 0 0 auto; font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; min-width: 3.2em; text-align: right; }
+  .verdict .note { flex: 1 1 100%; color: var(--muted); font-size: 13px; margin: 0 0 0 21px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
+  .d-red { background: var(--red); } .d-amber { background: var(--amber); }
+  .d-grey { background: var(--grey); } .d-open { background: #fff; border: 2px solid var(--grey); }
+  .d-blue { background: var(--blue); }
+  .card-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+  /* 먼저 볼 것 */
+  .todo { margin: 14px 0 0; padding: 0; list-style: none; }
+  .todo li { padding: 6px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .todo li:last-child { border-bottom: 0; }
+  .todo a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .todo .id { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--muted); }
+
+  /* 탭 — 라디오 + 형제 선택자. JS 없음 */
+  .tabin { position: absolute; left: -9999px; }
+  .tabbar { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 2px solid var(--line); padding-bottom: 0; margin-bottom: 0; }
+  .tabbar label {
+    cursor: pointer; padding: 9px 15px; font-size: 14px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--panel);
+    margin-bottom: -2px; white-space: nowrap;
+  }
+  .tabbar label:hover { color: var(--ink); }
+  .panel { display: none; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; padding: 18px 20px 22px; }
+  .panel > h3:first-child { margin-top: 0; }
+  .tabhint { color: var(--muted); font-size: 13.5px; padding: 14px 2px 0; }
+
+  #t-meta:checked ~ .tabbar label[for="t-meta"],
+  #t-cov:checked ~ .tabbar label[for="t-cov"],
+  #t-moe:checked ~ .tabbar label[for="t-moe"],
+  #t-db:checked ~ .tabbar label[for="t-db"],
+  #t-dest:checked ~ .tabbar label[for="t-dest"] {
+    background: #fff; color: var(--ink); border-color: var(--line); border-bottom: 2px solid #fff;
+  }
+  /* 키보드로 탭을 옮길 때 지금 어디에 있는지 보이게 한다 (라디오 자체는 화면 밖에 있다) */
+  #t-meta:focus-visible ~ .tabbar label[for="t-meta"],
+  #t-cov:focus-visible ~ .tabbar label[for="t-cov"],
+  #t-moe:focus-visible ~ .tabbar label[for="t-moe"],
+  #t-db:focus-visible ~ .tabbar label[for="t-db"],
+  #t-dest:focus-visible ~ .tabbar label[for="t-dest"],
+  #t-meta:focus ~ .tabbar label[for="t-meta"],
+  #t-cov:focus ~ .tabbar label[for="t-cov"],
+  #t-moe:focus ~ .tabbar label[for="t-moe"],
+  #t-db:focus ~ .tabbar label[for="t-db"],
+  #t-dest:focus ~ .tabbar label[for="t-dest"] {
+    outline: 2px solid var(--blue); outline-offset: 2px; color: var(--ink);
+  }
+
+  #t-meta:checked ~ .p-meta,
+  #t-cov:checked ~ .p-cov,
+  #t-moe:checked ~ .p-moe,
+  #t-db:checked ~ .p-db,
+  #t-dest:checked ~ .p-dest { display: block; }
+  .tabin:checked ~ .tabhint { display: none; }
+
+  /* 표 */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 6px 0 4px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel); font-weight: 600; white-space: nowrap; }
+  table.meta th { width: 36%; }
+
+  /* 배지 */
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid; white-space: nowrap; }
+  .b-fail { color: var(--red); border-color: var(--red); background: #fdf2f1; }
+  .b-pass { color: var(--green); border-color: var(--green); background: #f0f8f4; }
+  .b-attested { color: var(--blue); border-color: var(--blue); background: #eff4ff; }
+  .b-na { color: var(--muted); border-color: var(--line); background: #fff; }
+  .b-human { color: var(--grey); border-color: var(--grey); background: #f4f5f7; }
+  .sev { font-size: 12px; color: var(--muted); margin-left: 6px; }
+
+  /* 항목 아코디언 */
+  details { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: #fff; }
+  details[open] { box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06); }
+  summary { cursor: pointer; padding: 11px 14px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  summary::-webkit-details-marker { display: none; }
+  summary::marker { content: ""; }
+  summary .q { flex: 1; min-width: 240px; font-weight: 600; }
+  summary .id { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: var(--muted); }
+  .body { padding: 4px 14px 16px; border-top: 1px solid var(--line); }
+  .kv { margin: 10px 0; font-size: 14px; }
+  .kv b { color: var(--muted); font-weight: 600; margin-right: 6px; }
+  .ev { background: var(--panel); border-left: 3px solid var(--line); padding: 8px 12px; margin: 6px 0; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .ev .where { color: var(--muted); font-size: 12px; }
+  .folded { color: var(--muted); font-size: 13px; font-style: italic; }
+  .why { background: #fdf9ec; border-left: 3px solid var(--amber); padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; }
+  .fix { background: #f0f8f4; border-left: 3px solid var(--green); padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; }
+  .basis { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+  /* 앵커로 이동하면 접혀 있어도 펼쳐 보인다 */
+  details:target > *:not(summary) { display: block !important; }
+  details:target { border-color: var(--ink); }
+
+  .notice { border: 1px solid var(--line); border-left: 4px solid var(--ink); background: var(--panel); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .explain { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; line-height: 1.6; }
+  .footnotes { color: var(--muted); font-size: 13px; }
+  .footnotes li { margin: 6px 0; }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  @media print {
+    body { padding: 0; font-size: 11pt; }
+    h2 { margin-top: 22px; }
+    .printopt, .tabhint { display: none; }
+    details { break-inside: avoid; border-color: #ccc; }
+    .card, .notice, th, .tabbar label { background: #fff !important; }
+    a[href]::after { content: ""; }
+
+    /* 기본: 화면에서 보이는 대로 인쇄한다 (열어 둔 탭·항목만) */
+    /* "모두 펼쳐서 인쇄"를 켜면 탭 막대를 감추고 모든 패널·항목을 펼친다 */
+    #print-all:checked ~ main .tabbar { display: none; }
+    #print-all:checked ~ main .panel { display: block !important; border-top: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; }
+    #print-all:checked ~ main details > *:not(summary) { display: block !important; }
+  }
+</style>
+</head>
+<body>
+<input type="checkbox" id="print-all">
+<main>
+  <h1>에듀세이프 자가점검 보고서</h1>
+  <p class="sub">교사가 만든 교육용 앱을 개인정보 보호법·안전조치 기준으로 스스로 점검한 결과입니다.</p>
+
+  <label class="printopt" for="print-all">
+    <span class="box"></span>
+    <span><b>인쇄·PDF 저장할 때 모두 펼쳐서 출력하기</b><br>
+    켜면 접어 둔 탭과 항목이 전부 펼쳐진 채로 인쇄됩니다. 끄면 지금 화면에 보이는 대로 인쇄됩니다.
+    (학교운영위원회 제출용으로 전체를 남기려면 켜 두세요.)</span>
+  </label>
+
+  <h2>종합 판정</h2>
+  {{SUMMARY}}
+
+  <h2>점검 정보</h2>
+  <p class="explain">판정의 근거가 된 조건과 자료입니다. 보고 싶은 것을 눌러 펼치세요.</p>
+  <section class="tabs">
+    <input class="tabin" type="radio" name="infotab" id="t-meta">
+    <input class="tabin" type="radio" name="infotab" id="t-cov">
+    <input class="tabin" type="radio" name="infotab" id="t-moe">
+    <input class="tabin" type="radio" name="infotab" id="t-db">
+    <input class="tabin" type="radio" name="infotab" id="t-dest">
+    <div class="tabbar">
+      <label for="t-meta">검사 조건</label>
+      <label for="t-cov">점검 범위</label>
+      <label for="t-moe">학교 서식</label>
+      <label for="t-db">데이터 접근</label>
+      <label for="t-dest">외부 전송</label>
+    </div>
+    <p class="tabhint">위 다섯 가지 중 보고 싶은 것을 눌러 주세요.</p>
+    <div class="panel p-meta">{{META}}</div>
+    <div class="panel p-cov">{{COVERAGE}}</div>
+    <div class="panel p-moe">{{MOE}}</div>
+    <div class="panel p-db">{{DB_PATHS}}</div>
+    <div class="panel p-dest">{{DESTINATIONS}}</div>
+  </section>
+
+  <h2>항목별 판정</h2>
+  {{CATEGORIES}}
+
+  <h2>확인 세션 기록</h2>
+  {{SESSION}}
+
+  <h2>적용 범위와 신뢰 경계</h2>
+  {{FOOTNOTES}}
+</main>
+</body>
+</html>

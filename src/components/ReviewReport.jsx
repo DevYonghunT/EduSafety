@@ -5,7 +5,7 @@ import { RUBRIC_VERSION, FEATURES, featureProfile, CATEGORIES, AUTHORITY_LABELS,
 import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/reviewSummary.js'
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest, CAUSES } from '../lib/supplementRequest.js'
-import CertificationMark from './CertificationMark.jsx'
+import CertificationMark, { PrintPageProof } from './CertificationMark.jsx'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -24,7 +24,7 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed }) {
+export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed, certification }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const [showSupplement, setShowSupplement] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -100,6 +100,14 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
   }
   return (
     <div className="report">
+      <table className="report-print-layout" role="presentation">
+        <thead>
+          <tr><td><PrintPageProof repoMeta={repoMeta} certification={certification} /></td></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="report-print-content">
+
       <div className="report-actions no-print">
         {summary.actions.confirm > 0 && (
           <button className="btn-secondary" onClick={() => setShowSupplement(true)}>
@@ -214,6 +222,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
       <CertificationMark
         repoMeta={repoMeta}
         summary={summary}
+        certification={certification}
       />
 
       <section className="report-sign">
@@ -225,6 +234,10 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           <div className="sign-cell">서명: ______________</div>
         </div>
       </section>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

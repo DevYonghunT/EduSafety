@@ -1,0 +1,1839 @@
+{
+  "schema_version": "1",
+  "rubric_version": "1.2-skill",
+  "categories": [
+    {
+      "number": 1,
+      "title": "수집 — 무엇을 모으나"
+    },
+    {
+      "number": 2,
+      "title": "접근·권한 — 누가 무엇을 할 수 있나"
+    },
+    {
+      "number": 3,
+      "title": "비밀·파일 노출 — 저장소·번들·히스토리에 뭐가 들어 있나"
+    },
+    {
+      "number": 4,
+      "title": "제3자 전송·추적 — 데이터가 어디로 나가나"
+    },
+    {
+      "number": 5,
+      "title": "화면·로그 노출 — 눈에 어디까지 보이나"
+    },
+    {
+      "number": 6,
+      "title": "코드 안전"
+    },
+    {
+      "number": 7,
+      "title": "고지·보유·파기 — 알리고, 지키고, 지우나"
+    },
+    {
+      "number": 8,
+      "title": "학생 안전"
+    }
+  ],
+  "items": [
+    {
+      "id": "R-rrn",
+      "category": 1,
+      "base_severity": "high",
+      "question": "주민등록번호를 수집·보관·처리하지 않는다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "해당없음 없음 — 부재 증명 항목"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "rrn-field",
+          "text": "주민번호 입력 필드",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "rrn-pattern",
+          "text": "13자리 주민번호 형식 데이터",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "rrn-var",
+          "text": "jumin/rrn 등 변수명",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "개인정보 보호법 제24조의2",
+      "why_risky": "주민등록번호는 법에서 정한 경우가 아니면 수집 자체가 금지되어 있고, 한 번 유출되면 바꿀 수 없습니다.",
+      "fix_hint": "학번·닉네임·임의 코드로 대체하세요. 이미 저장된 값이 있다면 즉시 삭제하고, 삭제 후 복구되지 않도록 처리하세요."
+    },
+    {
+      "id": "R-under14",
+      "category": 1,
+      "base_severity": "high",
+      "question": "만 14세 미만 아동의 개인정보를 처리한다면 연령 확인과 법정대리인 동의 절차가 있다",
+      "methods": [
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "개인정보를 수집하지 않는 경우"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "age-check",
+          "text": "연령 확인 절차 — 생년월일 직접 입력 또는 '만 14세 이상' 체크",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "consent-flow",
+          "text": "법정대리인 동의 안내 화면·절차",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "consent-attested",
+          "text": "시행령 제17조의2의 7가지 방법 중 하나(서면·문자·이메일·전화 등, 종이 서면도 적법)로 확인했는가",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "consent-5day-purge",
+          "text": "동의 거부·미확인 상태로 5일 경과 시 파기",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제22조의2 + 시행령 제17조의2(동의 확인 7방법) + 아동·청소년 개인정보 보호 안내서(2024.12) 1-1·p.31~32·4-2",
+      "why_risky": "법정대리인 동의 없이 만 14세 미만 아동의 개인정보를 수집하면 5년 이하 징역 또는 5천만원 이하 벌금·과징금 대상입니다.",
+      "fix_hint": "가입 화면에서 생년월일을 받거나 '만 14세 이상' 체크를 두고, 미만이면 보호자 동의 절차로 보내세요. 종이 동의서를 받아 관리자가 기록하는 방식도 적법합니다."
+    },
+    {
+      "id": "S-sensitive",
+      "category": 1,
+      "base_severity": "high",
+      "question": "감정·건강·상담·위치·영상·음성 기록은 익명·가명으로 다루거나 기기 밖으로 내보내지 않는다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "민감정보 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "storage-identifier-type",
+          "text": "저장 구조·식별자 종류",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "location-camera-mic-data",
+          "text": "위치/카메라/마이크 데이터의 저장·전송",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제23조 + 안전성 확보조치 기준(고시 제2026-9호) 제7조",
+      "why_risky": "감정·건강·상담 등 민감한 기록은 유출되면 학생에게 더 큰 피해를 줄 수 있어 일반 개인정보보다 더 조심히 다뤄야 합니다.",
+      "fix_hint": "민감한 기록은 실명 대신 임의의 코드로 저장하고, 위치·카메라·마이크로 얻은 데이터는 꼭 필요한 경우가 아니면 기기 밖(서버)으로 보내지 마세요."
+    },
+    {
+      "id": "S-minimal",
+      "category": 1,
+      "base_severity": "medium",
+      "question": "꼭 필요한 최소한의 개인정보만 수집한다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "개인정보 미수집"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "field-vs-necessity",
+          "text": "입력·저장 필드 vs 필요성",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "nickname-alternative",
+          "text": "닉네임·임의코드 대체 가능 여부",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "location-tracking-default-off",
+          "text": "위치추적 옵션 비활성화 기본값",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "permission-necessity-granular",
+          "text": "기기 권한(위치·카메라·마이크)의 필요성·사유 안내·세분화 제시('허용/거부'만 지양)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "incentive-for-pii",
+          "text": "현금·아이템 대가로 개인정보 입력 유도 없음",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제3조·제16조 + 아동 안내서 1-2·1-3·1-4",
+      "why_risky": "꼭 필요하지 않은 개인정보까지 모으면 그만큼 유출됐을 때 피해 범위가 커지고, 나중에 관리해야 할 정보도 늘어납니다.",
+      "fix_hint": "서비스에 실제로 필요한 항목만 입력받고, 이름 대신 닉네임을 쓰게 하고, 위치·카메라 등 기기 권한은 꼭 필요한 기능에만 개별적으로 요청하세요."
+    },
+    {
+      "id": "R-db-locked",
+      "category": 2,
+      "base_severity": "high",
+      "question": "비로그인 상태로 쓸 수 없다 (누구나×쓰기)",
+      "methods": [
+        "scanner",
+        "code",
+        "evidence"
+      ],
+      "applicability": {
+        "na_when": "외부 DB 미사용"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "firestore-open-write",
+          "text": "Firestore/RTDB `allow write: if true`·`.write: true`",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "firebase"
+          ]
+        },
+        {
+          "id": "supabase-rls-missing",
+          "text": "Supabase `create table` 후 RLS 미활성",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        },
+        {
+          "id": "supabase-write-policy-open",
+          "text": "쓰기 정책 `using(true)`/`with check(true)`",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        },
+        {
+          "id": "deny-by-default",
+          "text": "인증·권한 없는 요청은 기본 차단(deny by default)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "rules-file-missing-evidence",
+          "text": "규칙 파일 없으면 증거 요청 + \"규칙 파일을 저장소에 포함\" 권고",
+          "required_coverage": [
+            "evidence"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제6조③(\"인터넷 홈페이지·P2P·공유설정 등을 통하여 권한이 없는 자에게 공개되거나 유출되지 않도록\") + API 유출예방(2026.7) \"인증·권한 없는 요청 기본 차단\"",
+      "why_risky": "로그인하지 않은 사람도 데이터베이스에 쓸 수 있으면, 누구나 학생 정보를 마음대로 추가·변경·삭제할 수 있게 됩니다.",
+      "fix_hint": "로그인한 사용자만 쓰기가 가능하도록 Firestore·Supabase 등의 보안 규칙을 설정하고, \"허용\"을 기본값으로 두지 마세요."
+    },
+    {
+      "id": "S-access",
+      "category": 2,
+      "base_severity": "high",
+      "question": "남의 데이터를 볼 수 없다 (타인×읽기)",
+      "methods": [
+        "code",
+        "evidence"
+      ],
+      "applicability": {
+        "na_when": "사용자·반·모둠 단위 데이터 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "auth-only-not-ownership",
+          "text": "로그인 여부만 확인하고 조회 권한을 확인하지 않는 구조(`request.auth != null`만으로 전체 읽기)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "class-code-guessable",
+          "text": "반 코드 추측 가능성(4자리 등)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "shared-class-code-access",
+          "text": "반 전체가 공유하는 코드·계정만으로 개인정보 접근(고시 제6조③ \"권한이 없는 자에게 공개\" — 제5조④가 아님)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "idor-url-id",
+          "text": "URL id 변경으로 타인 결과 열람(IDOR)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "class-group-data-scope",
+          "text": "반·모둠 공유 데이터의 범위",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "teacher-data-student-exposure",
+          "text": "교사 데이터의 학생 노출",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "API 유출예방(2026.7) \"로그인 여부만 확인하고 개인정보 조회 권한을 확인하지 않거나\" + 고시 제5조①·제6조③",
+      "why_risky": "로그인 여부만 확인하고 \"내 데이터인지\"는 확인하지 않으면, 로그인한 아무나 다른 학생의 이름·점수·기록을 볼 수 있습니다.",
+      "fix_hint": "데이터를 읽을 때 요청한 사람이 그 데이터의 주인(또는 같은 반 교사 등 허용된 사람)인지 서버에서 반드시 확인하도록 규칙을 작성하세요."
+    },
+    {
+      "id": "R-impersonate",
+      "category": 2,
+      "base_severity": "high",
+      "question": "남의 데이터를 고칠 수 없다 (타인×쓰기)",
+      "methods": [
+        "code",
+        "evidence"
+      ],
+      "applicability": {
+        "na_when": "사용자별 데이터 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "client-doc-id-no-uid-match",
+          "text": "클라이언트 지정 문서 ID에 uid 매칭 없는 쓰기",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "nickname-only-impersonation",
+          "text": "닉네임만으로 입장하는 사칭",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "server-side-authz-check",
+          "text": "모든 요청에 대해 요청자가 그 정보를 조회·수정할 권한이 있는지 서버에서 확인",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "API 유출예방 \"모든 API 요청에 대해 요청한 이용자가 해당 개인정보를 조회하거나 수정할 권한이 있는지 서버에서 확인\" + 고시 제5조①",
+      "why_risky": "다른 사람 행세를 하거나 남의 데이터를 지정해서 고칠 수 있으면, 학생이 다른 학생의 점수나 기록을 바꿔치기할 수 있습니다.",
+      "fix_hint": "데이터를 수정할 때도 요청자가 그 데이터의 실제 주인인지 서버가 확인하도록 하고, 닉네임만으로 로그인을 대신하지 마세요."
+    },
+    {
+      "id": "R-score-forge",
+      "category": 2,
+      "base_severity": "high",
+      "question": "내 점수·완료·보상을 위조할 수 없다 (본인×신뢰 필드)",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "trusted_outcomes 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "client-computed-value-write",
+          "text": "클라이언트 계산 값의 직접 write",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "server-side-computation-or-validation",
+          "text": "서버 계산 또는 규칙 검증 여부",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제29조(안전조치 — 학습 기록의 무결성) + 개발보안 가이드(신뢰할 수 없는 입력). 실측 사고 기반",
+      "why_risky": "점수나 완료 여부를 학생 기기(클라이언트)에서 계산해 그대로 저장하면, 개발자 도구로 값을 바꿔 점수를 조작할 수 있습니다.",
+      "fix_hint": "점수·완료 같은 중요한 값은 서버(함수·RPC)에서 계산하거나, 최소한 저장 규칙에서 값의 범위·조건을 검증하도록 만드세요."
+    },
+    {
+      "id": "S-upload-exposure",
+      "category": 2,
+      "base_severity": "high",
+      "question": "학생이 올린 파일이 공개 URL로 접근되지 않고, 업로드가 통제된다 (누구나×파일)",
+      "methods": [
+        "scanner",
+        "code",
+        "evidence"
+      ],
+      "applicability": {
+        "na_when": "파일 업로드 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "supabase-public-bucket",
+          "text": "Supabase public 버킷",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        },
+        {
+          "id": "storage-rule-read-true",
+          "text": "Storage 규칙 `read: true`",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "firebase"
+          ]
+        },
+        {
+          "id": "upload-size-format-limit",
+          "text": "업로드 크기·형식 제한",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "executable-content-blocked",
+          "text": "실행 가능 콘텐츠(html/svg/js) 차단",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "private-default-scope",
+          "text": "공개 범위 기본값이 '비공개'인가(전체공개 기본값 금지)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제23조·제29조 + 고시 제6조③ + 아동 안내서 1-2(높은 수준 기본값)",
+      "why_risky": "학생이 올린 사진·파일이 누구나 접근 가능한 주소로 공개되면, 관련 없는 사람도 그 파일을 볼 수 있게 됩니다.",
+      "fix_hint": "업로드 저장 공간을 기본적으로 비공개로 설정하고, 파일 크기·형식을 제한하며, 실행되는 코드가 담긴 파일은 업로드되지 않도록 막으세요."
+    },
+    {
+      "id": "S-password-storage",
+      "category": 2,
+      "base_severity": "high",
+      "question": "자체 로그인이 있다면 비밀번호를 복호화 불가능한 일방향 해시(솔트 포함)로 저장하고 평문으로 저장·전송·기록하지 않는다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "자체 비밀번호 인증 없음(구글 로그인 등만)"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "plaintext-password-compare",
+          "text": "평문 비교(`password === `)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "plaintext-password-storage",
+          "text": "localStorage·DB 평문 저장",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "hash-library-missing",
+          "text": "해시 라이브러리 부재",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "unsalted-hash",
+          "text": "솔트 없는 해시(MD5/SHA1 단독)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "password-exposed-url-log",
+          "text": "비밀번호를 URL·로그에 노출",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제7조① \"비밀번호를 저장하는 경우에는 복호화되지 아니하도록 일방향 암호화\" + KISA JS 시큐어코딩 2절 5·9·14",
+      "why_risky": "비밀번호를 그대로(평문) 저장하거나 약한 방식으로만 암호화하면, 저장된 자료가 새어나갈 때 학생들의 비밀번호가 그대로 드러납니다.",
+      "fix_hint": "bcrypt 같은 검증된 일방향 해시(솔트 포함) 라이브러리로 비밀번호를 저장하고, 화면·로그·URL 어디에도 평문 비밀번호가 남지 않게 하세요."
+    },
+    {
+      "id": "R-server-guard",
+      "category": 2,
+      "base_severity": "high",
+      "question": "서버 코드 경로(API 라우트·RPC·Function)에 인증·권한 검사가 있다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "서버 코드 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "api-route-edge-function-no-auth",
+          "text": "인증 검사 없는 API 라우트·Edge Function",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": [
+            "nextjs",
+            "supabase"
+          ]
+        },
+        {
+          "id": "security-definer-rpc-unverified",
+          "text": "`security definer` RPC의 `auth.uid()` 미검증",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        },
+        {
+          "id": "cors-wildcard",
+          "text": "CORS `*` 응답",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "stale-test-endpoint",
+          "text": "방치된 테스트·구버전 엔드포인트(개편 후 외부 호출 가능한 API 잔존)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제5조·제6조 + API 유출예방(권한 확인·잔존 API 점검) + 교육부 정보보안 기본지침(예규 82호) 제52조④",
+      "why_risky": "서버 API가 요청자를 확인하지 않으면, 로그인 여부와 상관없이 아무나 서버 기능을 직접 호출해 데이터를 보거나 바꿀 수 있습니다.",
+      "fix_hint": "모든 API·서버 함수 시작 부분에서 로그인·권한을 확인하도록 만들고, 더 이상 쓰지 않는 옛날 API는 삭제하거나 접근을 막으세요."
+    },
+    {
+      "id": "S-teacher-gate",
+      "category": 2,
+      "base_severity": "medium",
+      "question": "학생이 교사 기능을 쓸 수 없다 (역할 상승)",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "교사 전용 기능 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "client-password-constant",
+          "text": "클라이언트 비밀번호 상수(`pw === '1234'`)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "local-storage-role-flag",
+          "text": "localStorage/sessionStorage 권한 플래그",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "url-hash-query-branch-only",
+          "text": "URL 해시·쿼리 분기만",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "teacher-api-no-auth",
+          "text": "교사용 API 무인증",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제5조①(최소 권한) + KISA JS 시큐어코딩 2절 1·2·3",
+      "why_risky": "교사 전용 기능을 여는 열쇠가 화면 코드 안에 그대로 있으면(비밀번호 상수 등), 학생이 개발자 도구로 코드를 열어보고 교사 화면에 들어갈 수 있습니다.",
+      "fix_hint": "교사 권한 확인은 화면(클라이언트) 코드가 아니라 서버에서 로그인 계정의 역할을 확인하는 방식으로 만드세요."
+    },
+    {
+      "id": "S-signup-scope",
+      "category": 2,
+      "base_severity": "medium",
+      "question": "입장·가입이 통제된다 (입장)",
+      "methods": [
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "사용자별·반별 데이터 없음 (입장 절차 없음은 na가 아니라 익명 입장으로 판정)"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "domain-restriction-invite-code",
+          "text": "도메인 제한·승인·초대 코드",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "open-signup-with-auth-rule-only",
+          "text": "오픈 가입 + `auth != null` 규칙 조합",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "no-entry-procedure-user-data-created",
+          "text": "입장 절차 없이 사용자 데이터 생성",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "teacher-admin-account-sharing",
+          "text": "교사·관리자 계정 공유(고시 제5조④는 개인정보취급자별 계정 발급·취급자 간 공유 금지 — 학생 공용 코드는 S-access)",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제5조④(개인정보취급자별 계정 발급·취급자 간 공유 금지 — 교사·관리자 계정에만 적용) + 고시 제6조",
+      "why_risky": "아무나 가입할 수 있거나 교사·관리자 계정을 여러 명이 나눠 쓰면, 누가 어떤 데이터를 다뤘는지 책임을 가리기 어렵고 계정이 새어나갈 위험도 커집니다.",
+      "fix_hint": "학교 이메일 도메인 제한, 승인제, 초대 코드 등으로 가입을 통제하고, 교사·관리자 계정은 각자 따로 만들어 쓰도록 안내하세요."
+    },
+    {
+      "id": "S-auth-hardening",
+      "category": 2,
+      "base_severity": "medium",
+      "question": "인증·세션이 무차별 대입과 방치에 대비되어 있다",
+      "methods": [
+        "code",
+        "evidence",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "로그인·입장 절차 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "auth-failure-rate-limit",
+          "text": "인증 실패 횟수 제한(고시 제5조⑥ — 정보주체·취급자 모두 대상). 콘솔 설정은 저장소 밖이라 증거 요청",
+          "required_coverage": [
+            "code",
+            "evidence"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "staff-session-auto-lock",
+          "text": "개인정보취급자(교사·관리자) 세션의 일정시간 미사용 자동 차단(고시 제6조④ — 이 조항은 취급자 대상)",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "student-session-expiry",
+          "text": "학생 세션 만료·자동 로그아웃(KISA 권고 근거 — 법적 의무 아님)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "① 고시 제5조⑥(일정 횟수 인증 실패 시 접근 제한) ② 고시 제6조④(개인정보취급자가 일정시간 미사용 시 자동 접속 차단 — 취급자 대상 조항) ③ 학생 세션 만료 = KISA JS 시큐어코딩 2절 16 권고(법적 의무 아님)",
+      "why_risky": "로그인 시도 횟수를 제한하지 않거나 교사 계정이 오래 로그인된 채로 방치되면, 계정을 알아내려는 시도나 방치된 세션을 통해 개인정보에 접근할 위험이 커집니다.",
+      "fix_hint": "로그인 실패가 여러 번 반복되면 잠시 막는 기능을 두고, 교사·관리자 계정은 일정 시간 사용하지 않으면 자동으로 로그아웃되게 설정하세요."
+    },
+    {
+      "id": "S-api-overfetch",
+      "category": 2,
+      "base_severity": "medium",
+      "question": "서버 응답에 화면에서 쓰지 않는 개인정보가 포함되지 않는다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "서버 응답에 개인정보 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "select-all-columns",
+          "text": "`select('*')`·전체 컬럼 반환 (스캐너 hit = 후보만)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        },
+        {
+          "id": "list-api-exposes-other-identity",
+          "text": "목록 API가 타인의 식별정보까지 반환",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "unused-field-in-response",
+          "text": "화면 미사용 필드 포함 — AI가 응답 스키마와 화면 사용 필드를 추적해 대조한 경우에만 fail(뷰·RPC가 이미 필드를 제한하거나 전 필드를 실제로 쓰는 경우 오탐)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "API 유출예방(2026.7) \"이용자 화면에서 보이지 않는 개인정보나 서비스 제공 목적에 필요하지 않은 정보는 API 응답 데이터에서도 제외\"",
+      "why_risky": "화면에 보여줄 필요가 없는 개인정보까지 서버 응답에 포함되면, 개발자 도구로 통신 내용을 열어본 사람에게 정보가 그대로 드러날 수 있습니다.",
+      "fix_hint": "서버에서 데이터를 조회할 때 `select('*')`처럼 전체 컬럼을 가져오지 말고, 화면에 실제로 필요한 항목만 골라서 응답하도록 만드세요."
+    },
+    {
+      "id": "S-write-guard",
+      "category": 2,
+      "base_severity": "medium",
+      "question": "쓰기 규칙에 크기·형식 검증이 있다",
+      "methods": [
+        "evidence"
+      ],
+      "applicability": {
+        "na_when": "외부 DB 미사용"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "size-type-check",
+          "text": "`size()`·타입 검사",
+          "required_coverage": [
+            "evidence"
+          ],
+          "stacks": [
+            "firebase"
+          ]
+        },
+        {
+          "id": "rls-with-check-condition",
+          "text": "RLS `with check` 조건",
+          "required_coverage": [
+            "evidence"
+          ],
+          "stacks": [
+            "supabase"
+          ]
+        }
+      ],
+      "basis": "고시 제6조 + 개발보안 가이드(입력 검증)",
+      "why_risky": "저장되는 데이터의 크기나 형식을 확인하지 않으면, 지나치게 큰 데이터나 예상 밖의 형식이 들어와 서비스가 오작동하거나 저장 공간이 낭비될 수 있습니다.",
+      "fix_hint": "보안 규칙에 데이터 크기 제한과 필드 타입 검사를 추가해서, 정해진 형식과 크기를 벗어나는 쓰기는 거부되게 하세요."
+    },
+    {
+      "id": "R-secrets",
+      "category": 3,
+      "base_severity": "high",
+      "question": "비밀키가 소스·git 히스토리·빌드 산출물 어디에도 없다",
+      "methods": [
+        "scanner"
+      ],
+      "applicability": {
+        "na_when": "— (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "key-pattern-match",
+          "text": "키 패턴(sk-, AIza, AKIA, ghp_, Supabase service_role JWT, 개인키, 하드코딩 비밀번호)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "secret-in-comment",
+          "text": "주석문 안의 비밀정보",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "env-file-committed",
+          "text": "`.env` 커밋",
+          "required_coverage": [
+            "history"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "public-prefix-secret",
+          "text": "`NEXT_PUBLIC_`/`VITE_`/`REACT_APP_` 접두사에 시크릿",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": [
+            "nextjs",
+            "vite-react"
+          ]
+        },
+        {
+          "id": "build-artifact-key",
+          "text": "빌드 산출물 내 키",
+          "required_coverage": [
+            "build"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제29조 + 고시 제7조 + KISA JS 시큐어코딩 2절 6·13(주석 속 중요정보)",
+      "why_risky": "API 키나 비밀번호가 코드나 git 기록에 남아 있으면, 그 저장소를 볼 수 있는 누구나 그 키로 여러분의 서비스·데이터에 접근할 수 있게 됩니다.",
+      "fix_hint": "키는 환경변수로 분리하고 `.gitignore`에 등록하세요. 이미 노출된 키는 삭제 커밋만으로는 안전해지지 않으니 반드시 재발급(rotate)하세요."
+    },
+    {
+      "id": "R-admin-data",
+      "category": 3,
+      "base_severity": "high",
+      "question": "학생 데이터 파일(명단·성적 csv/xlsx/json)이 저장소·배포물에 없다",
+      "methods": [
+        "scanner",
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "— (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "name-studentid-contact-columns",
+          "text": "이름·학번·연락처 열",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "seed-sample-real-student-name",
+          "text": "시드·샘플 데이터의 실제 학생 이름",
+          "required_coverage": [
+            "scanner",
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "build-artifact-inclusion",
+          "text": "배포물 포함 여부",
+          "required_coverage": [
+            "build"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "repo-visibility",
+          "text": "repo 공개 여부(원격 URL·gh 감지, 실패 시 확인)",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "gitignore-handling",
+          "text": "`.gitignore` 처리",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제6조③ + 교육부 예규 82호 제68조(비공개 업무자료 홈페이지 무단 게시 금지)",
+      "why_risky": "학생 명단·성적 파일이 저장소에 그대로 들어 있으면, 특히 공개 저장소일 때 누구나 다운로드해 학생 개인정보를 통째로 볼 수 있습니다.",
+      "fix_hint": "실제 학생 이름·학번이 담긴 파일은 저장소에 올리지 말고, 예시 데이터는 가짜 이름으로 바꾸세요. 이미 올라간 파일은 `.gitignore`에 추가하고 git 기록에서도 제거하세요."
+    },
+    {
+      "id": "S-answer-exposure",
+      "category": 3,
+      "base_severity": "medium",
+      "question": "평가·경쟁 문항의 정답·채점 기준이 클라이언트에 없다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "정답 공개가 무해한 연습용"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "static-json-answer-field",
+          "text": "정적 JSON 정답 필드",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "bundle-answer-grading-keyword",
+          "text": "번들 내 정답·채점 키워드·서버 전용 표식",
+          "required_coverage": [
+            "build"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "leftover-debug-code",
+          "text": "제거되지 않고 남은 디버그 코드(정답 표시·개발용 우회)",
+          "required_coverage": [
+            "scanner",
+            "build"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "평가 공정성 — 법령 근거 없음, 실측 사고 기반 모범 사례 + JS 시큐어코딩 캡슐화 2(디버그 코드 잔존)",
+      "why_risky": "정답이나 채점 기준이 학생 화면 쪽 코드(클라이언트)에 그대로 있으면, 개발자 도구로 코드를 열어본 학생이 정답을 미리 알 수 있습니다.",
+      "fix_hint": "정답·채점 로직은 서버에서만 처리하고, 학생 화면에는 결과만 전달하세요. 테스트용으로 남겨둔 정답 표시 기능은 배포 전에 제거하세요."
+    },
+    {
+      "id": "R-third-party",
+      "category": 4,
+      "base_severity": "high",
+      "question": "학생 식별·민감 정보가 독립 제3자로 전송되지 않는다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "학생 식별 정보 미처리"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "identifiable-data-to-external-service",
+          "text": "외부 AI API·분석/광고 SDK·외부 메일·웹훅에 실명·학번·연락처·민감정보가 실리는 경로",
+          "required_coverage": [
+            "scanner",
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "google-forms-sheets-sharing-scope",
+          "text": "Google Forms/Sheets/Apps Script 전송과 시트 공유 범위",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "unknown-destination",
+          "text": "미상 목적지(수탁자로의 전송은 이 항목 위반이 아니며 고지는 S-privacy-notice, 국외 저장은 S-data-region)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제17조·제26조·제28조의8 + 교육청 생성형 AI 지침",
+      "why_risky": "학생의 이름·학번·연락처가 외부의 광고·분석 서비스 등으로 그대로 전송되면, 처음에 알린 목적을 벗어난 방식으로 쓰일 수 있습니다.",
+      "fix_hint": "외부로 보내는 데이터에서 이름·학번 같은 식별 정보는 빼거나 임의 코드로 바꾸고, 꼭 필요한 경우가 아니면 외부 서비스에 개인정보를 보내지 마세요."
+    },
+    {
+      "id": "R-llm-input",
+      "category": 4,
+      "base_severity": "medium",
+      "question": "학생 입력이 외부 AI로 전송되면 그 사실을 고지하고 개인정보 입력 금지를 안내한다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "외부 AI 미사용"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "ai-endpoint-call",
+          "text": "AI 엔드포인트 호출",
+          "required_coverage": [
+            "scanner",
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "ai-usage-notice",
+          "text": "고지 문구",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "pii-input-prohibition-notice",
+          "text": "입력 금지 안내",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "ai-training-license-check",
+          "text": "입력이 AI 학습에 활용되지 않는 라이선스·설정인가(개인용=학습 활용 기본·opt-out / 기업용 API=미저장·미학습 기본). 개인정보가 실제로 실리면 R-third-party 상",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제15조·제26조 + 생성형 AI 개발·활용 개인정보 처리 안내서(2025) p.27(개인용 vs 기업용 API 라이선스)",
+      "why_risky": "학생이 입력한 내용이 외부 AI 서비스로 전송된다는 사실을 모르면, 학생이 실수로 개인정보나 고민을 그대로 입력해 외부에 전달될 수 있습니다.",
+      "fix_hint": "AI 기능을 쓰는 화면에는 \"입력 내용이 AI로 전송됩니다. 이름·연락처 등 개인정보는 입력하지 마세요\" 같은 안내 문구를 넣으세요."
+    },
+    {
+      "id": "S-data-region",
+      "category": 4,
+      "base_severity": "medium",
+      "question": "학생 데이터가 저장되는 위치(리전)를 알고 있고, 학교가 도입해 쓰는 경우 국내에 저장·관리되는 서비스를 이용한다",
+      "methods": [
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "서버 저장 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "project-region-setting",
+          "text": "프로젝트 리전 설정 확인(Firebase location·Supabase region)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "school-controller-domestic-storage",
+          "text": "controller=school 이면 국내 저장 요건(교육부 예규 제41조②1: \"국내에 위치한 정보시스템(인증서버·로그·백업서버 등)·관리 주체에 의해 데이터가 저장·관리되는 서비스의 이용\") — 국외 저장이면 fail",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "teacher-personal-region-awareness",
+          "text": "controller=teacher_personal 이면 국내 저장은 권고, 리전 인지 여부만 판정. 국외 이전 고지는 이 항목이 아니라 S-privacy-notice ⑥",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "교육부 예규 82호 제41조②1 — 각급기관이 민간 클라우드를 이용할 때 \"국내에 위치한 정보시스템(인증서버, 로그 및 백업서버 등)·관리 주체에 의해 데이터가 저장·관리되는 서비스의 이용\"을 준수해야 한다(고지 의무가 아니라 국내 저장 요건). 적용 주체는 \"각급기관의 장\"이므로 controller=school일 때 요건, teacher_personal은 권고",
+      "why_risky": "학생 데이터가 국외 서버에 저장되면, 국내와 다른 법이 적용되어 정보를 보호받기 어려워질 수 있고, 학교에서 도입한 앱이라면 교육부가 정한 국내 저장 요건을 어기게 됩니다.",
+      "fix_hint": "Firebase·Supabase 등에서 데이터가 저장되는 리전(지역)을 확인하고, 학교가 정식으로 도입해 쓰는 앱이라면 국내 리전을 선택하세요."
+    },
+    {
+      "id": "S-tracking",
+      "category": 4,
+      "base_severity": "low",
+      "question": "학생용 앱에 분석·광고 추적 스크립트가 없거나 고지된다",
+      "methods": [
+        "scanner"
+      ],
+      "applicability": {
+        "na_when": "student_facing 아님 (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "ga-gtag-ad-pixel",
+          "text": "GA·gtag·광고 태그·픽셀",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "behavioral-ad-targeting-minors",
+          "text": "아동 대상 서비스는 맞춤형 광고 목적 행태정보 수집 금지",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "cross-site-tracking",
+          "text": "다른 앱·웹에 걸친 활동 추적 불허",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "아동·청소년 안내서(맞춤형 광고 최소화·행태정보)",
+      "why_risky": "학생이 쓰는 앱에 광고·분석 추적 스크립트가 몰래 들어 있으면, 학생의 행동 정보가 외부 광고 회사로 넘어가 맞춤형 광고 등에 쓰일 수 있습니다.",
+      "fix_hint": "학생용 화면에는 분석·광고 추적 스크립트를 넣지 않거나, 꼭 필요하면 어떤 정보를 어디로 보내는지 안내 문구로 밝히세요."
+    },
+    {
+      "id": "S-name-exposure",
+      "category": 5,
+      "base_severity": "medium",
+      "question": "공개 화면(랭킹·결과 공유·프로젝터)에 실명·학번이 노출되지 않는다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "공개 화면 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "public-screen-display-fields",
+          "text": "공개 화면의 표시 필드",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "nickname-real-name-guidance",
+          "text": "\"닉네임에 실명을 쓰라\"는 안내",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "public-default-scope-private",
+          "text": "공개 범위 기본값이 비공개인가",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "export-field-minimization",
+          "text": "출력·내보내기 시 항목 최소화",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제17조(제3자 제공) + 고시 제12조(출력 항목 최소화) + 아동 안내서 1-2",
+      "why_risky": "랭킹판·프로젝터 화면 같은 공개된 곳에 실명·학번이 그대로 표시되면, 그 자리에 있는 모든 사람이 학생의 개인정보를 알게 됩니다.",
+      "fix_hint": "공개 화면에는 실명 대신 닉네임을 쓰고, 화면 설계 단계부터 공개 범위를 기본적으로 좁게(비공개) 설정하세요."
+    },
+    {
+      "id": "S-log-pii",
+      "category": 5,
+      "base_severity": "medium",
+      "question": "개인정보를 콘솔·에러 리포팅·서버 로그에 출력하지 않는다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "개인정보 미처리 (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "console-log-user-object",
+          "text": "`console.log`에 사용자 객체·이름",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "error-reporting-payload",
+          "text": "Sentry 등 리포팅 페이로드",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "error-message-info-leak",
+          "text": "오류 메시지 정보 노출(스택 트레이스·DB 오류를 사용자 화면에 표시)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제29조 + 고시 제6조③ + JS 시큐어코딩 에러처리 1",
+      "why_risky": "개발 중에 확인용으로 남긴 로그에 학생 이름·정보가 찍히면, 로그를 볼 수 있는 사람이나 로그 서비스로 개인정보가 새어나갈 수 있습니다.",
+      "fix_hint": "배포 전에 `console.log`에서 개인정보를 출력하는 코드를 지우고, 오류가 나도 학생 화면에는 자세한 오류 내용 대신 안내 메시지만 보여주세요."
+    },
+    {
+      "id": "S-shared-device",
+      "category": 5,
+      "base_severity": "medium",
+      "question": "공용 기기에서 이전 사용자 정보가 남지 않는다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "개인 데이터 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "localstorage-pii-token",
+          "text": "localStorage 개인정보·토큰",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "reset-logout-mechanism",
+          "text": "초기화·로그아웃 수단",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "cookie-persisted-info",
+          "text": "하드디스크에 남는 쿠키를 통한 정보 노출",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "아동·청소년 안내서 + JS 시큐어코딩 2절 12",
+      "why_risky": "학교 컴퓨터처럼 여러 학생이 함께 쓰는 기기에 이전 학생의 이름·로그인 정보가 남아 있으면, 다음 사용자가 그 정보를 볼 수 있습니다.",
+      "fix_hint": "로그아웃 시 저장된 개인정보·토큰을 확실히 지우고, 공용 기기에서 쓰기 쉽도록 눈에 띄는 로그아웃·초기화 버튼을 두세요."
+    },
+    {
+      "id": "S-rank-optout",
+      "category": 5,
+      "base_severity": "low",
+      "question": "랭킹·비교 기능에 특정 학생 제외·마스킹 수단이 있다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "랭킹 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "exclude-mask-option",
+          "text": "제외·마스킹 옵션",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법령 근거 없음 — 실측 사고 기반 모범 사례",
+      "why_risky": "원치 않는 학생까지 랭킹에 강제로 노출되면, 성적이나 순위가 공개되는 것이 부담스러운 학생에게 불편이나 위축감을 줄 수 있습니다.",
+      "fix_hint": "랭킹·비교 화면에 특정 학생을 빼거나 이름을 가릴 수 있는 옵션을 만들어, 교사가 필요할 때 조정할 수 있게 하세요."
+    },
+    {
+      "id": "S-injection",
+      "category": 6,
+      "base_severity": "medium",
+      "question": "입력이 코드·쿼리로 해석되는 경로가 없다 (KISA 분류: 입력데이터 검증 및 표현)",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "— (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "innerhtml-eval-variable-injection",
+          "text": "`innerHTML`/`eval`/`document.write`에 변수 삽입",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "dangerously-set-inner-html",
+          "text": "`dangerouslySetInnerHTML`",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "server-sql-string-concat",
+          "text": "서버 코드의 SQL 문자열 결합",
+          "required_coverage": [
+            "scanner",
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "KISA 소프트웨어 개발보안 가이드(입력데이터 검증 및 표현) + 교육부 예규 82호 제27조",
+      "why_risky": "사용자가 입력한 값이 그대로 화면 코드나 데이터베이스 쿼리로 실행되면, 의도하지 않은 코드가 함께 실행되어 화면이 조작되거나 데이터가 잘못 바뀔 수 있습니다.",
+      "fix_hint": "사용자 입력을 `innerHTML`이나 SQL 문자열에 직접 끼워 넣지 말고, 프레임워크가 제공하는 안전한 방식(텍스트 삽입, 파라미터 바인딩)을 쓰세요."
+    },
+    {
+      "id": "S-abuse-limit",
+      "category": 6,
+      "base_severity": "medium",
+      "question": "외부 리소스(DB·AI API) 남용 제한이 있다",
+      "methods": [
+        "scanner",
+        "code"
+      ],
+      "applicability": {
+        "na_when": "외부 DB·AI 미사용"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "db-direct-app-check",
+          "text": "DB 직접 경로: App Check·reCAPTCHA",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "ai-proxy-auth-rate-limit",
+          "text": "서버 AI 프록시: 인증·호출 제한",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "bulk-query-repeat-call-limit",
+          "text": "대규모 조회·반복 호출 제한",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "API 유출예방 \"API로 대규모 정보 조회 또는 반복 호출 등을 제한\" (기존 \"근거 없음\"에서 격상)",
+      "why_risky": "데이터베이스나 AI API 호출 횟수를 제한하지 않으면, 짧은 시간에 지나치게 많은 요청이 몰려 서비스 이용료가 크게 나오거나 서비스가 느려질 수 있습니다.",
+      "fix_hint": "App Check·reCAPTCHA 같은 남용 방지 도구를 달거나, AI 호출은 서버를 거치게 해서 횟수·빈도를 제한하세요."
+    },
+    {
+      "id": "S-https",
+      "category": 6,
+      "base_severity": "low",
+      "question": "모든 리소스·전송이 https다",
+      "methods": [
+        "scanner"
+      ],
+      "applicability": {
+        "na_when": "— (부재 증명)"
+      },
+      "absence_proof": true,
+      "subchecks": [
+        {
+          "id": "http-resource-endpoint",
+          "text": "`http://` 리소스·엔드포인트 (localhost 제외)",
+          "required_coverage": [
+            "scanner"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제7조④ \"인터넷망 구간으로 송·수신하는 경우 암호화\"",
+      "why_risky": "http로 데이터를 주고받으면 암호화되지 않은 채로 전송되어, 같은 네트워크에 있는 다른 사람이 통신 내용을 들여다볼 수 있습니다.",
+      "fix_hint": "모든 이미지·API·리소스 주소를 http가 아닌 https로 바꾸세요. 배포 시 대부분의 호스팅 서비스는 https를 기본 제공합니다."
+    },
+    {
+      "id": "S-privacy-notice",
+      "category": 7,
+      "base_severity": "medium",
+      "question": "개인정보 처리 안내(처리방침)가 있고 법정 기재사항을 담는다",
+      "methods": [
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "개인정보 미수집"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "purpose-retention-period",
+          "text": "수집 시점 항목·목적·보유 기간",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "destruction-procedure",
+          "text": "파기 절차 및 방법",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "under14-handling-if-applicable",
+          "text": "만 14세 미만 처리 사항(해당시)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "third-party-provision-if-applicable",
+          "text": "제3자 제공(해당시)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "outsourcing-processor-disclosure",
+          "text": "위탁(수탁자 = Firebase·Supabase·Vercel 등 명시)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "overseas-transfer-if-applicable",
+          "text": "국외 이전(해당시 — 리전 판정은 S-data-region)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "safety-measures-disclosure",
+          "text": "안전성 확보조치에 관한 사항",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "cookie-and-optout",
+          "text": "자동 수집 장치(쿠키)와 거부 방법(해당시)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "data-subject-rights-procedure",
+          "text": "권리(열람·정정·삭제·처리정지·동의철회) 행사 방법",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "controller-contact-info",
+          "text": "보호책임자·연락처 — 프로필의 `controller`에 따라: school이면 학교·교장 또는 학교가 지정한 창구(교육부 훈령 제5조②4: 유·초·중·고 보호책임자 = 원장 또는 교장), teacher_personal이면 실제 개인 운영 주체와 연락 수단, unknown이면 확인 질문",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "amendment-and-plain-language",
+          "text": "변경에 관한 사항 · 알기 쉬운 용어로 작성",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제30조① + 시행령 제31조① + 개인정보 처리방침 작성지침(2026.4) 기재사항 24개 + 표준지침 제18조(알기 쉬운 용어)",
+      "why_risky": "처리방침이 없거나 필수 항목이 빠져 있으면, 학생·학부모가 어떤 정보가 왜 모이고 언제 지워지는지 알 수 없고, 법에서 정한 고지 의무도 어기게 됩니다.",
+      "fix_hint": "수집 항목·목적·보유기간·파기방법·연락처 등을 담은 처리방침 페이지를 만들어 앱 안에서 쉽게 찾을 수 있게 링크하세요."
+    },
+    {
+      "id": "H-delete",
+      "category": 7,
+      "base_severity": "medium",
+      "question": "학생 1명 단위로 삭제할 수단이 있고 파생 데이터도 함께 지워진다",
+      "methods": [
+        "code",
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "서버 저장 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "deletion-mechanism",
+          "text": "삭제 수단",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "derived-data-cascade",
+          "text": "진행도·기록·랭킹 등 파생 데이터",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "irreversible-destruction",
+          "text": "복구·재생 불가능한 파기(soft delete 플래그만이면 파기 아님)",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "purge-within-5-days",
+          "text": "불필요하게 된 정보는 5일 이내 파기",
+          "required_coverage": [
+            "code",
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제21조·제36조 + 고시 제13조(복구되지 않도록 초기화·덮어쓰기) + 아동 안내서 4-2(5일 이내)",
+      "why_risky": "학생을 삭제해도 점수·기록·랭킹 같은 관련 데이터가 남아 있으면, 삭제 요청을 받아도 실제로는 개인정보가 계속 남아 있는 셈이 됩니다.",
+      "fix_hint": "학생 삭제 시 그 학생과 관련된 진행도·기록·랭킹 데이터까지 함께 지우고, 복구할 수 없도록 완전히 삭제되게 만드세요."
+    },
+    {
+      "id": "H-2fa",
+      "category": 7,
+      "base_severity": "medium",
+      "question": "운영 계정(GitHub·클라우드)에 2단계 인증이 켜져 있다",
+      "methods": [
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "해당없음 조건 없음 — 운영 계정이 있는 한 항상 해당"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "admin-account-2fa",
+          "text": "GitHub·Firebase·Supabase 등 운영 계정의 2단계 인증 활성화",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "고시 제5조⑤·제6조②",
+      "why_risky": "운영 계정이 뚫리면(비밀번호가 새어나가면) 서비스 전체와 학생 데이터에 접근할 수 있게 되는데, 2단계 인증이 없으면 비밀번호만으로 계정이 넘어갈 수 있습니다.",
+      "fix_hint": "GitHub·Firebase·Supabase 등 관리자 계정 설정에서 2단계 인증(OTP 앱, 보안키 등)을 켜세요."
+    },
+    {
+      "id": "H-retention",
+      "category": 7,
+      "base_severity": "low",
+      "question": "활동 종료 후 데이터 파기 계획이 있다",
+      "methods": [
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "서버 저장 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "destruction-plan",
+          "text": "파기 계획",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "school-year-transition-handling",
+          "text": "학년도 전환 시 처리",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "retention-period-basis",
+          "text": "보유기간 산정(교육부 [별표1] 기준표: 단순 보고 1년 / 행정 참고 3년 등)",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "법 제21조 + 교육부 개인정보 보호지침(훈령 476호) [별표1] 보유기간 책정 기준표",
+      "why_risky": "활동이 끝난 뒤에도 학생 데이터를 계속 갖고 있으면, 더 이상 필요 없는 정보가 불필요하게 오래 남아 유출 위험이 계속됩니다.",
+      "fix_hint": "학기·학년이 끝나면 언제까지 데이터를 보관하고 언제 지울지 미리 정해두고, 그 시점이 되면 실제로 삭제하세요."
+    },
+    {
+      "id": "H-breach-ready",
+      "category": 7,
+      "base_severity": "medium",
+      "question": "유출 사고 대응 체계가 준비되어 있다",
+      "methods": [
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "개인정보 미처리"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "breach-report-contacts",
+          "text": "보고 경로: 상급기관(교육지원청·교육청) 연락처와 학교 개인정보 담당자를 알고 있는가",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "breach-72h-timer-start",
+          "text": "시한 기산점: 유출을 알게 된 때로부터 72시간(교육부 훈령 제13조① — 1명이라도 원칙 신고)",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "breach-pipc-notification-conditions",
+          "text": "개인정보위 동시 신고 조건: 1천명 이상 / 민감정보·고유식별정보 / 외부 불법 접근",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "breach-exception-awareness",
+          "text": "예외 인지: 유출 경로가 확인되어 회수·삭제 등으로 권익침해 가능성이 현저히 낮아지면 신고하지 않을 수 있다(제13조② — 판단은 학교 개인정보 담당자·보호책임자 몫, 교사 임의 판단 아님)",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "breach-initial-response-plan",
+          "text": "초동조치: 접근 차단·증거 보전·정보주체 통지 계획",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "교육부 훈령 476호 제13조①(1명이라도 유출을 알게 된 때 72시간 내 상급기관 경유 교육부 신고, 1천명·민감정보·외부 불법접근은 개인정보위 동시 신고) + 제13조②(경로 확인 후 회수·삭제로 권익침해 가능성이 현저히 낮아진 경우 신고 예외) + 법 제34조",
+      "why_risky": "유출 사고가 났을 때 누구에게 알려야 하는지, 언제까지 신고해야 하는지 모르면 초기 대응이 늦어져 피해가 더 커지고 신고 의무도 놓칠 수 있습니다.",
+      "fix_hint": "학교 개인정보 담당자·교육지원청 연락처를 미리 알아두고, 유출을 알게 되면 72시간 안에 신고해야 한다는 절차를 기억해 두세요."
+    },
+    {
+      "id": "H-school-approval",
+      "category": 7,
+      "base_severity": "low",
+      "question": "정규 교과 사용 앱이라면 학교운영위원회 심의를 거쳤다",
+      "methods": [
+        "teacher"
+      ],
+      "applicability": {
+        "na_when": "정규 교과 미사용, 또는 아래 두 트리거 모두 비해당"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "trigger-pii-processing",
+          "text": "적용 트리거: 학생 개인정보를 수집·이용·제공 등 처리",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "trigger-curriculum-content-provider",
+          "text": "적용 트리거: 교과 성취기준 관련 학습콘텐츠를 포함하며 콘텐츠 제공 기관이 교육과정 운영 지원 목적으로 개발·보급(교육부 기준 각주 — \"소프트웨어를 통해 교사가 제작한 콘텐츠를 포함하는 경우 등은 제외\"이므로 교사 자작 앱은 대개 이 트리거에 해당하지 않음)",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "review-obligation-awareness",
+          "text": "「초·중등교육법」 제29조의2(2026-03-01 시행) 심의 대상 여부 인지",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "moe-checklist-not-substitute",
+          "text": "보고서의 [서식 1] 대조표는 심의·서식을 대체하지 않는 작성 참고자료",
+          "required_coverage": [
+            "teacher"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "「초·중등교육법」 제29조의2(2025-08-14 신설, 2026-03-01 시행) + 교육부 「학습지원 소프트웨어 선정 기준 및 가이드라인」(2025.12) 적용대상 ①②(각주: 교사 제작 콘텐츠는 ②에서 제외)",
+      "why_risky": "정규 교과 수업에 쓰는 앱이 학교운영위원회 심의를 거치지 않으면, 학교 차원의 정식 절차 없이 학생들에게 사용되어 법이 정한 절차를 지키지 못하게 됩니다.",
+      "fix_hint": "정규 수업에 쓸 계획이라면 미리 학교운영위원회 심의 대상인지 확인하고, 필요한 경우 심의를 신청하세요."
+    },
+    {
+      "id": "R-crisis",
+      "category": 8,
+      "base_severity": "high",
+      "question": "감정·고민 입력 기능이 있으면 위기 안내(교사·1388)가 있다",
+      "methods": [
+        "code"
+      ],
+      "applicability": {
+        "na_when": "그런 기능 없음"
+      },
+      "absence_proof": false,
+      "subchecks": [
+        {
+          "id": "counseling-emotion-input-ui",
+          "text": "상담·감정 입력 UI",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        },
+        {
+          "id": "crisis-guidance-message",
+          "text": "위기 안내 문구",
+          "required_coverage": [
+            "code"
+          ],
+          "stacks": "all"
+        }
+      ],
+      "basis": "교육분야 인공지능 윤리원칙(안전 보장) + 청소년상담 1388",
+      "why_risky": "학생이 힘든 감정이나 고민을 입력하는 기능이 있는데 위기 상황에 도움을 요청할 안내가 없으면, 정말 도움이 필요한 학생이 어디에 연락해야 할지 몰라 넘어갈 수 있습니다.",
+      "fix_hint": "감정·고민을 입력하는 화면에 \"힘들 때는 선생님이나 청소년상담 1388로 연락하세요\" 같은 안내 문구를 넣으세요."
+    }
+  ]
+}

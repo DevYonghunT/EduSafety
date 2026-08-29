@@ -1,0 +1,62 @@
+{
+  "_note": "fixtures/vulnerable-app 에 대한 정답 판정표. 사람이 작성했고, 스킬 결과와 대조한다.",
+  "expect_scan": {
+    "must_hit": [
+      "google-api-key", "hardcoded-password", "client-side-gate", "innerhtml-dynamic",
+      "console-sensitive", "rrn-data", "http-resource", "firestore-open-write",
+      "firestore-open-read", "geolocation", "supabase-select-star",
+      "storage-flag-role", "debug-leftover", "plaintext-password-compare",
+      "comment-secret", "rrn-field", "admin-data-columns", "admin-data-file-present",
+      "analytics-tracking-script", "dangerously-set-inner-html"
+    ],
+    "must_not_hit": ["openai-key", "aws-key", "private-key-block", "sql-concat"]
+  },
+  "expect_items": {
+    "R-rrn": "fail",
+    "R-under14": "fail",
+    "S-sensitive": "pass",
+    "S-minimal": "fail",
+    "R-db-locked": "fail",
+    "S-access": "fail",
+    "R-impersonate": "fail",
+    "R-score-forge": "na",
+    "S-upload-exposure": "na",
+    "S-password-storage": "fail",
+    "R-server-guard": "na",
+    "S-teacher-gate": "fail",
+    "S-signup-scope": "fail",
+    "S-auth-hardening": "fail",
+    "S-api-overfetch": "fail",
+    "S-write-guard": "fail",
+    "R-secrets": "fail",
+    "R-admin-data": "fail",
+    "S-answer-exposure": "fail",
+    "R-third-party": "pass",
+    "R-llm-input": "na",
+    "S-data-region": "needs_human",
+    "S-tracking": "fail",
+    "S-name-exposure": "needs_human",
+    "S-log-pii": "fail",
+    "S-shared-device": "fail",
+    "S-rank-optout": "na",
+    "S-injection": "fail",
+    "S-abuse-limit": "fail",
+    "S-https": "fail",
+    "S-privacy-notice": "fail",
+    "H-delete": "fail",
+    "H-2fa": "needs_human",
+    "H-retention": "needs_human",
+    "H-breach-ready": "needs_human",
+    "H-school-approval": "needs_human",
+    "R-crisis": "na"
+  },
+  "absence_proof_signals": {
+    "R-rrn": ["rrn-data", "rrn-field"],
+    "R-secrets": ["google-api-key", "hardcoded-password", "comment-secret"],
+    "R-admin-data": ["admin-data-columns", "admin-data-file-present"],
+    "S-injection": ["innerhtml-dynamic", "dangerously-set-inner-html"],
+    "S-https": ["http-resource"],
+    "S-tracking": ["analytics-tracking-script"],
+    "S-log-pii": ["console-sensitive"]
+  }
+}

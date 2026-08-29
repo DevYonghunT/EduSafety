@@ -1,0 +1,63 @@
+{
+  "edusafe_version": "0.1.0",
+  "rubric_version": "1.2-skill",
+  "normalization": {
+    "separator": "/",
+    "eol": "LF",
+    "order": "path-asc",
+    "symlinks": "excluded"
+  },
+  "digest_targets": [
+    "SKILL.md",
+    "rules",
+    "scripts",
+    "templates"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "d33e9cdac5db95cdc484c283a2a2452507c8c560d162b8351ca4121ffd41bf6f"
+    },
+    {
+      "path": "SKILL.md",
+      "sha256": "f7d5a488c5c008205d5f3d00f2d818e9bad66691c84f9762c67e1e17b33b9180"
+    },
+    {
+      "path": "rules/items.json",
+      "sha256": "5f931f0e0b4cfbe9c2049649b729c73a4e9040187ce7d6211bcf61481aecbd12"
+    },
+    {
+      "path": "rules/moe-checklist.json",
+      "sha256": "63b2563ae3a9d1392d33a303461b9b815a725210281787b6396ca031d192507e"
+    },
+    {
+      "path": "rules/report.contract.json",
+      "sha256": "98f00426aeacf9403c3901b2fda17620ff2039975df3827f0942713d26048b64"
+    },
+    {
+      "path": "rules/scan-rules.mjs",
+      "sha256": "704914e3bd23f3697ec71d97d6b7cac7b8a81ec1cbede8971e8d206ade46a354"
+    },
+    {
+      "path": "rules/session.json",
+      "sha256": "20469d0433bb3a9c7b3f6b5cb76df1a03d9a051c2a886bfac5bb78228ddee3dc"
+    },
+    {
+      "path": "rules/version.json",
+      "sha256": "a0f1fd6c6a4a71d5143884a4c6a14ce47a04595f5783c61ad291ded37ab46889"
+    },
+    {
+      "path": "scripts/render.mjs",
+      "sha256": "f0bbb9aecd66f5866ab5196f81c6aa7ac765db7769a678b72869b14f0ea02364"
+    },
+    {
+      "path": "scripts/scan.mjs",
+      "sha256": "9e24f4da6952382343e257235f8e81598b25be0bd1f47bf083451d760039a175"
+    },
+    {
+      "path": "templates/report.html",
+      "sha256": "401be066cc59a91f12ebf15cfd52a7bc023caf871c813220772b82f97947ff35"
+    }
+  ],
+  "skill_digest": "sha256:da7c4ee9f853a7a78c883c19051294e70e0175ce4fdb7e2a4df33e2ad807ba86"
+}
