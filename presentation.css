@@ -833,6 +833,11 @@ body {
   object-position: center top;
 }
 
+.video-panel.report-video {
+  height: auto;
+  aspect-ratio: 8 / 5;
+}
+
 /* 08 · URL 검사 */
 .url-layout {
   display: grid;
