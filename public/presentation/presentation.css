@@ -1263,30 +1263,30 @@ body {
   font-weight: 760;
 }
 
-.unsigned-callout {
+.record-callout {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 3px 12px;
   margin-top: 18px;
   padding: 13px 15px;
-  border-left: 4px solid #ef8b82;
+  border-left: 4px solid #76d2bd;
   background: rgb(255 255 255 / 0.05);
 }
 
-.unsigned-callout span {
+.record-callout span {
   align-self: center;
   color: var(--inverse-muted);
   font-size: 13px;
   font-weight: 780;
 }
 
-.unsigned-callout strong {
-  color: #ffc2bc;
+.record-callout strong {
+  color: #bff5e8;
   font-size: 16px;
   font-weight: 850;
 }
 
-.unsigned-callout small {
+.record-callout small {
   grid-column: 1 / -1;
   color: var(--inverse-text);
   font-size: 13px;
