@@ -691,6 +691,10 @@ body {
   align-items: center;
 }
 
+.demo-copy h2 {
+  font-size: 48px;
+}
+
 .demo-copy .lead-copy {
   margin-top: 24px !important;
 }
