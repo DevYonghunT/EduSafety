@@ -4,7 +4,14 @@
 const VERSION = '0.1.0'
 const ZIP_SHA256 = 'ba50fad8d63986b8e0689ea5888ae5c3c57fe8a3116640dc24e14dc189684717'
 const SKILL_DIGEST = 'sha256:da7c4ee9f853a7a78c883c19051294e70e0175ce4fdb7e2a4df33e2ad807ba86'
-const ZIP_PATH = `/download/edusafe-v${VERSION}.zip`
+// 게시 파일명은 버전을 빼고 `edusafe.zip` 으로 둔다. 압축을 풀면 대부분의 도구가
+// 파일명과 같은 폴더를 만들기 때문에, 교사가 이름을 바꾸지 않아도 바로 `edusafe/` 가
+// 나온다. zip 안에 edusafe/ 를 한 겹 넣는 방법은 Windows 에서 edusafe-v0.1.0\edusafe\
+// 처럼 두 겹이 되어 오히려 나쁘다. 빌드 산출물 이름(edusafe-v<버전>.zip)은 REQ-13.1
+// 이 정한 대로 유지하고, 게시할 때만 이름을 바꿔 복사한다. 바이트는 같으므로
+// ZIP_SHA256 도 그대로다.
+const ZIP_PATH = '/download/edusafe.zip'
+const SHA_PATH = '/download/edusafe.sha256'
 
 const CATEGORIES = [
   { name: '1. 수집', note: '무엇을 모으나' },
@@ -128,7 +135,10 @@ export default function SkillPage() {
         <div className="skill-hashes">
           <dl>
             <div><dt>버전</dt><dd>{VERSION}</dd></div>
-            <div><dt>ZIP SHA-256</dt><dd>{ZIP_SHA256}</dd></div>
+            <div>
+              <dt>ZIP SHA-256</dt>
+              <dd>{ZIP_SHA256} (<a href={SHA_PATH}>파일로 받기</a>)</dd>
+            </div>
             <div><dt>공식 스킬 지문</dt><dd>{SKILL_DIGEST}</dd></div>
             <div>
               <dt>구성 대조 자료</dt>
