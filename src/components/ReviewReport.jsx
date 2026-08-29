@@ -90,7 +90,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
           <h3>회신 안내</h3>
           <p className="hint">보완 후 다시 제출해 주시면 같은 기준(루브릭 {RUBRIC_VERSION})으로 재심사합니다. 재심사는 새 제출물의 지문에 다시 고정됩니다.</p>
           <div className="sign-row">
-            <div className="sign-cell">심사자 성명: ______________</div>
+            <div className="sign-cell">심사자: <strong>EduSafety</strong></div>
             <div className="sign-cell">연락처: ______________</div>
             <div className="sign-cell">회신 기한: ______________</div>
           </div>
@@ -220,8 +220,8 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
         <h3>심사 확인</h3>
         <p className="hint">AI 판정은 초안이며, 이 보고서의 최종 판정 권한과 책임은 심사자에게 있습니다 (원칙 4).</p>
         <div className="sign-row">
-          <div className="sign-cell">심사자 성명: ______________</div>
-          <div className="sign-cell">소속: ______________</div>
+          <div className="sign-cell">심사자: <strong>EduSafety</strong></div>
+          <div className="sign-cell">심사일: {today}</div>
           <div className="sign-cell">서명: ______________</div>
         </div>
       </section>
