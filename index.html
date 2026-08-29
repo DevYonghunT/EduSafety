@@ -11,7 +11,7 @@
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reset.css" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reveal.css" />
-    <link rel="stylesheet" href="./presentation.css?v=20260829-cert-record" />
+    <link rel="stylesheet" href="./presentation.css?v=20260829-review-policy" />
   </head>
   <body>
     <main class="reveal" aria-label="우매함의 봉우리 발표자료">
@@ -492,23 +492,23 @@
             <div class="slide-content closing-layout">
               <div class="closing-main">
                 <div class="closing-copy">
-                  <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🔏</span>마크보다 먼저, 기준을 지킵니다</p>
-                  <h2 id="slide-11-title">통과하지 않으면,<br /><span>마크도 나오지 않습니다.</span></h2>
+                  <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🔏</span>Git commit으로 남기는 검사 이력</p>
+                  <h2 id="slide-11-title">검사받은 모든 보고서에,<br /><span>인증 기록이 남습니다.</span></h2>
                   <p class="closing-lead">
-                    정확한 Git commit을 서버가 다시 검사하고, 모든 필수 기준을 통과한 경우에만
-                    <strong>EAS Offchain v2 전자서명</strong>을 발급합니다.
+                    EduSafety는 검사 결과와 대상 Git commit을 한 문서에 묶어 기록합니다.
+                    이 마크는 ‘안전 합격’이 아니라 <strong>EduSafety 검사를 거쳐 발행된 보고서</strong>임을 확인합니다.
                   </p>
 
-                  <div class="cert-flow" aria-label="인증 코드의 세 단계">
-                    <div><span>01</span><strong>40자리 commit 고정</strong></div>
-                    <div><span>02</span><strong>5개 기준 + 7개 차단 조건</strong></div>
-                    <div><span>03</span><strong>EIP-712 서명 · 공개 검증</strong></div>
+                  <div class="cert-flow" aria-label="검사 기록 인증의 세 단계">
+                    <div><span>01</span><strong>검사 대상 Git commit 고정</strong></div>
+                    <div><span>02</span><strong>통과 · 미충족 결과 모두 기록</strong></div>
+                    <div><span>03</span><strong>마크로 보고서 발행 이력 확인</strong></div>
                   </div>
 
-                  <div class="unsigned-callout" aria-label="현재 보고서 상태">
-                    <span>이번 보고서</span>
-                    <strong>필수 미충족 2건 → UNSIGNED</strong>
-                    <small>보완 전에는 ‘인증’보다 ‘수정’이 먼저입니다.</small>
+                  <div class="record-callout" aria-label="심사 기록마크가 인증하는 내용">
+                    <span>이 마크가 인증하는 것</span>
+                    <strong>EduSafety가 발행한 검사 보고서</strong>
+                    <small>미충족 항목도 숨기지 않고, 검사 결과와 대상 commit을 함께 남깁니다.</small>
                   </div>
                 </div>
 
@@ -516,14 +516,14 @@
                   <a href="./edusafety-review-record.pdf" target="_blank" rel="noopener noreferrer" aria-label="EduSafety 심사 기록 PDF 새 창에서 열기">
                     <img src="./assets/certification/review-record-mark.png" alt="PDF 7쪽의 EduSafety 심사 기록마크. 필수 요건 미충족, EAS UID와 서명 없음 상태" />
                   </a>
-                  <figcaption>실제 PDF 7쪽 · 고정 커밋에 연결된 심사 기록마크 <span>↗</span></figcaption>
+                  <figcaption>실제 PDF 7쪽 · Git commit과 연결된 EduSafety 검사 기록마크 <span>↗</span></figcaption>
                 </figure>
               </div>
 
               <div class="commit-evidence" aria-label="PDF 1쪽부터 7쪽까지의 Git commit 증거">
                 <div class="commit-evidence-copy">
                   <strong>1–7쪽 모두</strong>
-                  <span>같은 제출물에 고정</span>
+                  <span>같은 commit으로 연결</span>
                 </div>
                 <div class="commit-grid">
                   <figure><span>P.1</span><img src="./assets/certification/commit-page-1.png" alt="PDF 1쪽 우상단 Git commit ca6c5e6629ec" /></figure>
@@ -538,19 +538,17 @@
             </div>
 
             <footer class="slide-footer">
-              <span>※ 온체인·정부 인증이 아닌, 특정 공개 Git commit의 정적 분석 기록입니다.</span>
+              <span>※ 안전 합격·정부 인증이 아니라, EduSafety가 검사해 발행한 보고서임을 확인하는 기록입니다.</span>
               <span>11 / 11</span>
             </footer>
           </div>
           <aside class="notes">
-            이 마크는 단순히 보고서 끝에 붙인 이미지가 아닙니다. 보고서 1쪽부터 7쪽까지 같은 Git commit에 묶여 있고, 서버는 그 40자리 commit을 다시 검사합니다. 다섯 개 고정 정적 기준과 일곱 개 안전 차단 조건을 모두 통과하고, 정책·판정·보고서의 해시가 일치해야 EAS Offchain v2, EIP-712 전자서명을 발급합니다. 이후에는 만료, 취소, 현재 HEAD 변경까지 공개 검증에서 구분합니다. 이번 예시는 필수 미충족 두 건 때문에 EAS UID와 서명이 생성되지 않은 UNSIGNED 상태입니다. 통과하지 못했을 때 마크를 내주지 않는 것 자체가 이 설계의 핵심입니다. 다만 이는 온체인 거래나 정부·공공기관 인증이 아니라, 특정 공개 GitHub commit의 제한된 정적 분석 결과를 서버가 서명하는 검증 가능한 심사 기록입니다.
+            EduSafety의 심사 기록마크는 안전 합격증이 아닙니다. 검사를 받은 모든 보고서에 대상 Git commit과 항목별 결과를 함께 기록하고, 이 문서가 EduSafety 검사를 거쳐 발행됐다는 사실을 확인합니다. 그래서 이번 보고서처럼 필수 미충족 두 건이 있어도 마크는 발행됩니다. 오히려 미충족 내용까지 숨기지 않고 commit과 함께 남기는 것이 이 인증의 의미입니다. 결과를 고친 뒤에는 새 commit으로 다시 검사해 새로운 보고서를 남깁니다. EAS UID가 있는 보고서는 전자서명까지 추가로 검증할 수 있지만, 이 심사 기록마크 자체가 안전 합격이나 정부·공공기관 인증, 법률 준수를 보증하지는 않습니다.
 
             [Sources]
             - public/presentation/edusafety-review-record.pdf, pp. 1–7
-            - src/certification/issue-service.ts:111-164
-            - src/certification/attestation.ts:157-209
-            - src/certification/verification-service.ts:63-170
-            - src/components/CertificationMark.jsx:42-74
+            - src/components/CertificationMark.jsx:260-301
+            - README.md:8-10, 135
           </aside>
         </section>
       </div>
