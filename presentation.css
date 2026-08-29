@@ -1189,72 +1189,204 @@ body {
 }
 
 .closing-layout {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 22px 0 16px;
 }
 
 .closing-layout .eyebrow {
   color: #76d2bd;
+  margin-bottom: 12px !important;
 }
 
-.closing-layout h2 {
+.closing-main {
+  display: grid;
+  grid-template-columns: minmax(0, 0.83fr) minmax(0, 1.17fr);
+  gap: 42px;
+  align-items: center;
+  min-height: 0;
+}
+
+.closing-copy {
+  min-width: 0;
+}
+
+.closing-copy h2 {
   color: var(--inverse-text);
-  font-size: 72px;
-  line-height: 1.08;
+  font-size: 50px;
+  line-height: 1.1;
 }
 
-.closing-layout h2 span {
+.closing-copy h2 span {
   color: #76d2bd;
 }
 
 .closing-lead {
-  margin-top: 28px !important;
+  margin-top: 18px !important;
   color: var(--inverse-muted);
-  font-size: 29px;
-  line-height: 1.45;
+  font-size: 19px;
+  line-height: 1.48;
 }
 
 .closing-lead strong {
   color: var(--inverse-text);
 }
 
-.closing-rail {
+.cert-flow {
   display: grid;
-  grid-template-columns: 1fr 58px 1fr 58px 1fr;
-  align-items: stretch;
-  margin-top: 56px;
-  padding-top: 26px;
+  gap: 0;
+  margin-top: 18px;
   border-top: 1px solid var(--inverse-line);
 }
 
-.closing-rail div {
+.cert-flow div {
   display: grid;
-  gap: 9px;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 37px;
+  border-bottom: 1px solid var(--inverse-line);
 }
 
-.closing-rail span {
-  color: var(--inverse-muted);
-  font-size: 14px;
-  font-weight: 780;
-}
-
-.closing-rail strong {
-  color: var(--inverse-text);
-  font-size: 21px;
+.cert-flow span {
+  color: #76d2bd;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   font-weight: 820;
 }
 
-.closing-rail b {
-  display: grid;
-  place-items: center;
-  color: var(--inverse-line);
-  font-size: 32px;
+.cert-flow strong {
+  color: var(--inverse-text);
+  font-size: 15px;
+  font-weight: 760;
 }
 
-.closing-rail .next-step strong,
-.closing-rail .next-step span {
+.unsigned-callout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin-top: 18px;
+  padding: 13px 15px;
+  border-left: 4px solid #ef8b82;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.unsigned-callout span {
+  align-self: center;
+  color: var(--inverse-muted);
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.unsigned-callout strong {
+  color: #ffc2bc;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.unsigned-callout small {
+  grid-column: 1 / -1;
+  color: var(--inverse-text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.cert-record-figure {
+  min-width: 0;
+  text-align: center;
+}
+
+.cert-record-figure a {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--inverse-line);
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.cert-record-figure img {
+  width: 100%;
+  height: auto;
+  max-height: 423px;
+  display: block;
+  object-fit: contain;
+}
+
+.cert-record-figure figcaption {
+  margin-top: 8px;
+  color: var(--inverse-muted);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.3;
+}
+
+.cert-record-figure figcaption span {
   color: #76d2bd;
+}
+
+.commit-evidence {
+  display: grid;
+  grid-template-columns: 154px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--inverse-line);
+}
+
+.commit-evidence-copy {
+  display: grid;
+  gap: 5px;
+}
+
+.commit-evidence-copy strong {
+  color: #76d2bd;
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.commit-evidence-copy span {
+  color: var(--inverse-muted);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.commit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px 9px;
+}
+
+.commit-grid figure {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--inverse-line);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.commit-grid figure > span {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  z-index: 1;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--accent-strong);
+  color: #ffffff;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.commit-grid img {
+  width: 100%;
+  height: 38px;
+  display: block;
+  object-fit: cover;
 }
 
 @media (prefers-reduced-motion: reduce) {
