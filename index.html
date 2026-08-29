@@ -11,7 +11,7 @@
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reset.css" />
     <link rel="stylesheet" href="./vendor/reveal/6.0.1/reveal.css" />
-    <link rel="stylesheet" href="./presentation.css?v=20260829-slide7-video" />
+    <link rel="stylesheet" href="./presentation.css?v=20260829-skill-report" />
   </head>
   <body>
     <main class="reveal" aria-label="우매함의 봉우리 발표자료">
@@ -57,7 +57,7 @@
 
             <footer class="slide-footer">
               <span>SPACE 다음 장 · SHIFT + SPACE 이전</span>
-              <span>02 / 10</span>
+              <span>02 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -101,7 +101,7 @@
 
             <footer class="slide-footer">
               <span>작동과 안전 사이에는 확인해야 할 코드가 있습니다.</span>
-              <span>03 / 10</span>
+              <span>03 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -145,7 +145,7 @@
 
             <footer class="slide-footer">
               <span>근거 · 초·중등교육법 제29조의2 / 학습지원 소프트웨어 선정기준</span>
-              <span>04 / 10</span>
+              <span>04 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -199,7 +199,7 @@
 
             <footer class="slide-footer">
               <span>자동 판정이 아니라, 사람이 판단할 근거를 만듭니다.</span>
-              <span>05 / 10</span>
+              <span>05 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -251,7 +251,7 @@
 
             <footer class="slide-footer">
               <span>이 결과는 인증이 아니라, 배포 전 자가점검입니다.</span>
-              <span>06 / 10</span>
+              <span>06 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -263,17 +263,69 @@
           </aside>
         </section>
 
-        <section class="deck-slide" aria-labelledby="slide-7-title">
+        <section class="deck-slide report-slide" aria-labelledby="slide-7-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">07 · DEMO 02</span>
+              <span class="section-label">07 · SKILL RESULT</span>
+              <span class="slide-meta">ACTUAL REPORT</span>
+            </header>
+
+            <div class="slide-content skill-report-layout">
+              <div class="skill-report-copy">
+                <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🧾</span>SKILL.md로 돌린 실제 검사 결과</p>
+                <h2 id="slide-7-title">찾은 위험은 <span class="accent-text">근거로,</span><br />모르는 것은<br /><span class="accent-text">‘판단불가’로</span></h2>
+                <p class="lead-copy">37개 항목을 판정하고, 먼저 고칠 <strong>7건</strong>을 한 보고서에 모았습니다.</p>
+
+                <div class="report-metrics" aria-label="자가점검 보고서 종합 판정">
+                  <p><strong>2</strong><span>배포 전 반드시 수정</span></p>
+                  <p><strong>5</strong><span>권장 수정</span></p>
+                  <p><strong>1</strong><span>판단불가</span></p>
+                  <p><strong>4</strong><span>교사 확인 항목</span></p>
+                </div>
+
+                <p class="human-check"><span aria-hidden="true">🤝</span><strong>코드만으로 확정할 수 없는 항목</strong>은 사람이 확인하도록 남깁니다.</p>
+              </div>
+
+              <a
+                class="report-preview"
+                href="https://devyonghunt.github.io/EduSafety/edusafe-report.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="에듀세이프 자가점검 전체 보고서를 새 창에서 엽니다"
+              >
+                <img
+                  src="./assets/skill-report-summary.png"
+                  alt="에듀세이프 자가점검 보고서 종합 판정: 배포 전 반드시 수정 2건, 권장 수정 5건, 판단불가 1건, 교사 확인 항목 4건"
+                />
+                <span class="report-open">전체 보고서 열기 <b aria-hidden="true">↗</b></span>
+              </a>
+            </div>
+
+            <footer class="slide-footer">
+              <span>검사한 파일 864개 · 교육부 필수기준 9개 대조</span>
+              <span>07 / 11</span>
+            </footer>
+          </div>
+          <aside class="notes">
+            앞에서 실행한 SKILL.md의 실제 결과입니다. 37개 항목을 근거와 함께 판정하고, 배포 전 반드시 수정할 2건과 권장 수정 5건을 먼저 보여 줍니다. 코드만으로 확인할 수 없는 한 건은 억지로 합격이나 불합격으로 만들지 않고 ‘판단불가’로 남겨 사람이 확인하게 합니다. 화면을 누르면 전체 HTML 보고서를 열 수 있습니다.
+
+            [Sources]
+            - edusafe-report.html (사용자 제공 SKILL.md 검사 결과, 2026-08-29)
+            - assets/skill-report-summary.png (동일 보고서 상단 캡처)
+          </aside>
+        </section>
+
+        <section class="deck-slide" aria-labelledby="slide-8-title">
+          <div class="slide-frame">
+            <header class="slide-topbar">
+              <span class="section-label">08 · DEMO 02</span>
               <span class="slide-meta">REPO OR FOLDER</span>
             </header>
 
             <div class="slide-content local-layout">
               <div class="local-copy">
                 <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🐙</span>공개 저장소와 로컬 폴더, 두 가지 입력 경로</p>
-                <h2 id="slide-7-title">GitHub 공개 레포 주소<br />또는 내 컴퓨터의 폴더로<br /><span class="accent-text">로컬 검사</span></h2>
+                <h2 id="slide-8-title">GitHub 공개 레포 주소<br />또는 내 컴퓨터의 폴더로<br /><span class="accent-text">로컬 검사</span></h2>
                 <p class="lead-copy">공개 저장소는 URL을 사이트에 입력하고, 공개하지 않은 프로젝트는 내 컴퓨터 폴더를 선택합니다.</p>
 
                 <div class="local-flow" aria-label="GitHub 공개 저장소 주소 또는 로컬 폴더 검사 흐름">
@@ -300,7 +352,7 @@
 
             <footer class="slide-footer">
               <span>최대 200개 파일 · 파일당 2 MiB · SHA-256 콘텐츠 지문</span>
-              <span>07 / 10</span>
+              <span>08 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -316,10 +368,10 @@
           </aside>
         </section>
 
-        <section class="deck-slide" aria-labelledby="slide-8-title">
+        <section class="deck-slide" aria-labelledby="slide-9-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">08 · DEMO 03</span>
+              <span class="section-label">09 · DEMO 03</span>
               <span class="slide-meta">PUBLIC URL</span>
             </header>
 
@@ -340,7 +392,7 @@
 
               <div class="url-copy">
                 <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🔎</span>배포까지 끝났다면</p>
-                <h2 id="slide-8-title">마지막은<br /><span class="accent-text">URL 검사</span></h2>
+                <h2 id="slide-9-title">마지막은<br /><span class="accent-text">URL 검사</span></h2>
                 <p class="url-chip">https://sendev.kr/</p>
                 <div class="url-checks" aria-label="URL 검사의 확인 범위">
                   <p><span>01</span><strong>TLS와 HTTP 상태</strong></p>
@@ -353,7 +405,7 @@
 
             <footer class="slide-footer">
               <span>JavaScript 실행 없음 · 로그인 없음 · 크롤링 없음 · 공격 없음</span>
-              <span>08 / 10</span>
+              <span>09 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -366,17 +418,17 @@
           </aside>
         </section>
 
-        <section class="deck-slide" aria-labelledby="slide-9-title">
+        <section class="deck-slide" aria-labelledby="slide-10-title">
           <div class="slide-frame">
             <header class="slide-topbar">
-              <span class="section-label">09 · DIFFERENCE</span>
+              <span class="section-label">10 · DIFFERENCE</span>
               <span class="slide-meta">GENERAL AI → SCHOOL CONTEXT</span>
             </header>
 
             <div class="slide-content compare-layout">
               <div class="compare-heading">
                 <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🤖</span>“Claude에 그냥 물어봐도 되는 것 아닌가요?”</p>
-                <h2 id="slide-9-title">맞습니다. 차이는 AI가 아니라<br /><span class="accent-text">AI에게 건네는 학교의 기준</span>입니다.</h2>
+                <h2 id="slide-10-title">맞습니다. 차이는 AI가 아니라<br /><span class="accent-text">AI에게 건네는 학교의 기준</span>입니다.</h2>
               </div>
 
               <div class="versus-grid" aria-label="범용 Claude 질문과 EduSafe를 결합한 Claude 점검 비교">
@@ -412,7 +464,7 @@
 
             <footer class="slide-footer">
               <span>법률 판단이나 공식 인증이 아니라, 심의를 위한 참고 근거입니다.</span>
-              <span>09 / 10</span>
+              <span>10 / 11</span>
             </footer>
           </div>
           <aside class="notes">
@@ -426,16 +478,16 @@
           </aside>
         </section>
 
-        <section class="deck-slide closing-slide" aria-labelledby="slide-10-title">
+        <section class="deck-slide closing-slide" aria-labelledby="slide-11-title">
           <div class="slide-frame">
             <header class="slide-topbar">
               <span class="brand inverse-brand"><span class="brand-mark" aria-hidden="true">E</span>EduSafe</span>
-              <span class="slide-meta">10 · WHAT REMAINS</span>
+              <span class="slide-meta">11 · WHAT REMAINS</span>
             </header>
 
             <div class="slide-content closing-layout">
               <p class="eyebrow"><span class="emoji-inline" aria-hidden="true">🚧</span>솔직한 현재 위치</p>
-              <h2 id="slide-10-title">비록 블록체인 인증마크는<br /><span>달지 못했지만,</span></h2>
+              <h2 id="slide-11-title">비록 블록체인 인증마크는<br /><span>달지 못했지만,</span></h2>
               <p class="closing-lead">‘딸깍’으로 만든 앱을 배포하기 전에<br /><strong>한 번 멈춰서 확인하는 흐름</strong>은 만들었습니다.</p>
 
               <div class="closing-rail" aria-label="현재 구현과 다음 단계">
@@ -449,7 +501,7 @@
 
             <footer class="slide-footer">
               <span>딸깍으로 만들었다면, 배포 전에 한 번 더 딸깍 👆</span>
-              <span>10 / 10</span>
+              <span>11 / 11</span>
             </footer>
           </div>
           <aside class="notes">
