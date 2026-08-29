@@ -135,6 +135,18 @@ a:focus-visible {
   text-align: center;
 }
 
+/* 넓은 화면에서는 컨테이너(880px)를 벗어나 전체 폭을 쓰면서 한 줄로 고정 */
+@media (min-width: 1240px) {
+  .footer {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    padding-left: 24px;
+    padding-right: 24px;
+    white-space: nowrap;
+    font-size: 0.76rem;
+  }
+}
+
 .error {
   background: var(--danger-soft);
   color: var(--danger);
