@@ -6,11 +6,18 @@ import { FEATURES, featureProfile, AUTHORITY_LABELS, RUBRIC_VERSION, rubricItems
 import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayloadChunks } from '../lib/redact.js'
-import { suggestFeatures, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS } from '../lib/reviewAi.js'
+import { suggestFeatures, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS, emptyUsage } from '../lib/reviewAi.js'
+import { issueCertificationBadge } from '../lib/certificationBadge.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
 import { saveRecord, targetKey } from '../lib/ledger.js'
 import { buildTeacherNotice } from '../lib/dataNotice.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
+
+const mergeUsage = (a, b) => ({
+  calls: a.calls + b.calls, input: a.input + b.input, output: a.output + b.output,
+  cacheRead: a.cacheRead + b.cacheRead, cacheWrite: a.cacheWrite + b.cacheWrite,
+  costUsd: a.costUsd + b.costUsd, model: b.model || a.model,
+})
 
 const STEPS = ['① 불러오기', '② 앱 확인', '③ 판정 확인', '④ 보고서']
 
@@ -40,6 +47,8 @@ export default function ReviewMode() {
   const [humanInputs, setHumanInputs] = useState({})
   const [filter, setFilter] = useState('')
   const [savedRound, setSavedRound] = useState(null)
+  const [usage, setUsage] = useState(emptyUsage())
+  const [certification, setCertification] = useState(null) // null | {phase:'pending'|'issued'|'not_issued'|'error', ...}
   const [noticeCopied, setNoticeCopied] = useState(false)
 
   const copyTeacherNotice = async () => {
@@ -114,6 +123,7 @@ export default function ReviewMode() {
       const { chunks } = buildAiPayloadChunks(files)
       const result = await suggestFeatures({ payloadText: chunks[0], apiKey, model })
       setAiSuggest(result)
+      if (result.usage) setUsage((u) => mergeUsage(u, result.usage))
       setFeatures(result.features || {})
     } catch (err) {
       setError(`AI 제안 실패: ${err.message} — 체크박스로 직접 확인할 수 있어요.`)
@@ -135,6 +145,7 @@ export default function ReviewMode() {
       })
       setJudgments(result.judgments)
       setAiMeta({ demoted: result.demoted, filled: result.filled, coverage: payload })
+      if (result.usage) setUsage((u) => mergeUsage(u, result.usage))
       setAiRan(true)
     } catch (err) {
       setError(`AI 판정 실패: ${err.message}`)
@@ -154,11 +165,25 @@ export default function ReviewMode() {
   const setOverrideReason = (id, reason) => setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], reason } }))
   const setHuman = (id, verdict) => setHumanInputs((prev) => ({ ...prev, [id]: { verdict } }))
 
+  const requestCertification = async () => {
+    if (!repoMeta?.commitSha) return
+    setCertification({ phase: 'pending' })
+    try {
+      const response = await issueCertificationBadge({
+        repositoryUrl: `https://github.com/${repoMeta.owner}/${repoMeta.repo}`,
+        commitSha: repoMeta.commitSha,
+      })
+      setCertification(response.outcome === 'ISSUED' ? { phase: 'issued', response } : { phase: 'not_issued', response })
+    } catch (err) {
+      setCertification({ phase: 'error', message: err.message })
+    }
+  }
+
   const resetAll = () => {
     setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
     setFeatures({}); setAiSuggest(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
-    setSavedRound(null); setError('')
+    setSavedRound(null); setUsage(emptyUsage()); setCertification(null); setError('')
   }
 
   const counts = useMemo(() => {
@@ -395,6 +420,11 @@ export default function ReviewMode() {
               🔎 검증 결과: 근거가 확인되지 않아 판단불가로 강등 {aiMeta.demoted.length}건, 응답 누락으로 판단불가 채움 {aiMeta.filled.length}건 (원칙 1·2)
             </div>
           )}
+          {usage.calls > 0 && (
+            <div className="busy">
+              💰 이번 심사의 AI 비용 ≈ <strong>${usage.costUsd.toFixed(3)}</strong> (호출 {usage.calls}회 · 입력 {usage.input.toLocaleString()} · 출력 {usage.output.toLocaleString()} 토큰{usage.cacheRead > 0 ? ` · 캐시 재사용 ${usage.cacheRead.toLocaleString()}` : ''}) — 공식 단가 기준 추정치, 보고서에 고지됩니다
+            </div>
+          )}
           {aiMeta && aiMeta.coverage.excludedFiles.length > 0 && (
             <div className="busy">📄 AI 검토 커버리지 {aiMeta.coverage.coveragePercent}% — 제외 {aiMeta.coverage.excludedFiles.length}개 파일 (보고서에 고지됩니다)</div>
           )}
@@ -500,8 +530,21 @@ export default function ReviewMode() {
             repoMeta={repoMeta} features={features} protectionLevel={protectionLevel}
             appSummary={aiSuggest?.appSummary} summary={summary}
             judgments={judgments} overrides={overrides} humanInputs={humanInputs}
-            coverage={aiMeta?.coverage} gate={gate} model={model} aiUsed={aiRan}
+            coverage={aiMeta?.coverage} gate={gate} model={model} aiUsed={aiRan} usage={usage} certification={certification}
           />
+          {summary.status === 'pass_candidate' && repoMeta.commitSha && (
+            <div className="scan-box no-print">
+              <strong>🏅 EAS 인증마크 (가스리스 오프체인 서명)</strong>
+              <p className="hint">합격 후보이고 GitHub 커밋에 고정된 심사만 발급 요청할 수 있습니다. 인증 서버가 같은 커밋을 다시 분석해 필수 기준 전항 충족·차단 사유 없음을 확인한 뒤 서명합니다.</p>
+              {!certification && <div><button className="btn-primary" onClick={requestCertification}>인증마크 발급 요청</button></div>}
+              {certification?.phase === 'pending' && <div className="busy busy-live"><div><strong>인증 서버가 커밋을 재분석 중</strong> — 잠시만 기다려 주세요.</div></div>}
+              {certification?.phase === 'issued' && <p className="gate-warn" style={{ background: 'var(--primary-soft)', color: 'var(--primary-deep)' }}>✅ 발급 완료 — 보고서 하단 심사 기록마크에 서명·검증 링크가 표시됩니다.</p>}
+              {certification?.phase === 'not_issued' && (
+                <p className="gate-warn">인증 서버 재분석 결과 <strong>미발급</strong>: {(certification.response?.safetyBlockers || []).length > 0 ? `차단 사유 ${certification.response.safetyBlockers.length}건` : '필수 기준 미충족'} — 보완 후 재심사하세요.</p>
+              )}
+              {certification?.phase === 'error' && <p className="gate-warn">인증 요청 실패: {certification.message} (인증 서버가 없는 배포에서는 발급되지 않습니다)</p>}
+            </div>
+          )}
           <div className="btn-row no-print">
             <button className="btn-primary" disabled={!!savedRound} onClick={() => {
               const entry = saveRecord({
@@ -510,6 +553,8 @@ export default function ReviewMode() {
                 name: repoMeta.name, fingerprint: repoMeta.fingerprint,
                 profile: featureProfile(features), protectionLevel, status: summary.status, actions: summary.actions,
                 rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
+                counts, overrides: Object.keys(overrides).length, applicableItems: summary.items.length,
+                aiUsed: aiRan, costUsd: usage.costUsd, certified: certification?.phase === 'issued',
               })
               setSavedRound(entry.round)
             }}>

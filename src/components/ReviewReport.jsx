@@ -6,6 +6,7 @@ import { STATUS_LABELS, CATEGORY_STATE_LABELS, finalVerdict } from '../lib/revie
 import { PROTECTION_LEVELS } from '../lib/reviewAi.js'
 import { buildSupplementRequest, CAUSES } from '../lib/supplementRequest.js'
 import CertificationMark, { PrintPageProof } from './CertificationMark.jsx'
+import { MOE_CRITERIA, MOE_STATUS_LABELS, moeCriterionStatus } from '../data/moeCriteria.js'
 
 export const VERDICT_LABELS = { ok: '충족', fail: '미충족', needs_human: '판단불가', na: '해당없음' }
 
@@ -24,7 +25,7 @@ export function verdictColor(v, item) {
   return STATE_COLORS.ok
 }
 
-export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed, certification }) {
+export default function ReviewReport({ repoMeta, features, protectionLevel, appSummary, summary, judgments, overrides, humanInputs, coverage, gate, model, aiUsed, usage, certification }) {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const [showSupplement, setShowSupplement] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -131,7 +132,7 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             {appSummary && <tr><th>앱 요약</th><td>{appSummary}</td></tr>}
             <tr><th>AI 분석 고지</th><td>
               {aiUsed
-                ? `Anthropic API(${model}) 사용 — 데이터 파일 내용 미전송, 비밀키 마스킹 후 전송${coverage ? `, 검토 커버리지 ${coverage.coveragePercent}%` : ''}. AI 판정은 초안이며 근거 미확인 판정은 자동 강등됨.`
+                ? `Anthropic API(${model}) 사용 — 데이터 파일 내용 미전송, 비밀키 마스킹 후 전송${coverage ? `, 검토 커버리지 ${coverage.coveragePercent}%` : ''}${usage?.calls ? `, API 비용 약 $${usage.costUsd.toFixed(3)} (호출 ${usage.calls}회, 공식 단가 기준 추정)` : ''}. AI 판정은 초안이며 근거 미확인 판정은 자동 강등됨.`
                 : 'AI 분석 미사용 — 심사자 수동 판정으로만 진행됨 (외부 전송 없음).'}
             </td></tr>
             <tr><th>심사일</th><td>{today}</td></tr>
@@ -159,6 +160,29 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
             </div>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h3>교육부 「학습지원 SW 선정기준」 대조 — 학교용 [서식 1] 참고</h3>
+        <p className="hint">초·중등교육법 제29조의2에 따른 학교운영위원회 심의 준비 자료입니다. 각 기준의 상태는 대응 심사 항목의 최악 판정이며, 이 표는 심의·서식 제출을 대체하지 않습니다 — 최종 확인·작성은 학교가 합니다.</p>
+        <table className="verdict-table">
+          <thead><tr><th>기준</th><th>내용</th><th>대응 항목</th><th>상태</th></tr></thead>
+          <tbody>
+            {MOE_CRITERIA.map((c) => {
+              const applicable = new Map(summary.items.map((it) => [it.id, it]))
+              const status = moeCriterionStatus(c, (id) => (applicable.has(id) ? finalVerdict(applicable.get(id), judgments, overrides, humanInputs) : null))
+              const color = status === 'fail' ? STATE_COLORS.fail : status === 'needs_human' ? STATE_COLORS.needs_human : status === 'ok' ? STATE_COLORS.ok : 'var(--muted)'
+              return (
+                <tr key={c.code}>
+                  <td className="vt-auth">{c.code}</td>
+                  <td><div className="vt-q">{c.title}</div>{c.gap && <div className="vt-id">공백 고지: {c.gap}</div>}</td>
+                  <td className="vt-id">{c.items.join(' · ')}</td>
+                  <td><span className="verdict-chip" style={{ background: color }}>{MOE_STATUS_LABELS[status]}</span></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </section>
 
       {coverage && coverage.excludedFiles.length > 0 && (
