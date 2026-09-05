@@ -4,6 +4,7 @@ import { createApp } from "./app.js";
 import { loadConfig, type AppConfig } from "./config.js";
 import { createDatabasePool, type DatabasePool } from "./db/client.js";
 import { PostgresCertificationRepository } from "./db/postgres-repository.js";
+import { PostgresReviewRepository } from "./db/review-repository.js";
 import { UnavailableCertificationRepository } from "./db/unavailable-repository.js";
 import { GitHubClient } from "./github/client.js";
 
@@ -33,8 +34,9 @@ export async function createServerRuntime(config: AppConfig = loadConfig()): Pro
   try {
     await pool.query("SELECT 1 FROM schema_migrations WHERE version = $1", [REQUIRED_MIGRATION]);
     const repository = new PostgresCertificationRepository(pool);
+    const reviewRepository = new PostgresReviewRepository(pool);
     return {
-      app: createApp({ config, repository, sourceProvider }),
+      app: createApp({ config, repository, sourceProvider, reviewRepository }),
       config,
       pool,
     };

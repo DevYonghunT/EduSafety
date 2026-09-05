@@ -9,7 +9,7 @@ import { buildAiPayloadChunks } from '../lib/redact.js'
 import { suggestFeatures, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS, emptyUsage } from '../lib/reviewAi.js'
 import { issueCertificationBadge } from '../lib/certificationBadge.js'
 import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
-import { saveRecord, targetKey } from '../lib/ledger.js'
+import { saveRecord, targetKey, syncRecordToServer } from '../lib/ledger.js'
 import { buildTeacherNotice } from '../lib/dataNotice.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
 
@@ -48,6 +48,7 @@ export default function ReviewMode() {
   const [filter, setFilter] = useState('')
   const [savedRound, setSavedRound] = useState(null)
   const [usage, setUsage] = useState(emptyUsage())
+  const [serverSync, setServerSync] = useState(null) // { synced, reason }
   const [certification, setCertification] = useState(null) // null | {phase:'pending'|'issued'|'not_issued'|'error', ...}
   const [noticeCopied, setNoticeCopied] = useState(false)
 
@@ -183,7 +184,7 @@ export default function ReviewMode() {
     setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
     setFeatures({}); setAiSuggest(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
-    setSavedRound(null); setUsage(emptyUsage()); setCertification(null); setError('')
+    setSavedRound(null); setUsage(emptyUsage()); setCertification(null); setServerSync(null); setError('')
   }
 
   const counts = useMemo(() => {
@@ -557,12 +558,24 @@ export default function ReviewMode() {
                 aiUsed: aiRan, costUsd: usage.costUsd, certified: certification?.phase === 'issued',
               })
               setSavedRound(entry.round)
+              syncRecordToServer(entry).then(setServerSync)
             }}>
               {savedRound ? `✅ 저장됨 (${savedRound}회차)` : '📚 심사 기록에 저장'}
             </button>
             <button className="btn-secondary" onClick={() => setStep(3)}>← 판정으로 돌아가기</button>
             <button className="btn-secondary" onClick={resetAll}>새 심사 시작</button>
           </div>
+          {serverSync && (
+            <p className="hint no-print">
+              {serverSync.synced
+                ? `☁️ 서버 대장에도 저장됨 (서버 ${serverSync.round}회차)`
+                : serverSync.reason === 'login'
+                  ? '이 브라우저에만 저장됨 — 서버 대장에 남기려면 /admin/login 으로 로그인 후 다시 저장하세요.'
+                  : serverSync.reason === 'unavailable'
+                    ? '이 브라우저에만 저장됨 — 서버 대장 테이블이 아직 준비되지 않았습니다 (db:migrate).'
+                    : `이 브라우저에만 저장됨 — 서버 저장 실패 (${serverSync.reason})`}
+            </p>
+          )}
         </div>
       )}
     </section>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { listRecords, deleteRecord, exportJson } from '../lib/ledger.js'
+import { useEffect, useState } from 'react'
+import { listRecords, deleteRecord, exportJson, fetchServerRecords } from '../lib/ledger.js'
 import { STATUS_LABELS } from '../lib/reviewSummary.js'
 
 const STATUS_CLASS = { pass_candidate: 'ok', hold: 'warn', fail_candidate: 'danger' }
@@ -19,6 +19,8 @@ function pilotStats(records) {
 export default function ReviewLedger() {
   const [records, setRecords] = useState(listRecords)
   const stats = pilotStats(records)
+  const [server, setServer] = useState(null)
+  useEffect(() => { fetchServerRecords().then(setServer) }, [])
 
   const remove = (id) => {
     deleteRecord(id)
@@ -38,6 +40,15 @@ export default function ReviewLedger() {
     <section className="panel">
       <h1>📚 심사 기록</h1>
       <p className="intro">이 브라우저에 저장된 심사 대장입니다. 같은 앱의 재심사는 회차(🔁)로 연결됩니다.</p>
+      {server && (
+        <p className="hint">
+          {server.available
+            ? `☁️ 서버 대장: ${server.records.length}건 (관리자 세션 연결됨 — 저장 시 서버에도 기록됩니다)`
+            : server.reason === 'login'
+              ? '서버 대장은 관리자 로그인(/admin/login) 후 연결됩니다 — 지금은 이 브라우저 기록만 표시합니다.'
+              : '서버 대장에 연결되지 않았습니다 — 이 브라우저 기록만 표시합니다.'}
+        </p>
+      )}
 
       {records.length === 0 ? (
         <p className="intro" style={{ marginTop: 16 }}>아직 저장된 심사가 없습니다. 보고서 화면에서 "심사 기록에 저장"을 누르면 여기에 쌓입니다.</p>

@@ -69,7 +69,7 @@ const rules = [
     fix: '비밀번호를 코드에 넣지 말고, 필요하면 해시 비교나 서버 인증으로 바꾸세요.' },
   { id: 'generic-secret-assignment', severity: 'warning', maskSecret: true, ruleFor: 'R-secrets',
     title: 'secret/token/api_key 변수에 긴 고정값 할당',
-    pattern: /(?:secret|token|api[_-]?key)\s*[:=]\s*['"][A-Za-z0-9_\-]{24,}['"]/gi,
+    pattern: /(?:secret|token|api[_-]?key)\s*[:=]\s*['"][A-Za-z0-9_-]{24,}['"]/gi,
     skipLine: /\bapiKey\s*:\s*['"]AIza/,
     fix: '비밀값은 서버 환경변수로 옮기고 클라이언트에는 두지 마세요.' },
   { id: 'vite-env-secret', severity: 'warning', ruleFor: 'R-secrets',
@@ -191,7 +191,7 @@ const rules = [
   // ── 평가·경쟁 ──
   { id: 'answer-in-client', severity: 'info', ruleFor: 'S-answer-exposure',
     title: '정답·채점 기준으로 보이는 값이 클라이언트 코드에 있음',
-    pattern: /\b(?:answer|correctAnswer|정답)\s*[:=]\s*['"\[]/gi,
+    pattern: /\b(?:answer|correctAnswer|정답)\s*[:=]\s*['"[]/gi,
     skipFiles: DOC_FILES,
     fix: '정답은 서버에서 채점하세요. 클라이언트에 있으면 F12로 볼 수 있습니다.' },
   { id: 'score-localstorage', severity: 'warning', ruleFor: 'R-score-forge',

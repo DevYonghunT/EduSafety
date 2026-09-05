@@ -1,5 +1,10 @@
 import path from "node:path";
 import { createHmac } from "node:crypto";
+import {
+  InMemoryReviewRepository,
+  ReviewStoreUnavailableError,
+  type ReviewRepository,
+} from "./db/review-repository.js";
 import express, { type ErrorRequestHandler, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import { z, ZodError } from "zod";
@@ -94,6 +99,7 @@ export interface AppDependencies {
   readonly config: AppConfig;
   readonly repository: CertificationRepository;
   readonly sourceProvider: RepositorySourceProvider;
+  readonly reviewRepository?: ReviewRepository;
   readonly now?: () => Date;
   readonly signer?: CertificationSigner;
   readonly securityLimits?: Partial<AppSecurityLimits>;
@@ -198,6 +204,19 @@ function mapGithubError(error: GitHubCollectionError): { status: number; code: s
   }
 }
 
+const reviewRecordSchema = z
+  .object({
+    target: z.string().trim().min(1).max(300),
+    commitSha: z.string().regex(/^[0-9a-f]{40}$/i).optional(),
+    fingerprint: z.string().regex(/^[0-9a-f]{64}$/i).optional(),
+    status: z.enum(["pass_candidate", "hold", "fail_candidate"]),
+    rubricVersion: z.string().trim().min(1).max(40),
+    protectionLevel: z.enum(["L0", "L1", "L2"]),
+    profile: z.string().max(300).default(""),
+    record: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
 function parseBody<T>(schema: z.ZodType<T>, request: Request): T {
   return schema.parse(request.body);
 }
@@ -294,6 +313,7 @@ function rateLimited(
 
 export function createApp(dependencies: AppDependencies): express.Express {
   const { config, repository, sourceProvider } = dependencies;
+  const reviewRepository = dependencies.reviewRepository ?? new InMemoryReviewRepository();
   const now = dependencies.now ?? (() => new Date());
   const auth = new AdminAuth(config, now);
   // 스캔 식별자용 키는 세션 서명 키에서 파생한 별도 키 — 한 시크릿을 두 용도로 쓰지 않는다.
@@ -558,6 +578,42 @@ export function createApp(dependencies: AppDependencies): express.Express {
       administrator: { id: response.locals.adminId as string, role: "admin" },
       csrfToken: csrfCookieToken(_request),
     });
+  });
+  // 심사 기록 대장(서버 사본) — 심사자는 관리자 세션으로 저장·조회한다.
+  app.use("/api/reviews", requireAdminSameOrigin(applicationOrigin));
+  app.get("/api/reviews", auth.requireAdmin, async (_request, response, next) => {
+    try {
+      response.json({ records: await reviewRepository.list(200) });
+    } catch (error) {
+      if (error instanceof ReviewStoreUnavailableError) {
+        response.status(503).json({ error: { code: "REVIEW_STORE_UNAVAILABLE", message: error.message } });
+        return;
+      }
+      next(error);
+    }
+  });
+  app.post("/api/reviews", auth.requireAdmin, auth.requireCsrf, async (request, response, next) => {
+    try {
+      const body = parseBody(reviewRecordSchema, request);
+      const record = await reviewRepository.save({
+        target: body.target,
+        commitSha: body.commitSha?.toLowerCase() ?? null,
+        fingerprint: body.fingerprint?.toLowerCase() ?? null,
+        status: body.status,
+        rubricVersion: body.rubricVersion,
+        protectionLevel: body.protectionLevel,
+        profile: body.profile,
+        record: body.record,
+        recordedBy: response.locals.adminId as string,
+      });
+      response.status(201).json({ record });
+    } catch (error) {
+      if (error instanceof ReviewStoreUnavailableError) {
+        response.status(503).json({ error: { code: "REVIEW_STORE_UNAVAILABLE", message: error.message } });
+        return;
+      }
+      next(error);
+    }
   });
   app.get("/api/admin/security-scan/config", auth.requireAdmin, sendSecurityScanConfig);
   app.post(

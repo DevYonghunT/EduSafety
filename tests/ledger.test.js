@@ -24,3 +24,34 @@ describe('심사 기록 대장 (여유)', () => {
     expect(listRecords(s)).toEqual([])
   })
 })
+
+describe('서버 대장 동기화', () => {
+  const entry = { target: 'u/app', commitSha: 'a'.repeat(40), status: 'hold', rubricVersion: 'core-1', protectionLevel: 'L1', profile: 'p', savedAt: 'x' }
+  const json = (status, body) => ({ status, ok: status < 400, json: async () => body })
+
+  it('관리자 세션이 없으면 로컬만 저장하고 이유를 알린다', async () => {
+    const { syncRecordToServer } = await import('../src/lib/ledger.js')
+    const fetchImpl = async () => json(401, {})
+    expect(await syncRecordToServer(entry, fetchImpl)).toEqual({ synced: false, reason: 'login' })
+  })
+
+  it('세션이 있으면 CSRF 토큰을 붙여 저장하고 서버 회차를 돌려준다', async () => {
+    const { syncRecordToServer } = await import('../src/lib/ledger.js')
+    const calls = []
+    const fetchImpl = async (url, init) => {
+      calls.push({ url, init })
+      if (url === '/api/admin/session') return json(200, { csrfToken: 'tok' })
+      return json(201, { record: { id: 'r1', round: 2 } })
+    }
+    const result = await syncRecordToServer(entry, fetchImpl)
+    expect(result).toEqual({ synced: true, id: 'r1', round: 2 })
+    expect(calls[1].init.headers['x-csrf-token']).toBe('tok')
+    expect(JSON.parse(calls[1].init.body)).toMatchObject({ target: 'u/app', commitSha: 'a'.repeat(40), record: entry })
+  })
+
+  it('서버 대장 테이블이 없으면(503) 로컬만 유지', async () => {
+    const { syncRecordToServer } = await import('../src/lib/ledger.js')
+    const fetchImpl = async (url) => (url === '/api/admin/session' ? json(200, { csrfToken: 't' }) : json(503, {}))
+    expect(await syncRecordToServer(entry, fetchImpl)).toEqual({ synced: false, reason: 'unavailable' })
+  })
+})

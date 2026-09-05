@@ -23,7 +23,9 @@
     "test:db": "vitest run tests/integration/postgres.test.ts",
     "test:vercel": "vercel build && vitest run tests/integration/vercel-build-output.test.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "admin:hash-password": "tsx src/auth/hash-password.ts"
+    "admin:hash-password": "tsx src/auth/hash-password.ts",
+    "test:skill": "npm --prefix skill test",
+    "test:all": "npm test && npm run test:skill"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
