@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateJudgments, deriveProtectionLevel, extractJson } from '../src/lib/reviewAi.js'
+import { validateJudgments, deriveProtectionLevel, extractJson, estimateCost, addUsage, emptyUsage } from '../src/lib/reviewAi.js'
 import { redactSecrets, buildAiPayload } from '../src/lib/redact.js'
 
 const files = [
@@ -27,12 +27,37 @@ describe('검증·강등 — 원칙 1·2 (T6)', () => {
   })
 
   it('원칙 2: AI 응답에서 누락된 항목은 판단불가로 채운다', () => {
-    const raw = { judgments: [{ id: 'R-a', verdict: 'na', reason: '해당없음' }] }
+    const raw = { judgments: [{ id: 'S-b', verdict: 'na', reason: '해당없음' }] }
     const { judgments, filled } = validateJudgments(raw, items, files)
-    expect(judgments['S-b'].verdict).toBe('needs_human')
+    expect(judgments['R-a'].verdict).toBe('needs_human')
     expect(judgments['S-c'].verdict).toBe('needs_human')
-    expect(filled).toEqual(['S-b', 'S-c'])
-    expect(judgments['R-a'].verdict).toBe('na')
+    expect(filled).toEqual(['R-a', 'S-c'])
+    expect(judgments['S-b'].verdict).toBe('na')
+  })
+
+  it('원칙 3 보강: 필수 항목의 해당없음은 심사자 확인(판단불가)으로 내린다 — 전부 na로 합격 후보 만들기 차단', () => {
+    const raw = { judgments: [
+      { id: 'R-a', verdict: 'na', reason: '해당없음' },
+      { id: 'S-b', verdict: 'na', reason: '해당없음' },
+      { id: 'S-c', verdict: 'na', reason: '해당없음' },
+    ] }
+    const { judgments, demoted } = validateJudgments(raw, items, files)
+    expect(judgments['R-a'].verdict).toBe('needs_human')
+    expect(demoted).toEqual(['R-a'])
+    expect(judgments['S-b'].verdict).toBe('na')
+  })
+
+  it('원칙 1 보강: 인용은 AI가 지목한 파일 안에서만 인정, 8자 미만·다른 파일 인용은 강등', () => {
+    const raw = { judgments: [
+      { id: 'R-a', verdict: 'ok', reason: '다른 파일 인용', evidence: [{ file: 'index.html', quote: 'localStorage.setItem("students", name)' }] },
+      { id: 'S-b', verdict: 'ok', reason: '짧은 인용', evidence: [{ file: 'src/app.js', quote: 'name' }] },
+      { id: 'S-c', verdict: 'fail', reason: '경로 표기 차이', evidence: [{ file: './src/app.js', quote: 'prompt("이름 입력")' }] },
+    ] }
+    const { judgments, demoted } = validateJudgments(raw, items, files)
+    expect(judgments['R-a'].verdict).toBe('needs_human')
+    expect(judgments['S-b'].verdict).toBe('needs_human')
+    expect(judgments['S-c'].verdict).toBe('fail')
+    expect(demoted).toEqual(['R-a', 'S-b'])
   })
 
   it('엉뚱한 verdict 값·깨진 응답도 판단불가로 수렴', () => {
@@ -86,5 +111,18 @@ describe('보호 수준 도출 + JSON 추출 (T6)', () => {
     expect(extractJson('결과는 다음과 같습니다.\n```json\n{"a": 1}\n```')).toEqual({ a: 1 })
     expect(extractJson('{"b": [1,2]} 끝')).toEqual({ b: [1, 2] })
     expect(() => extractJson('JSON 없음')).toThrow()
+  })
+})
+
+describe('비용 집계 (심사 1건 비용 고지)', () => {
+  it('모델 단가로 토큰 사용량을 달러로 환산하고 누적한다', () => {
+    const usage = { input_tokens: 1_000_000, output_tokens: 100_000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
+    expect(estimateCost(usage, 'claude-opus-5')).toBeCloseTo(5 + 2.5, 6)
+    expect(estimateCost(usage, 'claude-sonnet-5')).toBeCloseTo(2 + 1, 6)
+    expect(estimateCost({ input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 1_000_000 }, 'claude-opus-5')).toBeCloseTo(0.5, 6)
+    const acc = addUsage(addUsage(emptyUsage(), usage, 'claude-opus-5'), usage, 'claude-opus-5')
+    expect(acc.calls).toBe(2)
+    expect(acc.input).toBe(2_000_000)
+    expect(acc.costUsd).toBeCloseTo(15, 6)
   })
 })
