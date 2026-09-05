@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { parseGithubUrl, fetchRepoFiles } from '../lib/github.js'
 import { scanFiles, countBySeverity, suspectDataFiles, isVendorPath } from '../lib/scanner.js'
 import { SEVERITIES } from '../data/securityRules.js'
@@ -7,8 +7,8 @@ import { checkGate } from '../lib/submissionGate.js'
 import { readFolderFiles, computeFingerprint } from '../lib/localFolder.js'
 import { buildAiPayloadChunks } from '../lib/redact.js'
 import { suggestFeatures, judgeItems, deriveProtectionLevel, PROTECTION_LEVELS, DEFAULT_MODEL, MODEL_OPTIONS, emptyUsage } from '../lib/reviewAi.js'
-import { issueCertificationBadge } from '../lib/certificationBadge.js'
-import { computeSummary, finalVerdict } from '../lib/reviewSummary.js'
+import { issueCertificationBadge, settleCertificationRequest } from '../lib/certificationBadge.js'
+import { computeSummary, finalVerdict, naNeedsReason } from '../lib/reviewSummary.js'
 import { saveRecord, targetKey, syncRecordToServer } from '../lib/ledger.js'
 import { buildTeacherNotice } from '../lib/dataNotice.js'
 import ReviewReport, { VERDICT_LABELS, verdictColor } from './ReviewReport.jsx'
@@ -20,6 +20,17 @@ const mergeUsage = (a, b) => ({
 })
 
 const STEPS = ['① 불러오기', '② 앱 확인', '③ 판정 확인', '④ 보고서']
+const API_KEY_STORAGE = 'edusafe_api_key'
+
+// 심사자 API 키는 탭 세션에만 둔다 — localStorage는 같은 출처의 다른 페이지·XSS에 노출되고 지워지지 않는다.
+function loadApiKey() {
+  try {
+    localStorage.removeItem(API_KEY_STORAGE)
+    return sessionStorage.getItem(API_KEY_STORAGE) || ''
+  } catch {
+    return ''
+  }
+}
 
 export default function ReviewMode() {
   const [step, setStep] = useState(1)
@@ -34,7 +45,7 @@ export default function ReviewMode() {
   const [gate, setGate] = useState(null)
 
   // 2단계
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('edusafe_api_key') || '')
+  const [apiKey, setApiKey] = useState(loadApiKey)
   const [model, setModel] = useState(() => localStorage.getItem('edusafe_model') || DEFAULT_MODEL)
   const [features, setFeatures] = useState({})
   const [aiSuggest, setAiSuggest] = useState(null)
@@ -51,6 +62,10 @@ export default function ReviewMode() {
   const [serverSync, setServerSync] = useState(null) // { synced, reason }
   const [certification, setCertification] = useState(null) // null | {phase:'pending'|'issued'|'not_issued'|'error', ...}
   const [noticeCopied, setNoticeCopied] = useState(false)
+  // 실행 토큰 — '새 심사 시작' 뒤에 도착한 이전 앱의 AI 결과·불러오기 결과가 다음 심사에 섞이지 않게.
+  const runRef = useRef(0)
+  const certReqRef = useRef(0)
+  const stillCurrent = (run) => run === runRef.current
 
   const copyTeacherNotice = async () => {
     try {
@@ -68,11 +83,16 @@ export default function ReviewMode() {
     [features, judgments, overrides, humanInputs],
   )
 
-  const saveKey = (v) => { setApiKey(v); localStorage.setItem('edusafe_api_key', v) }
+  const saveKey = (v) => {
+    setApiKey(v)
+    try { sessionStorage.setItem(API_KEY_STORAGE, v) } catch { /* 세션 저장 불가 — 메모리에만 유지 */ }
+  }
+  const clearKey = () => saveKey('')
   const saveModel = (v) => { setModel(v); localStorage.setItem('edusafe_model', v) }
 
   const loadFolder = async (fileList) => {
     if (!fileList || fileList.length === 0) return
+    const run = runRef.current
     setError('')
     try {
       setBusy('폴더 파일 읽는 중…')
@@ -84,74 +104,92 @@ export default function ReviewMode() {
       const meta = { source: 'folder', name, fingerprint, skippedCount, skippedPaths, scannableSkipped }
       setBusy(`규칙 스캔 중… (파일 ${read.length}개)`)
       await new Promise((r) => setTimeout(r, 30))
+      if (!stillCurrent(run)) return
       setRepoMeta(meta)
       setFiles(read)
       setScan(scanFiles(read))
       setGate(checkGate(read, meta))
     } catch (err) {
-      setError(err.message)
+      if (stillCurrent(run)) setError(err.message)
     } finally {
-      setBusy('')
+      if (stillCurrent(run)) setBusy('')
     }
   }
 
   const loadRepo = async () => {
     const parsed = parseGithubUrl(repoUrl)
     if (!parsed) return setError('주소 형식을 알 수 없어요. 예: https://github.com/아이디/저장소')
+    const run = runRef.current
     setError('')
     try {
       setBusy('저장소 불러오는 중…')
-      const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => setBusy(`파일 내려받는 중… ${d}/${t}`) })
+      const result = await fetchRepoFiles({ ...parsed, onProgress: (d, t) => { if (stillCurrent(run)) setBusy(`파일 내려받는 중… ${d}/${t}`) } })
       if (result.files.length === 0) throw new Error('검사할 수 있는 파일이 없어요.')
-      const meta = { owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha, skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped, treeTruncated: result.treeTruncated }
+      const meta = {
+        owner: parsed.owner, repo: parsed.repo, branch: result.branch, commitSha: result.commitSha,
+        skippedCount: result.skippedCount, skippedPaths: result.skippedPaths, scannableSkipped: result.scannableSkipped,
+        failedPaths: result.failedPaths || [], treeTruncated: result.treeTruncated,
+      }
       setBusy(`규칙 스캔 중… (파일 ${result.files.length}개)`)
       await new Promise((r) => setTimeout(r, 30))
+      if (!stillCurrent(run)) return
       setRepoMeta(meta)
       setFiles(result.files)
       setScan(scanFiles(result.files))
       setGate(checkGate(result.files, meta))
     } catch (err) {
-      setError(err.message)
+      if (stillCurrent(run)) setError(err.message)
     } finally {
-      setBusy('')
+      if (stillCurrent(run)) setBusy('')
     }
   }
 
   const runSuggest = async () => {
+    const run = runRef.current
     setError('')
     try {
-      setBusy('AI가 앱 기능을 확인하는 중…')
       const { chunks } = buildAiPayloadChunks(files)
-      const result = await suggestFeatures({ payloadText: chunks[0], apiKey, model })
+      setBusy(chunks.length > 1 ? `AI가 앱 기능을 확인하는 중… 코드 ${chunks.length}개 묶음 전체를 봅니다` : 'AI가 앱 기능을 확인하는 중…')
+      const result = await suggestFeatures({ payloadChunks: chunks, apiKey, model })
+      if (!stillCurrent(run)) return
       setAiSuggest(result)
       if (result.usage) setUsage((u) => mergeUsage(u, result.usage))
       setFeatures(result.features || {})
     } catch (err) {
-      setError(`AI 제안 실패: ${err.message} — 체크박스로 직접 확인할 수 있어요.`)
+      if (stillCurrent(run)) setError(`AI 제안 실패: ${err.message} — 체크박스로 직접 확인할 수 있어요.`)
     } finally {
-      setBusy('')
+      if (stillCurrent(run)) setBusy('')
     }
   }
 
+  // 판정이 없는 적용 항목 — 첫 실행 전에는 전부, 실행 뒤 기능 확인을 바꿔 새로 적용된 항목만 남는다.
+  const pendingAiItems = summary.items.filter((it) => it.aiVerifiable && !judgments[it.id])
+
   const runJudge = async () => {
+    const run = runRef.current
     setError('')
     try {
       const payload = buildAiPayloadChunks(files)
       const many = payload.chunks.length > 1
       setBusy(many ? `AI가 판정 초안을 작성하는 중… 코드가 커서 ${payload.chunks.length}개 묶음으로 나눠 분석합니다 (수 분)` : 'AI가 항목별 판정 초안을 작성하는 중… (1~2분)')
-      const aiItems = summary.items.filter((it) => it.aiVerifiable)
+      const aiItems = aiRan ? pendingAiItems : summary.items.filter((it) => it.aiVerifiable)
       const result = await judgeItems({
         payloadChunks: payload.chunks, items: aiItems, scanFindings: scan.findings, apiKey, model, files,
-        onProgress: (d, t) => { if (t > 1) setBusy(`AI 분할 분석 중… ${d}/${t} 묶음 완료`) },
+        onProgress: (d, t) => { if (t > 1 && stillCurrent(run)) setBusy(`AI 분할 분석 중… ${d}/${t} 묶음 완료`) },
       })
-      setJudgments(result.judgments)
-      setAiMeta({ demoted: result.demoted, filled: result.filled, coverage: payload })
+      if (!stillCurrent(run)) return
+      setJudgments((prev) => ({ ...prev, ...result.judgments }))
+      setAiMeta((prev) => ({
+        demoted: [...(prev?.demoted || []), ...result.demoted],
+        filled: [...(prev?.filled || []), ...result.filled],
+        coverage: payload,
+      }))
       if (result.usage) setUsage((u) => mergeUsage(u, result.usage))
       setAiRan(true)
     } catch (err) {
-      setError(`AI 판정 실패: ${err.message}`)
+      if (stillCurrent(run)) setError(`AI 판정 실패: ${err.message}`)
     } finally {
-      setBusy('')
+      if (stillCurrent(run)) setBusy('')
     }
   }
 
@@ -164,27 +202,57 @@ export default function ReviewMode() {
     })
   }
   const setOverrideReason = (id, reason) => setOverrides((prev) => ({ ...prev, [id]: { ...prev[id], reason } }))
-  const setHuman = (id, verdict) => setHumanInputs((prev) => ({ ...prev, [id]: { verdict } }))
+  const setHuman = (id, verdict) => setHumanInputs((prev) => ({ ...prev, [id]: { ...prev[id], verdict } }))
+  const setHumanReason = (id, reason) => setHumanInputs((prev) => ({ ...prev, [id]: { ...prev[id], reason } }))
 
+  // 인증 응답은 요청 당시의 대상(저장소@커밋)·요청 번호와 맞을 때만 반영한다 — 새 심사 뒤 늦게 온 응답 차단.
   const requestCertification = async () => {
     if (!repoMeta?.commitSha) return
-    setCertification({ phase: 'pending' })
+    const subjectKey = `${repoMeta.owner}/${repoMeta.repo}@${repoMeta.commitSha}`
+    const requestId = ++certReqRef.current
+    const settle = (next) => setCertification((cur) => settleCertificationRequest(cur, { subjectKey, requestId }, next))
+    setCertification({ phase: 'pending', subjectKey, requestId })
     try {
       const response = await issueCertificationBadge({
         repositoryUrl: `https://github.com/${repoMeta.owner}/${repoMeta.repo}`,
         commitSha: repoMeta.commitSha,
       })
-      setCertification(response.outcome === 'ISSUED' ? { phase: 'issued', response } : { phase: 'not_issued', response })
+      settle(response.outcome === 'ISSUED' ? { phase: 'issued', response } : { phase: 'not_issued', response })
     } catch (err) {
-      setCertification({ phase: 'error', message: err.message })
+      settle({ phase: 'error', message: err.message })
     }
   }
 
   const resetAll = () => {
-    setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null)
+    runRef.current++
+    setStep(1); setRepoUrl(''); setRepoMeta(null); setFiles([]); setScan(null); setGate(null); setBusy('')
     setFeatures({}); setAiSuggest(null)
     setJudgments({}); setAiMeta(null); setAiRan(false); setOverrides({}); setHumanInputs({}); setFilter('')
     setSavedRound(null); setUsage(emptyUsage()); setCertification(null); setServerSync(null); setError('')
+  }
+
+  // 저장 뒤 판정·기능이 바뀌면 다시 저장할 수 있어야 한다 — 한 번 저장한 뒤의 변경이 대장에 못 남는 일 방지.
+  useEffect(() => {
+    setSavedRound(null)
+    setServerSync(null)
+  }, [judgments, overrides, humanInputs, features])
+
+  const saveToLedger = () => {
+    try {
+      const entry = saveRecord({
+        target: targetKey(repoMeta),
+        owner: repoMeta.owner, repo: repoMeta.repo, commitSha: repoMeta.commitSha,
+        name: repoMeta.name, fingerprint: repoMeta.fingerprint,
+        profile: featureProfile(features), protectionLevel, status: summary.status, actions: summary.actions,
+        rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
+        counts, overrides: Object.keys(overrides).length, applicableItems: summary.items.length,
+        aiUsed: aiRan, costUsd: usage.costUsd, certified: certification?.phase === 'issued',
+      })
+      setSavedRound(entry.round)
+      syncRecordToServer(entry).then(setServerSync)
+    } catch (err) {
+      setError(`심사 기록 저장 실패: ${err?.message || err} — 브라우저 저장 공간을 확인하고 JSON 내보내기로 백업해 주세요.`)
+    }
   }
 
   const counts = useMemo(() => {
@@ -289,9 +357,15 @@ export default function ReviewMode() {
                         {' '}목록에 없는 파일은 심사 대상에서 아예 빠졌을 수 있으니, 폴더 업로드로 다시 제출받는 것을 권합니다.
                       </p>
                     )}
-                    {(repoMeta.scannableSkipped || 0) > 0 && (
+                    {(repoMeta.failedPaths?.length || 0) > 0 && (
                       <p className="gate-warn">
-                        🚨 <strong>검사 가능한 파일 {repoMeta.scannableSkipped}개가 수집 상한에 걸려 읽히지 못했습니다 — 심사 범위가 불완전합니다.</strong>
+                        🚨 <strong>파일 {repoMeta.failedPaths.length}개는 GitHub에서 내려받기에 실패해 읽지 못했습니다 (네트워크·요청 한도) — 심사 범위가 불완전합니다.</strong>
+                        {' '}잠시 후 다시 불러오거나 폴더 업로드로 제출받으세요: {repoMeta.failedPaths.slice(0, 5).join(', ')}{repoMeta.failedPaths.length > 5 ? ' …' : ''}
+                      </p>
+                    )}
+                    {(repoMeta.scannableSkipped || 0) - (repoMeta.failedPaths?.length || 0) > 0 && (
+                      <p className="gate-warn">
+                        🚨 <strong>검사 가능한 파일 {repoMeta.scannableSkipped - (repoMeta.failedPaths?.length || 0)}개가 수집 상한에 걸려 읽히지 못했습니다 — 심사 범위가 불완전합니다.</strong>
                         {' '}보안 설정·코드를 먼저 읽도록 우선순위를 적용했지만, 문서·산출물을 정리한 제출물로 재심사하는 것을 권합니다.
                       </p>
                     )}
@@ -374,10 +448,11 @@ export default function ReviewMode() {
           </div>
 
           <div className="scan-box">
-            <strong>AI 설정 — 3단계 판정 초안에 사용 (심사자 개인 키, 이 브라우저에만 저장)</strong>
+            <strong>AI 설정 — 3단계 판정 초안에 사용 (심사자 개인 키, 이 탭을 닫으면 지워짐)</strong>
             <label className="field">Anthropic API 키
-              <input type="password" value={apiKey} onChange={(e) => saveKey(e.target.value)} placeholder="sk-ant-…" />
+              <input type="password" value={apiKey} onChange={(e) => saveKey(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
             </label>
+            {apiKey && <div><button type="button" className="btn-secondary btn-inline" onClick={clearKey}>🗑️ 키 지우기</button></div>}
             <label className="field">모델
               <select value={model} onChange={(e) => saveModel(e.target.value)}>
                 {MODEL_OPTIONS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -393,6 +468,7 @@ export default function ReviewMode() {
             <div className="ai-suggest">
               <strong>AI 제안</strong>: {featureProfile(aiSuggest.features)} — {aiSuggest.featureReason}
               {aiSuggest.appSummary && <div className="hint">{aiSuggest.appSummary}</div>}
+              {aiSuggest.chunkCount > 1 && <div className="hint">코드 {aiSuggest.chunkCount}개 묶음을 모두 보고 합친 제안입니다.</div>}
             </div>
           )}
 
@@ -409,9 +485,11 @@ export default function ReviewMode() {
           <h1>판정 확인 — 적용 {summary.items.length}항목 <span className="hint">({featureProfile(features)})</span></h1>
           <p className="intro">AI 출력은 판정 초안입니다. 최종 판정은 심사자가 하며, 번복은 사유와 함께 기록됩니다.</p>
 
-          {!aiRan && (
+          {(!aiRan || pendingAiItems.length > 0) && (
             <div className="scan-box">
-              <button className="btn-primary" onClick={runJudge} disabled={!!busy || !apiKey.trim()}>🤖 AI 판정 초안 실행 ({summary.items.filter((i) => i.aiVerifiable).length}개 항목)</button>
+              <button className="btn-primary" onClick={runJudge} disabled={!!busy || !apiKey.trim() || pendingAiItems.length === 0}>
+                {aiRan ? `🤖 AI 판정 초안 재실행 — 기능 확인 변경으로 새로 적용된 ${pendingAiItems.length}개 항목만` : `🤖 AI 판정 초안 실행 (${pendingAiItems.length}개 항목)`}
+              </button>
               <p className="hint">{apiKey.trim() ? '전송 전 비밀키 마스킹·데이터 파일 제외가 적용됩니다.' : 'API 키가 없어 수동 심사 모드입니다 — 모든 항목을 심사자가 직접 판정합니다.'}</p>
             </div>
           )}
@@ -471,23 +549,30 @@ export default function ReviewMode() {
                         <label>심사자 판정:{' '}
                           <select value={ov?.verdict || ''} onChange={(e) => setOverride(it.id, e.target.value)}>
                             <option value="">AI 초안 따름{j ? ` (${VERDICT_LABELS[j.verdict]})` : ' (판단불가)'}</option>
-                            {Object.entries(VERDICT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}(으)로 번복</option>)}
+                            {Object.entries(VERDICT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}(으)로 번복{k === 'na' && it.type === 'required' ? ' — 사유 필수' : ''}</option>)}
                           </select>
                         </label>
                         {ov?.verdict && (
-                          <input type="text" className="reason-input" placeholder="번복 사유 (기록 보존)" value={ov.reason || ''}
+                          <input type="text" className="reason-input" placeholder={naNeedsReason(it, ov.verdict, overrides, humanInputs) ? '필수 항목의 해당없음 사유 — 적어야 인정됩니다' : '번복 사유 (기록 보존)'} value={ov.reason || ''}
                             onChange={(e) => setOverrideReason(it.id, e.target.value)} />
                         )}
                       </div>
+                      {ov?.verdict && naNeedsReason(it, ov.verdict, overrides, humanInputs) && (
+                        <p className="hint">필수 항목의 '해당없음'은 사유가 있어야 인정됩니다 — 사유가 비어 있는 동안은 판단불가로 집계됩니다.</p>
+                      )}
                     </div>
                   ) : (
                     <div className="override-row">
                       <label>심사자 판정:{' '}
                         <select value={humanInputs[it.id]?.verdict || ''} onChange={(e) => setHuman(it.id, e.target.value)}>
                           <option value="">판정 선택 (미선택 = 판단불가)</option>
-                          {Object.entries(VERDICT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                          {Object.entries(VERDICT_LABELS).map(([k, label]) => <option key={k} value={k}>{label}{k === 'na' && it.type === 'required' ? ' — 사유 필수' : ''}</option>)}
                         </select>
                       </label>
+                      {humanInputs[it.id]?.verdict === 'na' && it.type === 'required' && (
+                        <input type="text" className="reason-input" placeholder="필수 항목의 해당없음 사유 — 적어야 인정됩니다" value={humanInputs[it.id]?.reason || ''}
+                          onChange={(e) => setHumanReason(it.id, e.target.value)} />
+                      )}
                     </div>
                   )}
                 </div>
@@ -547,19 +632,7 @@ export default function ReviewMode() {
             </div>
           )}
           <div className="btn-row no-print">
-            <button className="btn-primary" disabled={!!savedRound} onClick={() => {
-              const entry = saveRecord({
-                target: targetKey(repoMeta),
-                owner: repoMeta.owner, repo: repoMeta.repo, commitSha: repoMeta.commitSha,
-                name: repoMeta.name, fingerprint: repoMeta.fingerprint,
-                profile: featureProfile(features), protectionLevel, status: summary.status, actions: summary.actions,
-                rubricVersion: RUBRIC_VERSION, savedAt: new Date().toISOString(),
-                counts, overrides: Object.keys(overrides).length, applicableItems: summary.items.length,
-                aiUsed: aiRan, costUsd: usage.costUsd, certified: certification?.phase === 'issued',
-              })
-              setSavedRound(entry.round)
-              syncRecordToServer(entry).then(setServerSync)
-            }}>
+            <button className="btn-primary" disabled={!!savedRound} onClick={saveToLedger}>
               {savedRound ? `✅ 저장됨 (${savedRound}회차)` : '📚 심사 기록에 저장'}
             </button>
             <button className="btn-secondary" onClick={() => setStep(3)}>← 판정으로 돌아가기</button>

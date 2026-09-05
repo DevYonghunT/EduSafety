@@ -15,6 +15,7 @@ const STATE_COLORS = {
   needs_human: 'var(--warn)',
   fail: '#e0641f',
   fail_required: 'var(--danger)',
+  na: 'var(--muted)',
 }
 
 const STATUS_COLORS = { pass_candidate: 'var(--ok)', hold: 'var(--warn)', fail_candidate: 'var(--danger)' }
@@ -22,6 +23,7 @@ const STATUS_COLORS = { pass_candidate: 'var(--ok)', hold: 'var(--warn)', fail_c
 export function verdictColor(v, item) {
   if (v === 'fail') return item.type === 'required' ? STATE_COLORS.fail_required : STATE_COLORS.fail
   if (v === 'needs_human') return STATE_COLORS.needs_human
+  if (v === 'na') return STATE_COLORS.na
   return STATE_COLORS.ok
 }
 
@@ -220,8 +222,11 @@ export default function ReviewReport({ repoMeta, features, protectionLevel, appS
                     {ov && <div className="vt-override">심사자 번복</div>}
                   </td>
                   <td className="vt-reason">
-                    {ov ? `[번복 사유] ${ov.reason || '기재 없음'}` : j?.reason || '—'}
-                    {!ov && j?.evidence?.slice(0, 2).map((e, i) => (
+                    {/* 번복해도 AI 초안의 사유·인용은 남긴다 — 무엇을 뒤집었는지가 기록의 핵심이다 */}
+                    {ov && <div>[번복 사유] {ov.reason || '기재 없음'}</div>}
+                    {ov && j && it.aiVerifiable && <div className="hint">AI 초안 {VERDICT_LABELS[j.verdict] || '판단불가'}: {j.reason || '—'}</div>}
+                    {!ov && (j?.reason ? (v === 'na' && it.type === 'required' ? `[해당없음 사유] ${j.reason}` : j.reason) : '—')}
+                    {it.aiVerifiable && j?.evidence?.slice(0, 2).map((e, i) => (
                       <div key={i} className="vt-evidence"><code>{e.file}</code>: {e.quote}</div>
                     ))}
                   </td>

@@ -60,6 +60,17 @@ describe('판정 집계 (신뢰성 원칙 3·4 + hackathon-2 적용 조건)', ()
     expect(s.categoryStates.collect).toBe('ok')
   })
 
+  it('필수 항목의 해당없음은 사유가 있어야 인정된다 — 사유 없는 전부 해당없음은 합격 후보가 아니라 보류', () => {
+    const naAll = Object.fromEntries(applicable(BASE).map((it) => [it.id, { verdict: 'na' }]))
+    const s = computeSummary(BASE, {}, naAll, {})
+    expect(s.status).toBe('hold')
+    const justified = Object.fromEntries(applicable(BASE).map((it) => [it.id, { verdict: 'na', reason: '정적 페이지 — 해당 기능 없음' }]))
+    expect(computeSummary(BASE, {}, justified, {}).status).toBe('pass_candidate')
+    const manual = rubricItems.find((i) => !i.aiVerifiable && i.type === 'required') || rubricItems.find((i) => !i.aiVerifiable)
+    expect(finalVerdict(manual, {}, {}, { [manual.id]: { verdict: 'na' } })).toBe(manual.type === 'required' ? 'needs_human' : 'na')
+    expect(finalVerdict(manual, {}, {}, { [manual.id]: { verdict: 'na', reason: '사유' } })).toBe('na')
+  })
+
   it('단일 점수를 산출하지 않는다 (점수 폐지 결정)', () => {
     const s = computeSummary(BASE, fillAi(BASE, 'ok'), {}, fillHuman(BASE, 'ok'))
     expect(s.score).toBeUndefined()
