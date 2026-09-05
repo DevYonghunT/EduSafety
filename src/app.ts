@@ -296,6 +296,8 @@ export function createApp(dependencies: AppDependencies): express.Express {
   const { config, repository, sourceProvider } = dependencies;
   const now = dependencies.now ?? (() => new Date());
   const auth = new AdminAuth(config, now);
+  // 스캔 식별자용 키는 세션 서명 키에서 파생한 별도 키 — 한 시크릿을 두 용도로 쓰지 않는다.
+  const scanIdentifierKey = createHmac("sha256", config.admin.sessionSecret).update("edusafety:security-scan-identifier").digest();
   const authenticateAdmin = dependencies.authenticateAdmin ?? auth.authenticate.bind(auth);
   const analysis = new StaticAnalysisService(sourceProvider, now);
   const signer = dependencies.signer ?? new AttestationSigner(config, { now });
@@ -420,7 +422,7 @@ export function createApp(dependencies: AppDependencies): express.Express {
       response.once("close", abortOnClosedResponse);
       if (request.aborted || response.destroyed) abortWork();
       try {
-        const safetyIdentifier = `scan_${createHmac("sha256", config.admin.sessionSecret)
+        const safetyIdentifier = `scan_${createHmac("sha256", scanIdentifierKey)
           .update(`security-scan:${rateKey}`)
           .digest("base64url")}`;
         let scan: SecurityScanResult;
@@ -743,6 +745,13 @@ export function createApp(dependencies: AppDependencies): express.Express {
   app.get("/verify/:uid", (_request, response) => response.sendFile(path.join(publicDirectory, "verify.html")));
   app.get("/demo", (_request, response) => response.sendFile(path.join(publicDirectory, "demo.html")));
   const staticOptions = { index: false, etag: true, maxAge: config.nodeEnv === "production" ? "1h" : 0 } as const;
+  app.use((request, response, next) => {
+    if (/^\/admin-certification\.html$/i.test(request.path) && request.path !== "/admin-certification.html") {
+      response.redirect(303, "/admin-certification.html");
+      return;
+    }
+    next();
+  });
   app.use(express.static(publicDirectory, staticOptions));
   app.use(express.static(clientDirectory, { ...staticOptions, index: "index.html" }));
 

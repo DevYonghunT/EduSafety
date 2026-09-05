@@ -356,7 +356,7 @@ describe("Anthropic security summary", () => {
     const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       expect(body.model).toBe("claude-sonnet-5");
-      expect(body.thinking).toEqual({ type: "disabled" });
+      expect(body.thinking).toBeUndefined();
       expect(body.metadata).toEqual({ user_id: "scan_user" });
       expect(body.output_config).toMatchObject({ format: { type: "json_schema" } });
       const messages = body.messages as Array<{ content: string }>;
@@ -411,7 +411,7 @@ describe("Anthropic security summary", () => {
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
         expect(body.model).toBe(model);
         expect(body.max_tokens).toBe(600);
-        expect(body.thinking).toEqual({ type: "disabled" });
+        expect(body.thinking).toBeUndefined();
         return completedAnthropicResponse("간단한 요약", []);
       },
     });
