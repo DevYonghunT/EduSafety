@@ -45,6 +45,24 @@ describe('인증마크 발급 클라이언트', () => {
     expect(Object.keys(JSON.parse(options.body))).toEqual(['repositoryUrl', 'commitSha'])
   })
 
+  it('기대 저장소 주소가 GitHub 형식이 아니면 양쪽이 모두 해석 불가여도 발급 결과를 받아들이지 않는다', async () => {
+    const request = issueCertificationBadge({
+      repositoryUrl: 'https://github.com/owner%2Frepository',
+      commitSha: COMMIT_SHA,
+      fetchImpl: vi.fn().mockResolvedValue(jsonResponse({
+        outcome: 'ISSUED',
+        badge: {
+          uid: UID, commitSha: COMMIT_SHA, status: 'VALID',
+          repository: { canonicalRepositoryUrl: 'https://evil.example/anything' },
+          policy: { name: '교사 앱 안전 기준', policyVersion: 1 },
+        },
+        verificationUrl: `https://edusafety.example/verify/${UID}`,
+        svgUrl: `https://edusafety.example/api/badges/${UID}.svg?variant=showcase`,
+      }, { status: 201 })),
+    })
+    await expect(request).rejects.toMatchObject({ code: 'INVALID_CERTIFICATION_RESPONSE' })
+  })
+
   it('미발급 결과를 오류로 바꾸지 않고 그대로 전달한다', async () => {
     const response = { outcome: 'NOT_ISSUED', criteria: [], safetyBlockers: [] }
     const result = await issueCertificationBadge({

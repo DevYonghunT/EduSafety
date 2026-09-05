@@ -17,6 +17,13 @@ describe('심사 기록 대장 (여유)', () => {
     expect(listRecords(s)[0].status).toBe('pass_candidate')
   })
 
+  it('폴더 제출은 폴더명이 같아도 지문이 다르면 다른 대상이다', () => {
+    const a = targetKey({ source: 'folder', name: 'myapp', fingerprint: 'a'.repeat(64) })
+    const b = targetKey({ source: 'folder', name: 'myapp', fingerprint: 'b'.repeat(64) })
+    expect(a).not.toBe(b)
+    expect(a).toBe(targetKey({ source: 'folder', name: 'myapp', fingerprint: 'a'.repeat(64) }))
+  })
+
   it('삭제와 빈 저장소 처리', () => {
     const s = memStorage()
     const r = saveRecord({ target: 't', savedAt: 'x' }, s)

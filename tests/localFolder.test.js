@@ -14,6 +14,12 @@ describe('폴더 업로드 — SHA-256 콘텐츠 지문 (여유)', () => {
     expect(ha).toMatch(/^[0-9a-f]{64}$/)
   })
 
+  it('지문은 기기 간 재현된다 — 한글 경로의 NFD/NFC 차이·로케일 정렬에 흔들리지 않는다', async () => {
+    const nfd = [f('학생앱.js'.normalize('NFD'), 'x'), f('A.js', 'y'), f('Å.js', 'z'), f('a.js', 'w')]
+    const nfc = [f('학생앱.js'.normalize('NFC'), 'x'), f('Å.js', 'z'), f('a.js', 'w'), f('A.js', 'y')]
+    expect(await computeFingerprint(nfd)).toBe(await computeFingerprint(nfc))
+  })
+
   it('경로/내용 경계가 지문에 반영된다 (인젝션 모호성 없음)', async () => {
     const one = [f('a', 'b\nc')]
     const two = [f('a', 'b'), f('c', '')]

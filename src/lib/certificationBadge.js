@@ -60,6 +60,7 @@ function assertIssuedResponse(body, status, expectedSubject) {
     || !CERTIFICATION_STATUSES.has(body.badge.status)
     || typeof body.badge.policy?.name !== 'string' || body.badge.policy.name.trim() === ''
     || !Number.isInteger(body.badge.policy?.policyVersion) || body.badge.policy.policyVersion < 1
+    || githubSubject(expectedSubject.repositoryUrl) === null
     || githubSubject(body.badge.repository?.canonicalRepositoryUrl) !== githubSubject(expectedSubject.repositoryUrl)
     || body.badge.commitSha.toLowerCase() !== expectedSubject.commitSha.toLowerCase()
     || verificationUrl?.pathname !== `/verify/${uid}`

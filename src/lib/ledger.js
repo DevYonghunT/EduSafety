@@ -13,8 +13,12 @@ export function listRecords(storage = localStorage) {
   return load(storage).sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1))
 }
 
+// 폴더 제출은 안정적 식별자가 없다 — 폴더명만 쓰면 서로 다른 교사의 'myapp/'이 같은 앱의 회차로 묶이므로
+// 콘텐츠 지문 앞자리를 함께 쓴다 (같은 내용의 재심사만 회차로 이어진다).
 export function targetKey(repoMeta) {
-  return repoMeta.commitSha ? `${repoMeta.owner}/${repoMeta.repo}` : `folder:${repoMeta.name || ''}`
+  if (repoMeta.commitSha) return `${repoMeta.owner}/${repoMeta.repo}`
+  const fp = repoMeta.fingerprint ? `#${repoMeta.fingerprint.slice(0, 12)}` : ''
+  return `folder:${repoMeta.name || ''}${fp}`
 }
 
 export function saveRecord(record, storage = localStorage) {

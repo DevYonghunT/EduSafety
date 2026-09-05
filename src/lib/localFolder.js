@@ -47,9 +47,14 @@ export async function readFolderFiles(fileList) {
 }
 
 // 경로+내용을 정렬·연결해 지문 계산 — 파일 하나만 바뀌어도 지문이 달라진다.
+// 다른 기기에서 같은 지문이 나와야 하므로 로케일 정렬(localeCompare)이 아니라 코드 단위로 정렬하고,
+// 한글 파일명의 NFD(macOS)/NFC(Windows) 차이를 NFC로 통일한다.
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
 export async function computeFingerprint(files, subtle = crypto.subtle) {
-  const canonical = [...files]
-    .sort((a, b) => a.path.localeCompare(b.path))
+  const canonical = files
+    .map((f) => ({ path: f.path.normalize('NFC'), text: f.text.normalize('NFC') }))
+    .sort((a, b) => byCodeUnit(a.path, b.path))
     .map((f) => `${f.path}\n${f.text.length}\n${f.text}\n`)
     .join('')
   const digest = await subtle.digest('SHA-256', new TextEncoder().encode(canonical))
