@@ -10,17 +10,23 @@ export const SEVERITIES = {
 }
 
 const DOC_FILES = /(^|\/)(LICENSE|LICENCE|README|CHANGELOG|NOTICE)[^/]*$|\.(md|txt|rst)$/i
+// Firebase 웹 설정 파일의 흔적 — 이 맥락의 apiKey는 공개 설계값이고, 그 밖의 apiKey: "AIza…"는 진짜 유출 후보다.
+const FIREBASE_CONFIG = /authDomain|projectId|messagingSenderId|initializeApp\s*\(/
+// 예시·템플릿 환경변수 파일은 자리표시자라서 발견 대상이 아니다 (마스킹은 패턴 기준이라 그대로 적용된다).
+const ENV_TEMPLATE = /\.env\.(example|sample|template|dist)$/i
+const PLACEHOLDER_VALUE = /your[_-]?|xxx|example|placeholder|change[_-]?me|<[^>]*>|\.\.\.|\*{3,}|PUBLIC|PUBLISHABLE|ANON_KEY|SITE_KEY|RECAPTCHA/i
 
 const rules = [
   // ── 비밀키 노출 (L0 기본선) ──
   { id: 'google-api-key', severity: 'critical', maskSecret: true, ruleFor: 'R-secrets',
     title: 'Google API 키가 코드에 노출됨',
     pattern: /AIza[0-9A-Za-z\-_]{35}/g,
-    skipLine: /\bapiKey\s*:/,
+    skipLine: (line, text) => /\bapiKey\s*:/.test(line) && FIREBASE_CONFIG.test(text),
     fix: '키를 재발급하고 HTTP 리퍼러 제한을 걸거나 프록시 서버를 두세요.' },
   { id: 'firebase-web-key', severity: 'info', maskSecret: true, ruleFor: 'R-db-locked',
     title: 'Firebase 웹 API 키 (공개 설계값 — 대신 DB 규칙·App Check로 보호되는지 확인)',
-    pattern: /\bapiKey\s*:\s*['"]AIza[0-9A-Za-z\-_]{35}['"]/g,
+    pattern: /\bapiKey\s*:\s*['"](AIza[0-9A-Za-z\-_]{30,})['"]/g,
+    skipFiles: (_path, text) => !FIREBASE_CONFIG.test(text),
     fix: 'Firebase 웹 키 자체는 비밀이 아닙니다. 보안은 Firestore/RTDB 규칙과 App Check가 담당하니 그쪽을 확인하세요.' },
   { id: 'openai-key', severity: 'critical', maskSecret: true, ruleFor: 'R-secrets',
     title: 'OpenAI API 키가 코드에 노출됨',
@@ -65,13 +71,25 @@ const rules = [
     fix: '프론트엔드에서는 anon 키만 쓰고, service_role은 서버 환경변수로만 보관하세요.' },
   { id: 'hardcoded-password', severity: 'warning', maskSecret: true, ruleFor: 'S-password-storage',
     title: '하드코딩된 비밀번호로 보이는 값',
-    pattern: /(?:password|passwd|비밀번호)\s*[:=]\s*['"][^'"]{4,}['"]/gi,
+    pattern: /(?:password|passwd|비밀번호)\s*[:=]\s*['"]([^'"]{4,})['"]/gi,
     fix: '비밀번호를 코드에 넣지 말고, 필요하면 해시 비교나 서버 인증으로 바꾸세요.' },
   { id: 'generic-secret-assignment', severity: 'warning', maskSecret: true, ruleFor: 'R-secrets',
     title: 'secret/token/api_key 변수에 긴 고정값 할당',
-    pattern: /(?:secret|token|api[_-]?key)\s*[:=]\s*['"][A-Za-z0-9_-]{24,}['"]/gi,
+    pattern: /(?:secret|token|api[_-]?key)\s*[:=]\s*['"]([A-Za-z0-9_-]{24,})['"]/gi,
     skipLine: /\bapiKey\s*:\s*['"]AIza/,
     fix: '비밀값은 서버 환경변수로 옮기고 클라이언트에는 두지 마세요.' },
+  { id: 'env-secret-assignment', severity: 'critical', maskSecret: true, ruleFor: 'R-secrets',
+    title: '환경변수 파일(.env)의 비밀값이 저장소에 포함됨 (KEY=값)',
+    pattern: /^\s*(?:export\s+|-\s+)?[A-Z0-9_]*(?:SECRET|PASSWORD|PASSWD|TOKEN|API_?KEY|PRIVATE_KEY|SERVICE_ROLE|ACCESS_KEY|_PW|_KEY)\s*=\s*(?:"([^"\n]{6,})"|'([^'\n]{6,})'|([^\s'"#]{6,}))/gm,
+    skipFiles: (path) => DOC_FILES.test(path) || ENV_TEMPLATE.test(path),
+    skipLine: PLACEHOLDER_VALUE,
+    fix: '.env 파일은 .gitignore에 넣고 저장소에서 제거하세요. 이미 올라간 값은 폐기·재발급하세요.' },
+  { id: 'connection-string-credentials', severity: 'critical', maskSecret: true, ruleFor: 'R-secrets',
+    title: 'DB·서비스 접속 문자열에 비밀번호 포함 (user:password@host)',
+    pattern: /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@'"]+:([^\s@'"]{3,})@/gi,
+    skipFiles: DOC_FILES,
+    skipLine: /:(?:password|pass|pwd|secret|x+|\*+|<[^>]*>|\[[^\]]*\]|\$\{?[A-Z_]+\}?)@/i,
+    fix: '접속 문자열은 서버 환경변수에만 두고, 노출됐다면 비밀번호를 바꾸세요.' },
   { id: 'vite-env-secret', severity: 'warning', ruleFor: 'R-secrets',
     title: 'VITE_ 접두 환경변수에 비밀값 (빌드 결과물에 그대로 노출됨)',
     pattern: /VITE_[A-Z0-9_]*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD)/g,

@@ -12,19 +12,42 @@ export function isScannablePath(path) {
   return TEXT_EXTENSIONS.test(name) || /^\.env/.test(name)
 }
 
-export function maskSecret(snippet, match) {
-  if (match.length <= 10) return snippet.replace(match, '****')
-  return snippet.replace(match, `${match.slice(0, 6)}****${match.slice(-2)}`)
+// 마스킹 형태 — 10자 이하는 전부, 그 이상은 앞 6자·뒤 2자만 남긴다.
+export function maskedValue(match) {
+  return match.length <= 10 ? '****' : `${match.slice(0, 6)}****${match.slice(-2)}`
 }
 
-function makeSnippet(line, match, shouldMask) {
+// replace()의 치환 문자열은 $&·$` 같은 패턴을 해석해 비밀값이 되돌아올 수 있다 — 분할·연결로 치환한다.
+export function maskSecret(snippet, match) {
+  if (!match || !snippet.includes(match)) return snippet
+  return snippet.split(match).join(maskedValue(match))
+}
+
+// 규칙에 캡처 그룹이 있으면 그 값(비밀값 본체)만 가린다 — 변수명·구조는 남겨 AI와 심사자가 맥락을 볼 수 있게.
+export function secretOf(m) {
+  return m.slice(1).find((g) => typeof g === 'string' && g.length > 0) ?? m[0]
+}
+
+function makeSnippet(line, secret, shouldMask) {
   let snippet = line.trim()
+  let anchor = secret
+  if (shouldMask) {
+    // 자르기 전에 먼저 가린다 — 잘린 뒤에는 원문 매치가 사라져 마스킹이 무효가 된다 (긴 JWT·키).
+    snippet = maskSecret(snippet, secret)
+    anchor = maskedValue(secret)
+  }
   if (snippet.length > 160) {
-    const idx = Math.max(0, snippet.indexOf(match) - 40)
+    const idx = Math.max(0, snippet.indexOf(anchor) - 40)
     snippet = (idx > 0 ? '…' : '') + snippet.slice(idx, idx + 140) + '…'
   }
-  return shouldMask ? maskSecret(snippet, match) : snippet
+  return snippet
 }
+
+// skipFiles / skipLine은 정규식 또는 함수(경로·줄, 파일 전문) — 파일 맥락(예: Firebase 설정 파일인지)을 볼 수 있게.
+const skipsFile = (rule, f) =>
+  Boolean(rule.skipFiles) && (typeof rule.skipFiles === 'function' ? rule.skipFiles(f.path, f.text) : rule.skipFiles.test(f.path))
+const skipsLine = (rule, line, f) =>
+  Boolean(rule.skipLine) && (typeof rule.skipLine === 'function' ? rule.skipLine(line, f.text) : rule.skipLine.test(line))
 
 /**
  * files: [{ path, name, text }]
@@ -38,16 +61,17 @@ export function scanFiles(files) {
     scannedCount++
     const lines = f.text.split('\n')
     for (const rule of rules) {
-      if (rule.skipFiles && rule.skipFiles.test(f.path)) continue
+      if (skipsFile(rule, f)) continue
       for (let i = 0; i < lines.length; i++) {
-        if (rule.skipLine && rule.skipLine.test(lines[i])) continue
+        if (skipsLine(rule, lines[i], f)) continue
         rule.pattern.lastIndex = 0
         const m = rule.pattern.exec(lines[i])
         if (!m) continue
         if (!byRule.has(rule.id)) byRule.set(rule.id, { rule, occurrences: [] })
         const bucket = byRule.get(rule.id)
         if (bucket.occurrences.length < 50) {
-          bucket.occurrences.push({ file: f.path, line: i + 1, snippet: makeSnippet(lines[i], m[0], rule.maskSecret) })
+          const secret = rule.maskSecret ? secretOf(m) : m[0]
+          bucket.occurrences.push({ file: f.path, line: i + 1, snippet: makeSnippet(lines[i], secret, rule.maskSecret) })
         }
       }
     }
@@ -62,7 +86,7 @@ export function scanFiles(files) {
 // 골라 심사자가 직접 열어보게 한다 (조용한 제외 금지의 파일명 층위).
 // 영문 키워드는 단어 시작 위치만 매치 — 'upgrade'/'degrade'가 'grade'로 잡히지 않게.
 const SUSPECT_EXT = /\.(xlsx?|hwpx?|docx?|db|sqlite3?|accdb|mdb)$/i
-const SUSPECT_NAME = /(학생|명단|성적|상담|연락처|주소록|출석|반배정|생기부)|(?<![a-z])(roster|student|grade)/i
+export const SUSPECT_NAME = /(학생|명단|성적|상담|연락처|주소록|출석|반배정|생기부)|(?<![a-z])(roster|student|grade)/i
 
 export function isVendorPath(path) {
   return SKIP_PATH.test(path)

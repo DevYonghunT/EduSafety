@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod/v4'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { FEATURES } from '../data/rubric.js'
+import { redactSecrets } from './redact.js'
 
 export const DEFAULT_MODEL = 'claude-opus-5'
 // 가격은 USD / 100만 토큰 (2026-06 기준 공식 단가). 캐시 쓰기는 입력의 1.25배.
@@ -33,26 +34,55 @@ const normalize = (s) => String(s).replace(/\s+/g, ' ').trim()
 const normalizePath = (p) => String(p || '').replace(/\\/g, '/').replace(/^\.?\//, '').trim()
 
 // AI가 지목한 파일 안에서만 인용을 대조한다 — 다른 파일에 우연히 있는 문자열로는 통과 못 한다.
-function filesNamedBy(files, name) {
+// 정확한 경로가 우선이고, 파일명만 준 경우는 후보가 하나일 때만 인정한다 (admin/config.js vs student/config.js 혼동 방지).
+export function filesNamedBy(files, name) {
   const n = normalizePath(name)
   if (!n) return []
-  return files.filter((f) => f.path === n || f.path.endsWith('/' + n) || n.endsWith('/' + f.path))
+  const exact = files.filter((f) => f.path === n)
+  if (exact.length > 0) return exact
+  const loose = files.filter((f) => f.path.endsWith('/' + n) || n.endsWith('/' + f.path))
+  return loose.length === 1 ? loose : []
 }
 
-export function quoteVerified(evidence, files) {
+// 인용 대조용 텍스트 색인 — AI는 마스킹된 코드를 보므로 원문과 마스킹본 양쪽에서 찾는다 (없으면
+// 비밀키·비밀번호가 있는 바로 그 줄의 인용이 항상 기각되어 S-password-storage 같은 항목이 미충족이 될 수 없다).
+export function makeTextIndex() {
+  const cache = new Map()
+  return (f) => {
+    let entry = cache.get(f)
+    if (!entry) {
+      entry = { raw: normalize(f.text), masked: normalize(redactSecrets(f.text)) }
+      cache.set(f, entry)
+    }
+    return entry
+  }
+}
+
+export function quoteVerified(evidence, files, textOf = makeTextIndex()) {
   const q = normalize(evidence.quote)
   if (q.length < MIN_QUOTE_LENGTH) return false
   const candidates = filesNamedBy(files, evidence.file)
   if (candidates.length === 0) return false
-  return candidates.some((f) => normalize(f.text).includes(q))
+  return candidates.some((f) => {
+    const t = textOf(f)
+    return t.raw.includes(q) || t.masked.includes(q)
+  })
+}
+
+// 규칙 스캔이 위반 후보를 찾은 항목 id 집합 (심각·경고만) — AI의 '충족'과 충돌하면 심사자 확인으로 넘긴다.
+export function scanHitItems(scanFindings = []) {
+  return new Set(scanFindings.filter((f) => f.rule.severity !== 'info' && f.rule.ruleFor).map((f) => f.rule.ruleFor))
 }
 
 /**
  * 원칙 1·2의 실체. raw: AI가 준 { judgments: [{id, verdict, reason, evidence:[{file, quote}]}] }
  * items: 적용 대상 aiVerifiable 루브릭 항목들. files: 로드된 원본 파일.
+ * opts.scanHits: 규칙 스캔 위반 후보 항목 id 집합, opts.textOf: 인용 대조 색인(묶음 간 공유용).
  * returns { judgments: {id: {verdict, reason, evidence, demoted?}}, demoted: [id], filled: [id] }
  */
-export function validateJudgments(raw, items, files) {
+export function validateJudgments(raw, items, files, opts = {}) {
+  const textOf = opts.textOf || makeTextIndex()
+  const scanHits = opts.scanHits || new Set()
   const byId = new Map()
   for (const j of raw?.judgments || []) {
     if (j && typeof j.id === 'string') byId.set(j.id, j)
@@ -61,6 +91,10 @@ export function validateJudgments(raw, items, files) {
   const judgments = {}
   const demoted = []
   const filled = []
+  const demote = (item, reason, evidence = []) => {
+    judgments[item.id] = { verdict: 'needs_human', reason, evidence, demoted: true }
+    demoted.push(item.id)
+  }
 
   for (const item of items) {
     const j = byId.get(item.id)
@@ -72,36 +106,34 @@ export function validateJudgments(raw, items, files) {
     const evidence = (Array.isArray(j.evidence) ? j.evidence : [])
       .filter((e) => e && typeof e.quote === 'string')
       .map((e) => ({ file: String(e.file || ''), quote: e.quote }))
+    const aiReason = j.reason || '없음'
 
-    if (j.verdict === 'ok' || j.verdict === 'fail') {
-      const verified = evidence.filter((e) => quoteVerified(e, files))
-      if (verified.length === 0) {
-        judgments[item.id] = {
-          verdict: 'needs_human',
-          reason: `근거 인용이 없거나 지목한 파일에서 확인되지 않아 판단불가로 강등 (원칙 1). AI 사유: ${j.reason || '없음'}`,
-          evidence: [],
-          demoted: true,
-        }
-        demoted.push(item.id)
-        continue
-      }
-      judgments[item.id] = { verdict: j.verdict, reason: String(j.reason || ''), evidence: verified }
+    if (j.verdict === 'needs_human') {
+      judgments[item.id] = { verdict: 'needs_human', reason: String(j.reason || ''), evidence }
       continue
     }
 
     // 필수 항목의 '해당없음'은 AI 혼자 결정할 수 없다 — 전부 해당없음으로 몰아 합격 후보를 만드는
-    // 우회를 막기 위해 심사자 확인(판단불가)으로 내린다. 점수 항목의 해당없음은 그대로 둔다.
+    // 우회를 막기 위해 심사자 확인(판단불가)으로 내린다.
     if (j.verdict === 'na' && item.type === 'required') {
-      judgments[item.id] = {
-        verdict: 'needs_human',
-        reason: `필수 항목의 '해당없음'은 심사자 확인이 필요합니다 (원칙 3). AI 사유: ${j.reason || '없음'}`,
-        evidence,
-        demoted: true,
-      }
-      demoted.push(item.id)
+      demote(item, `필수 항목의 '해당없음'은 심사자 확인이 필요합니다 (원칙 3). AI 사유: ${aiReason}`, evidence)
       continue
     }
-    judgments[item.id] = { verdict: j.verdict, reason: String(j.reason || ''), evidence }
+
+    // ok · fail · (점수 항목의) na 모두 코드 인용이 있어야 한다 — 적용 조건이 켜진 항목을 근거 없이
+    // '해당없음'으로 치우는 것도 근거 없는 '충족'과 같은 우회다.
+    const verified = evidence.filter((e) => quoteVerified(e, files, textOf))
+    if (verified.length === 0) {
+      demote(item, `근거 인용이 없거나 지목한 파일에서 확인되지 않아 판단불가로 강등 (원칙 1). AI 사유: ${aiReason}`)
+      continue
+    }
+
+    // 결정적 규칙이 이 항목의 위반 후보를 찾았는데 AI가 '충족'이라 하면, 인용의 존재만으로는 상충을 풀 수 없다.
+    if (j.verdict === 'ok' && scanHits.has(item.id)) {
+      demote(item, `자동 규칙 스캔이 이 항목의 위반 후보를 찾았는데 AI는 충족이라 답함 — 스캔 결과와 대조해 심사자가 확인 (원칙 1). AI 사유: ${aiReason}`, verified)
+      continue
+    }
+    judgments[item.id] = { verdict: j.verdict, reason: String(j.reason || ''), evidence: verified }
   }
 
   return { judgments, demoted, filled }
@@ -129,11 +161,12 @@ export function mergeJudgments(chunkResults, items) {
       judgments[item.id] = { verdict: 'ok', reason: oks[0].reason, evidence: oks.flatMap((e) => e.evidence) }
     } else if (nhs.length > 0) {
       judgments[item.id] = nhs.find((e) => e.demoted) || nhs[0]
-      if (chunkResults.some((r) => r.demoted.includes(item.id))) demoted.push(item.id)
-      if (chunkResults.every((r) => r.filled.includes(item.id))) filled.push(item.id)
     } else {
       judgments[item.id] = { verdict: 'na', reason: entries[0]?.reason || '', evidence: [] }
     }
+    // 강등·채움 집계는 최종 판정과 무관하게 남긴다 — 검증이 한 번이라도 인용을 기각했다는 사실은 고지 대상이다.
+    if (chunkResults.some((r) => r.demoted.includes(item.id))) demoted.push(item.id)
+    if (chunkResults.every((r) => r.filled.includes(item.id))) filled.push(item.id)
   }
   return { judgments, demoted, filled }
 }
@@ -156,8 +189,18 @@ export function emptyUsage() {
   return { calls: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0, model: null }
 }
 
+// 응답의 model 필드로 단가를 찾는다 — 대체 모델(fallback)로 답한 호출을 요청 모델 단가로 매기지 않게.
+export function priceFor(modelId) {
+  const id = String(modelId || '')
+  return MODEL_OPTIONS.find((o) => o.id === id)
+    || MODEL_OPTIONS.find((o) => id.startsWith(o.id))
+    || MODEL_OPTIONS.find((o) => /fable/.test(id) && /fable/.test(o.id))
+    || MODEL_OPTIONS.find((o) => /sonnet|haiku/.test(id) && /sonnet/.test(o.id))
+    || MODEL_OPTIONS[0]
+}
+
 export function estimateCost(usage, modelId) {
-  const m = MODEL_OPTIONS.find((o) => o.id === modelId) || MODEL_OPTIONS[0]
+  const m = priceFor(modelId)
   const input = usage.input_tokens || 0
   const output = usage.output_tokens || 0
   const cacheRead = usage.cache_read_input_tokens || 0
@@ -206,7 +249,8 @@ function codeSystemBlock(codeText) {
 
 // 구조화 출력 호출 — 스키마로 JSON을 강제하고 스트리밍으로 긴 응답의 타임아웃을 피한다.
 // Fable 5.1은 거부 시 서버가 대체 모델로 이어 답하도록 fallbacks를 켠다.
-async function requestStructured(client, { model, maxTokens, effort, codeText, prompt, schema }) {
+// onUsage는 실패한 시도·거부 응답을 포함해 모든 응답마다 불린다 — 비용 고지는 실제 청구와 같아야 한다.
+async function requestStructured(client, { model, maxTokens, effort, codeText, prompt, schema, onUsage }) {
   const option = MODEL_OPTIONS.find((o) => o.id === model)
   const useFallback = Boolean(option?.fallbacks) && typeof client.beta?.messages?.stream === 'function'
   const api = useFallback ? client.beta.messages : client.messages
@@ -222,6 +266,7 @@ async function requestStructured(client, { model, maxTokens, effort, codeText, p
   let lastError = null
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await api.stream(params).finalMessage()
+    onUsage?.(res.usage || {}, res.model || model)
     if (res.stop_reason === 'refusal') {
       const category = res.stop_details?.category ? ` (분류: ${res.stop_details.category})` : ''
       throw new Error(`AI가 이 요청의 처리를 거부했어요${category} — 수동 심사로 진행해 주세요.`)
@@ -233,7 +278,7 @@ async function requestStructured(client, { model, maxTokens, effort, codeText, p
     try {
       let json
       try { json = JSON.parse(text) } catch { json = extractJson(text) }
-      return { data: schema.parse(json), usage: res.usage || {}, model: res.model || model }
+      return { data: schema.parse(json), model: res.model || model }
     } catch (err) {
       lastError = err
     }
@@ -241,16 +286,22 @@ async function requestStructured(client, { model, maxTokens, effort, codeText, p
   throw new Error(`AI 응답이 약속된 형식이 아니었어요 (2회 시도): ${lastError?.message || ''}`)
 }
 
-export async function suggestFeatures({ payloadText, apiKey, model = DEFAULT_MODEL }) {
+// 기능 플래그는 적용 항목 22개를 가르므로 코드 전체를 본다 — 묶음마다 판단해 OR로 합친다
+// (상담·정서 기능이 2번째 묶음에만 있어도 collectsSensitiveInfo가 켜져야 한다).
+export async function suggestFeatures({ payloadText, payloadChunks, apiKey, model = DEFAULT_MODEL }) {
   const client = makeClient(apiKey)
+  const chunks = payloadChunks?.length > 0 ? payloadChunks : [payloadText]
   const flagList = Object.entries(FEATURES).map(([k, v]) => `- ${k}: ${v.label}`).join('\n')
-  const { data, usage } = await requestStructured(client, {
+  let usage = emptyUsage()
+  const onUsage = (u, m) => { usage = addUsage(usage, u, m) }
+  const results = await Promise.all(chunks.map((chunk, i) => requestStructured(client, {
     model,
     maxTokens: 4000,
     effort: 'low',
-    codeText: payloadText,
+    codeText: chunk,
     schema: FeaturesSchema,
-    prompt: `너는 교사 제작 앱 심사 시스템의 앱 확인 단계다. system에 주어진 코드를 읽고 기능 플래그를 판단하라.
+    onUsage,
+    prompt: `너는 교사 제작 앱 심사 시스템의 앱 확인 단계다. system에 주어진 코드를 읽고 기능 플래그를 판단하라.${chunks.length > 1 ? `\n주의: system의 코드는 전체 저장소를 나눈 묶음 ${i + 1}/${chunks.length}이다. 이 묶음에서 확인되는 기능만 true로 하라 (다른 묶음의 결과와 합쳐진다).` : ''}
 플래그는 심사 항목의 적용 범위와 보호 수준을 정하므로, 코드에서 실제 확인된 것만 true로 하라.
 확신이 없으면 true로 하라(과소 적용보다 과잉 적용이 안전하다) — 최종 확정은 심사자가 한다.
 
@@ -258,15 +309,16 @@ export async function suggestFeatures({ payloadText, apiKey, model = DEFAULT_MOD
 ${flagList}
 
 출력: appSummary(이 앱이 무엇인지 두 문장), featureReason(플래그 판단 근거 한 문장), features(플래그별 bool).`,
-  })
+  })))
   const features = {}
-  for (const k of FLAG_KEYS) features[k] = Boolean(data.features?.[k])
+  for (const k of FLAG_KEYS) features[k] = results.some((r) => Boolean(r.data.features?.[k]))
   return {
-    appSummary: data.appSummary,
-    featureReason: data.featureReason,
+    appSummary: results[0].data.appSummary,
+    featureReason: results.map((r) => r.data.featureReason).filter(Boolean).join(' / '),
     features,
     protectionLevel: deriveProtectionLevel(features),
-    usage: addUsage(emptyUsage(), usage, model),
+    chunkCount: chunks.length,
+    usage,
   }
 }
 
@@ -282,22 +334,26 @@ export async function judgeItems({ payloadText, payloadChunks, items, scanFindin
 
   let doneCount = 0
   let usage = emptyUsage()
+  const onUsage = (u, m) => { usage = addUsage(usage, u, m) }
+  const textOf = makeTextIndex()
+  const scanHits = scanHitItems(scanFindings)
   const chunkResults = await Promise.all(chunks.map(async (chunk, i) => {
     const chunkNote = chunks.length > 1
       ? `\n주의: system의 코드는 전체 저장소를 나눈 묶음 ${i + 1}/${chunks.length}이다. 이 묶음에 보이는 증거로만 판정하고, 이 묶음에 근거가 없는 항목은 needs_human을 택하라 (다른 묶음의 판정과 병합된다).`
       : ''
-    const { data, usage: u } = await requestStructured(client, {
+    const { data } = await requestStructured(client, {
       model,
       maxTokens: 24000,
       effort: 'high',
       codeText: chunk,
       schema: JudgmentsSchema,
+      onUsage,
       prompt: `너는 교사 제작 앱 심사 시스템의 판정 초안 단계다. 최종 판정은 사람 심사자가 하며, 너의 출력은 초안이다.${chunkNote}
 
 각 항목에 대해 verdict를 정하라: "ok"(충족) / "fail"(미충족) / "needs_human"(코드만으로 판단불가) / "na"(해당없음).
 규칙:
-1. ok 또는 fail 판정에는 반드시 evidence(코드 원문 인용)를 넣어라. file은 인용이 실제로 있는 파일 경로, quote는 그 파일에 있는 문자열 그대로(8자 이상)여야 한다. 검증 단계가 그 파일 안에서 인용을 대조하며, 확인 안 되면 needs_human으로 강등된다.
-2. 확신이 없으면 needs_human을 택하라. 추측으로 ok를 주지 마라. 필수 항목의 na는 심사자 확인으로 넘어간다.
+1. ok·fail·na 판정에는 반드시 evidence(코드 원문 인용)를 넣어라. file은 인용이 실제로 있는 파일의 정확한 경로(system의 "===== 파일: 경로 =====" 표기 그대로), quote는 그 파일에 있는 문자열 그대로(8자 이상, 마스킹된 ****도 보이는 그대로)여야 한다. 검증 단계가 그 파일 안에서 인용을 대조하며, 확인 안 되면 needs_human으로 강등된다.
+2. 확신이 없으면 needs_human을 택하라. 추측으로 ok를 주지 마라. 필수 항목의 na는 심사자 확인으로 넘어간다. 자동 규칙 스캔이 위반 후보를 찾은 항목에 ok를 주려면 그 코드가 왜 문제가 아닌지 인용으로 보여라.
 3. reason은 심사자가 읽을 한 문장.
 
 ${scanNote}
@@ -305,8 +361,7 @@ ${scanNote}
 심사 항목:
 ${itemList}`,
     })
-    usage = addUsage(usage, u, model)
-    const validated = validateJudgments(data, items, files)
+    const validated = validateJudgments(data, items, files, { textOf, scanHits })
     doneCount++
     onProgress?.(doneCount, chunks.length)
     return validated

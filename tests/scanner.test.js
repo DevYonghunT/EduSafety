@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import rules from '../src/data/securityRules.js'
-import { scanFiles, isScannablePath, countBySeverity, suspectDataFiles } from '../src/lib/scanner.js'
+import { scanFiles, isScannablePath, countBySeverity, suspectDataFiles, maskSecret } from '../src/lib/scanner.js'
 
 const f = (path, text) => ({ path, name: path.split('/').pop(), text })
 const hit = (id, text) => {
@@ -67,6 +67,44 @@ describe('규칙 스캔 (T4 완료 기준)', () => {
     const snippet = findings[0].occurrences[0].snippet
     expect(snippet).not.toContain(key)
     expect(snippet).toContain('****')
+  })
+
+  it('긴 비밀값(JWT)도 잘리기 전에 가려지고, $& 같은 치환 패턴이 원문을 되살리지 않는다', () => {
+    const jwt = 'eyJ' + 'a'.repeat(120) + '.eyJ' + 'b'.repeat(120) + '.' + 'c'.repeat(80)
+    const { findings } = scanFiles([f('app.js', `const token = "${jwt}"; // ${'x'.repeat(50)}`)])
+    const snippet = findings.find((x) => x.rule.id === 'jwt-hardcoded').occurrences[0].snippet
+    expect(snippet).not.toContain('a'.repeat(30))
+    expect(snippet).toContain('****')
+    expect(maskSecret('key=AB$&CDEFGHIJKL', 'AB$&CDEFGHIJKL')).toBe('key=AB$&CD****KL')
+    expect(maskSecret('k=$&', '$&')).toBe('k=****')
+  })
+
+  it('비밀번호·secret 할당은 값만 가리고 변수명은 남긴다', () => {
+    const { findings } = scanFiles([f('app.js', 'const password = "hunter2222";')])
+    expect(findings.find((x) => x.rule.id === 'hardcoded-password').occurrences[0].snippet).toBe('const password = "****";')
+  })
+
+  it('.env의 따옴표 없는 비밀값은 심각, 예시 파일·자리표시자는 제외', () => {
+    const { findings } = scanFiles([
+      f('.env', 'DB_PASSWORD=Sup3rS3cretDbPass!\nPORT=3000\nDATABASE_URL=postgres://app:Pa55w0rd!@db:5432/app'),
+      f('.env.example', 'DB_PASSWORD=your_password_here'),
+      f('README.md', 'OPENAI_API_KEY=sk-your-key-here'),
+    ])
+    const env = findings.find((x) => x.rule.id === 'env-secret-assignment')
+    expect(env.rule.severity).toBe('critical')
+    expect(env.occurrences.map((o) => o.file)).toEqual(['.env'])
+    expect(env.occurrences[0].snippet).toBe('DB_PASSWORD=Sup3rS****s!')
+    const conn = findings.find((x) => x.rule.id === 'connection-string-credentials')
+    expect(conn.occurrences[0].snippet).not.toContain('Pa55w0rd!')
+  })
+
+  it('apiKey: "AIza…"는 Firebase 설정 파일에서만 정보 등급, 그 밖에서는 Google 키 유출(심각)', () => {
+    const key = 'AIza' + 'C'.repeat(36)
+    const { findings } = scanFiles([f('src/gemini.js', `const client = { apiKey: "${key}" }`)])
+    const ids = findings.map((x) => x.rule.id)
+    expect(ids).toContain('google-api-key')
+    expect(ids).not.toContain('firebase-web-key')
+    expect(findings.find((x) => x.rule.id === 'google-api-key').occurrences[0].snippet).not.toContain('C'.repeat(20))
   })
 
   it('scanFiles 통합 — 심각도 순 정렬 + 집계', () => {
