@@ -38,7 +38,9 @@ export function scanFiles(files) {
     scannedCount++
     const lines = f.text.split('\n')
     for (const rule of rules) {
+      if (rule.skipFiles && rule.skipFiles.test(f.path)) continue
       for (let i = 0; i < lines.length; i++) {
+        if (rule.skipLine && rule.skipLine.test(lines[i])) continue
         rule.pattern.lastIndex = 0
         const m = rule.pattern.exec(lines[i])
         if (!m) continue

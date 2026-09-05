@@ -10,9 +10,37 @@ const hit = (id, text) => {
 }
 
 describe('규칙 스캔 (T4 완료 기준)', () => {
-  it('핵심 규칙 15종이 등록되어 있다', () => {
-    expect(rules.length).toBe(15)
-    expect(new Set(rules.map((r) => r.id)).size).toBe(15)
+  it('규칙 40종 이상, id 중복 없음, 필드 유효', () => {
+    expect(rules.length).toBeGreaterThanOrEqual(40)
+    expect(new Set(rules.map((r) => r.id)).size).toBe(rules.length)
+    for (const r of rules) {
+      expect(['critical', 'warning', 'info']).toContain(r.severity)
+      expect(r.pattern.flags).toContain('g')
+      expect(r.fix.length).toBeGreaterThan(5)
+    }
+  })
+
+  it('실심사 오탐 보정 — Firebase 웹 키는 정보 등급, 문서 파일·xmlns의 http는 제외', () => {
+    const { findings } = scanFiles([
+      f('js/firebase-init.js', 'const cfg = { apiKey: "AIza' + 'B'.repeat(35) + '", authDomain: "x" }'),
+      f('assets/LICENSE.txt', 'http://creativecommons.org/publicdomain/zero/1.0/'),
+      f('login.html', `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'>")`),
+      f('docs/guide.md', 'allow write: if true;'),
+    ])
+    const ids = findings.map((x) => x.rule.id)
+    expect(ids).toContain('firebase-web-key')
+    expect(ids).not.toContain('google-api-key')
+    expect(ids).not.toContain('http-resource')
+    expect(ids).not.toContain('db-open-write')
+  })
+
+  it('신규 규칙 — 주민번호·javascript: URL·클라이언트 역할 플래그·점수 로컬 기록', () => {
+    expect(hit('rrn-pattern', 'jumin: "990101-1234567"')).toBe(true)
+    expect(hit('rrn-pattern', 'date: "2026-08-29"')).toBe(false)
+    expect(hit('javascript-url', '<a href="javascript:void(0)">')).toBe(true)
+    expect(hit('client-role-flag', "localStorage.setItem('mode', 'teacher')")).toBe(true)
+    expect(hit('score-localstorage', "localStorage.setItem('score', total)")).toBe(true)
+    expect(hit('prompt-password-gate', 'const pw = prompt("비밀번호를 입력하세요")')).toBe(true)
   })
 
   it('비밀키 매치/비매치', () => {
@@ -43,7 +71,7 @@ describe('규칙 스캔 (T4 완료 기준)', () => {
 
   it('scanFiles 통합 — 심각도 순 정렬 + 집계', () => {
     const { findings } = scanFiles([
-      f('rules.txt', 'allow write: if true;'),
+      f('firestore.rules', 'allow write: if true;'),
       f('app.js', 'eval(x)\nfetch("http://insecure.com/a.js")'),
     ])
     expect(findings[0].rule.severity).toBe('critical')
