@@ -1,3 +1,4 @@
+import { brotliCompressSync, deflateSync, gzipSync } from "node:zlib";
 import request from "supertest";
 import { createApp, type AppSecurityLimits } from "../../src/app.js";
 import { PolicyService } from "../../src/certification/policy-service.js";
@@ -264,5 +265,39 @@ describe("public issue admission", () => {
       .set("X-Forwarded-For", "203.0.113.33")
       .send(validIssueRequest)
       .expect(200);
+  });
+});
+
+// CVE-2026-111497(Node2Shell): Node.js 의 Brotli 해제기가 조작된 압축 본문으로 메모리를 덮어쓸 수 있다.
+// API 는 압축 본문을 풀지 않고 415 로 돌려보내야 한다.
+describe("compressed request bodies", () => {
+  const compressors = {
+    br: brotliCompressSync,
+    gzip: gzipSync,
+    deflate: deflateSync,
+  } as const;
+
+  it.each(Object.keys(compressors) as (keyof typeof compressors)[])(
+    "rejects a %s-encoded body without decompressing it",
+    async (encoding) => {
+      const { app } = await setup({ activePolicy: true });
+      const body = compressors[encoding](Buffer.from(JSON.stringify(validIssueRequest)));
+      const response = await request(app)
+        .post("/api/badges/issue")
+        .set("Content-Type", "application/json")
+        .set("Content-Encoding", encoding)
+        .send(body)
+        .expect(415);
+      expect(response.body.error.code).toBe("REQUEST_ENCODING_UNSUPPORTED");
+    },
+  );
+
+  it("still accepts an uncompressed body marked as identity", async () => {
+    const { app } = await setup({ activePolicy: true });
+    await request(app)
+      .post("/api/badges/issue")
+      .set("Content-Encoding", "identity")
+      .send(validIssueRequest)
+      .expect(201);
   });
 });

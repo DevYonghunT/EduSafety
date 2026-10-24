@@ -44,6 +44,18 @@ describe("GitHub exact-commit collection", () => {
     },
   );
 
+  // CVE-2026-111497: 내장 fetch 는 Brotli 응답을 끌 수 없이 자동으로 푼다. Brotli 를 아예 받지 않는다.
+  it("asks GitHub for gzip only so no Brotli response reaches the decoder", async () => {
+    const fetchImplementation = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) =>
+      json({ message: "Not Found" }, 404));
+    const client = new GitHubClient({ fetchImplementation });
+    await expect(client.collect("https://github.com/owner/repo", TEST_COMMIT)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    const init = fetchImplementation.mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get("Accept-Encoding")).toBe("gzip");
+  });
+
   it("walks non-recursive trees, validates blobs and confirms repository identity", async () => {
     const source = "export const safe = true;";
     const sourceSha = blobSha(source);

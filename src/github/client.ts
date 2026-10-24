@@ -285,6 +285,8 @@ export class GitHubClient implements RepositorySourceProvider {
       response = await this.#fetch(`${this.#apiBaseUrl}${path}`, {
         headers: {
           Accept: "application/vnd.github+json",
+          // 내장 fetch 는 Brotli 응답을 끌 수 없이 풀어 버린다(CVE-2026-111497). gzip 만 받는다.
+          "Accept-Encoding": "gzip",
           "User-Agent": "EduSafety-static-review",
           "X-GitHub-Api-Version": "2022-11-28",
           ...(this.#token === undefined ? {} : { Authorization: `Bearer ${this.#token}` }),

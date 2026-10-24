@@ -526,7 +526,9 @@ export function createApp(dependencies: AppDependencies): express.Express {
   });
   app.use("/api/security-scan", requireAdminSameOrigin(applicationOrigin));
   app.use("/api/badges", allowPublicBadgeCors(applicationOrigin, config.allowedOrigins));
-  app.use("/api", express.json({ limit: "16kb", strict: true }));
+  // 압축 본문은 풀지 않는다(inflate: false). Node.js Brotli 해제기 취약점 CVE-2026-111497 의 입구를 닫고,
+  // 16kb 제한이 압축을 푼 뒤가 아니라 받은 그대로의 크기에 걸리게 한다. 웹 화면은 압축 본문을 보내지 않는다.
+  app.use("/api", express.json({ limit: "16kb", strict: true, inflate: false }));
 
   app.get("/health", (_request, response) => response.json({ status: "ok" }));
   app.get("/api/security-scan/config", sendSecurityScanConfig);
@@ -819,6 +821,12 @@ export function createApp(dependencies: AppDependencies): express.Express {
     if (response.headersSent) return;
     if ((error as { type?: string }).type === "entity.too.large") {
       response.status(413).json({ error: { code: "REQUEST_TOO_LARGE", message: "요청 본문이 너무 큽니다." } });
+      return;
+    }
+    if ((error as { type?: string }).type === "encoding.unsupported") {
+      response.status(415).json({
+        error: { code: "REQUEST_ENCODING_UNSUPPORTED", message: "압축된 요청 본문은 받지 않습니다." },
+      });
       return;
     }
     if (error instanceof ZodError || (error instanceof SyntaxError && "body" in error)) {
